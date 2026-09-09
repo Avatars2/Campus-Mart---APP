@@ -1,4 +1,4 @@
-Title: CampusMart - Enhanced Project Specification
+Title: CampusMart
 
 PROJECT OVERVIEW:
 CampusMart is a peer-to-peer e-commerce platform designed exclusively for college students to buy and sell items within their campus. The platform provides a secure, trusted environment for students to trade textbooks, electronics, furniture, and other items.

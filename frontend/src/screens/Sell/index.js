@@ -52,7 +52,9 @@ export default function SellScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.itemFooter}>
-            <Text style={styles.itemCondition}>{item.condition_rating ? item.condition_rating.replace('_', ' ') : ''}</Text>
+            <Text style={styles.itemCondition}>
+              {{ 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' }[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')}
+            </Text>
             <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusSold]}>
               <Text style={[styles.statusText, item.is_active ? styles.statusTextActive : styles.statusTextSold]}>
                 {item.is_active ? 'Active' : 'Sold'}

@@ -10,34 +10,23 @@ export default function EditProductScreen({ route, navigation }) {
 
   const [name, setName] = useState(item.name || '');
   const [price, setPrice] = useState(item.price ? item.price.toString() : '');
+  const [quantity, setQuantity] = useState(item.quantity ? item.quantity.toString() : '1');
   const [isActive, setIsActive] = useState(item.is_active);
   const [listingType, setListingType] = useState(item.listing_type || 'sell');
   
   const conditions = [
-    { label: 'New', value: 'new' },
-    { label: 'Like New', value: 'like_new' },
-    { label: 'Good', value: 'good' },
-    { label: 'Fair', value: 'fair' },
-    { label: 'Poor', value: 'poor' },
+    { label: 'New', value: 5 },
+    { label: 'Like New', value: 4 },
+    { label: 'Good', value: 3 },
+    { label: 'Fair', value: 2 },
+    { label: 'Poor', value: 1 },
   ];
   
   const [condition, setCondition] = useState(conditions.find(c => c.value === item.condition_rating) || conditions[2]);
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState(null);
   
-  // Parse existing description for custom category
-  let initialDesc = item.description || '';
-  let initialCustom = '';
-  if (initialDesc.startsWith('Category: ')) {
-    const lines = initialDesc.split('\n');
-    initialCustom = lines[0].replace('Category: ', '').trim();
-    lines.shift(); // Remove "Category: ..."
-    if (lines[0] === '') lines.shift(); // Remove empty line
-    initialDesc = lines.join('\n');
-  }
-
-  const [description, setDescription] = useState(initialDesc);
-  const [customCategory, setCustomCategory] = useState(initialCustom);
+  const [description, setDescription] = useState(item.description || '');
   
   const [imageUris, setImageUris] = useState(item.images || []);
   const [newImageSelected, setNewImageSelected] = useState(false);
@@ -110,14 +99,10 @@ export default function EditProductScreen({ route, navigation }) {
     try {
       const formData = new FormData();
       
-      let finalDescription = description;
-      if (category && category.name === 'Others' && customCategory.trim()) {
-        finalDescription = `Category: ${customCategory.trim()}\n\n${description}`;
-      }
-
       formData.append('name', name);
-      formData.append('description', finalDescription);
+      formData.append('description', description);
       formData.append('price', price);
+      formData.append('quantity', quantity);
       formData.append('listing_type', listingType);
       formData.append('condition_rating', condition.value);
       formData.append('category_id', category.id);
@@ -289,6 +274,21 @@ export default function EditProductScreen({ route, navigation }) {
             </View>
           </View>
 
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Quantity</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="layers-outline" size={20} color="#8792A2" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 1"
+                placeholderTextColor="#A0A8B8"
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
           <Text style={styles.sectionTitle}>Details</Text>
 
           <View style={styles.inputContainer}>
@@ -306,21 +306,7 @@ export default function EditProductScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
-          {category && category.name === 'Others' && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Specify Category Name</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="pencil-outline" size={20} color="#8792A2" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g., Musical Instruments"
-                  placeholderTextColor="#A0A8B8"
-                  value={customCategory}
-                  onChangeText={setCustomCategory}
-                />
-              </View>
-            </View>
-          )}
+
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Condition</Text>

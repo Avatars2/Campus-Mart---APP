@@ -27,7 +27,7 @@ export default function VerifyLoginOTPScreen({ route, navigation }) {
       });
       
       // Successfully verified, log the user in immediately
-      await signIn(response.data.token);
+      await signIn(response.data.token, response.data.user);
       
     } catch (error) {
       setErrorMsg(error.response?.data?.error || 'Invalid or expired OTP.');

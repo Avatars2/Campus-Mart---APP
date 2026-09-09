@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import styles from './styles';
+import { useNotifications } from '../../context/NotificationContext';
+import { useCartWishlist } from '../../context/CartWishlistContext';
 
 const CATEGORIES = [
   { name: 'All', icon: 'apps' },
@@ -22,12 +24,17 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeListingType, setActiveListingType] = useState('all');
+  const { unreadCount } = useNotifications();
+  const { cartCount, wishlistCount } = useCartWishlist();
 
-  const fetchItems = async (query = '', type = activeListingType) => {
+  const fetchItems = async (query = '', type = activeListingType, cat = activeCategory) => {
     try {
       let url = `/items?listing_type=${type}`;
       if (query) {
         url += `&search=${encodeURIComponent(query)}`;
+      }
+      if (cat && cat !== 'All') {
+        url += `&category=${encodeURIComponent(cat)}`;
       }
       const response = await client.get(url);
       setItems(response.data);
@@ -41,42 +48,37 @@ export default function HomeScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchItems(searchQuery, activeListingType);
+      fetchItems(searchQuery, activeListingType, activeCategory);
     }, [])
   );
 
   const handleSearch = () => {
     setLoading(true);
-    fetchItems(searchQuery, activeListingType);
+    fetchItems(searchQuery, activeListingType, activeCategory);
   };
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchItems(searchQuery, activeListingType);
+    fetchItems(searchQuery, activeListingType, activeCategory);
   };
 
   const handleCategoryPress = (categoryName) => {
     setActiveCategory(categoryName);
     setLoading(true);
-    if (categoryName === 'All') {
-      setSearchQuery('');
-      fetchItems('', activeListingType);
-    } else {
-      setSearchQuery(categoryName);
-      fetchItems(categoryName, activeListingType);
-    }
+    fetchItems(searchQuery, activeListingType, categoryName);
   };
 
   const handleListingTypeChange = (type) => {
     setActiveListingType(type);
     setLoading(true);
-    fetchItems(searchQuery, type);
+    fetchItems(searchQuery, type, activeCategory);
   };
 
   const renderItem = ({ item }) => {
     const imageUrl = item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/150';
     const sellerImage = item.seller_image ? item.seller_image : 'https://via.placeholder.com/50';
-    const condition = item.condition_rating ? item.condition_rating.replace('_', ' ') : '';
+    const conditionMap = { 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' };
+    const condition = item.condition_rating ? (conditionMap[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')) : '';
 
     return (
       <TouchableOpacity
@@ -99,7 +101,12 @@ export default function HomeScreen({ navigation }) {
         </View>
         <View style={styles.itemDetails}>
           <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.itemPrice}>₹{item.price}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <Text style={styles.itemPrice}>₹{item.price}</Text>
+            {item.quantity !== undefined && (
+              <Text style={{ fontSize: 12, color: '#697386' }}>Qty: {item.quantity}</Text>
+            )}
+          </View>
 
           <View style={styles.sellerContainer}>
             <Image source={{ uri: sellerImage }} style={styles.sellerAvatar} />
@@ -119,9 +126,75 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.greetingText}>Welcome to</Text>
             <Text style={styles.headerTitle}>CampusMart 🎓</Text>
           </View>
-          <TouchableOpacity style={styles.notificationBtn}>
-            <Ionicons name="notifications-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 15 }}>
+            <TouchableOpacity 
+              style={styles.notificationBtn}
+              onPress={() => navigation.navigate('Wishlist')}
+            >
+              <Ionicons name="heart-outline" size={24} color="#FFF" />
+              {wishlistCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -6,
+                  backgroundColor: 'red',
+                  borderRadius: 10,
+                  width: 16,
+                  height: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{wishlistCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.notificationBtn}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <Ionicons name="cart-outline" size={24} color="#FFF" />
+              {cartCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -6,
+                  backgroundColor: 'red',
+                  borderRadius: 10,
+                  width: 16,
+                  height: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{cartCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.notificationBtn}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#FFF" />
+              {unreadCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -6,
+                  backgroundColor: 'red',
+                  borderRadius: 10,
+                  width: 16,
+                  height: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#8792A2" />

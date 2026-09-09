@@ -1,0 +1,41 @@
+import { StyleSheet } from 'react-native';
+
+export default StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F7F9FC' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingTop: 50,
+    paddingBottom: 15,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1F36' },
+  itemCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  itemImage: { width: 80, height: 80, borderRadius: 8 },
+  itemDetails: { flex: 1, marginLeft: 12, justifyContent: 'center' },
+  itemName: { fontSize: 16, fontWeight: '600', color: '#1A1F36', marginBottom: 4 },
+  itemPrice: { fontSize: 16, fontWeight: '700', color: '#0052CC' },
+  unavailableText: { color: '#FF3B30', fontSize: 12, marginTop: 4, fontWeight: '600' },
+  actions: { justifyContent: 'space-between', alignItems: 'center' },
+  actionBtn: { padding: 8 },
+  cartBtn: { backgroundColor: '#0052CC', borderRadius: 8, padding: 8 },
+  disabledBtn: { backgroundColor: '#B0B7C3' },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptyText: { marginTop: 16, fontSize: 16, color: '#697386' }
+});

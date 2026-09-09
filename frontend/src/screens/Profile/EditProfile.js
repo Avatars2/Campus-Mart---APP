@@ -80,7 +80,7 @@ export default function EditProfileScreen({ route, navigation }) {
         });
       }
 
-      const response = await client.post('/users/me/photo', formData, {
+      const response = await client.post('/users/profile/photo', formData, {
         headers: Platform.OS === 'web' ? {} : {
           'Content-Type': 'multipart/form-data',
         },
@@ -104,7 +104,7 @@ export default function EditProfileScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      await client.put('/users/me', {
+      await client.put('/users/profile', {
         full_name: fullName,
         phone,
         department,

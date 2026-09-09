@@ -9,20 +9,20 @@ export default function AddProductScreen({ navigation }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [listingType, setListingType] = useState('sell');
   
   const conditions = [
-    { label: 'New', value: 'new' },
-    { label: 'Like New', value: 'like_new' },
-    { label: 'Good', value: 'good' },
-    { label: 'Fair', value: 'fair' },
-    { label: 'Poor', value: 'poor' },
+    { label: 'New', value: 5 },
+    { label: 'Like New', value: 4 },
+    { label: 'Good', value: 3 },
+    { label: 'Fair', value: 2 },
+    { label: 'Poor', value: 1 },
   ];
   
   const [condition, setCondition] = useState(conditions[2]);
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState(null);
-  const [customCategory, setCustomCategory] = useState('');
   
   const [imageUris, setImageUris] = useState([]);
   
@@ -90,14 +90,10 @@ export default function AddProductScreen({ navigation }) {
     try {
       const formData = new FormData();
       
-      let finalDescription = description;
-      if (category && category.name === 'Others' && customCategory.trim()) {
-        finalDescription = `Category: ${customCategory.trim()}\n\n${description}`;
-      }
-
       formData.append('name', name);
-      formData.append('description', finalDescription);
+      formData.append('description', description);
       formData.append('price', price);
+      formData.append('quantity', quantity);
       formData.append('listing_type', listingType);
       formData.append('condition_rating', condition.value);
       formData.append('category_id', category.id);
@@ -248,6 +244,21 @@ export default function AddProductScreen({ navigation }) {
             </View>
           </View>
 
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Quantity</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="layers-outline" size={20} color="#8792A2" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 1"
+                placeholderTextColor="#A0A8B8"
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
           <Text style={styles.sectionTitle}>Details</Text>
 
           <View style={styles.inputContainer}>
@@ -265,21 +276,7 @@ export default function AddProductScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {category && category.name === 'Others' && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Specify Category Name</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="pencil-outline" size={20} color="#8792A2" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g., Musical Instruments"
-                  placeholderTextColor="#A0A8B8"
-                  value={customCategory}
-                  onChangeText={setCustomCategory}
-                />
-              </View>
-            </View>
-          )}
+
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Condition</Text>

@@ -7,10 +7,23 @@ import HomeNavigator from './HomeNavigator';
 import BuyScreen from '../screens/Buy';
 import SellNavigator from './SellNavigator';
 import ProfileNavigator from './ProfileNavigator';
+import MessageNavigator from './MessageNavigator';
+import { useMessages } from '../context/MessageContext';
+
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import NotificationScreen from '../screens/NotificationScreen';
+import { useNotifications } from '../context/NotificationContext';
+import { TouchableOpacity, Text } from 'react-native';
+import CartScreen from '../screens/CartScreen';
+import WishlistScreen from '../screens/WishlistScreen';
+import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
+import OrderSuccessScreen from '../screens/Checkout/OrderSuccessScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-export default function AppNavigator() {
+function TabNavigator() {
+  const { unreadCount: messageCount } = useMessages();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -23,6 +36,8 @@ export default function AppNavigator() {
             iconName = focused ? 'cart' : 'cart-outline';
           } else if (route.name === 'Sell') {
             iconName = focused ? 'pricetag' : 'pricetag-outline';
+          } else if (route.name === 'Messages') {
+            iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -77,7 +92,59 @@ export default function AppNavigator() {
       <Tab.Screen name="Home" component={HomeNavigator} options={{ title: 'Home', headerShown: false }} />
       <Tab.Screen name="Buy" component={BuyScreen} options={{ title: 'Buy', headerShown: false }} />
       <Tab.Screen name="Sell" component={SellNavigator} options={{ title: 'Sell', headerShown: false }} />
+      <Tab.Screen 
+        name="Messages" 
+        component={MessageNavigator} 
+        options={{ 
+          title: 'Messages', 
+          headerShown: false,
+          tabBarBadge: messageCount > 0 ? messageCount : null,
+          tabBarBadgeStyle: { backgroundColor: '#FF3B30' }
+        }} 
+      />
       <Tab.Screen name="Profile" component={ProfileNavigator} options={{ title: 'Profile', headerShown: false }} />
     </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const { unreadCount: notifCount } = useNotifications();
+
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="MainTabs" 
+        component={TabNavigator} 
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        component={NotificationScreen} 
+        options={{ 
+          presentation: 'modal',
+          headerShown: false 
+        }} 
+      />
+      <Stack.Screen 
+        name="Cart" 
+        component={CartScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="Wishlist" 
+        component={WishlistScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="Checkout" 
+        component={CheckoutScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="OrderSuccess" 
+        component={OrderSuccessScreen} 
+        options={{ headerShown: false, gestureEnabled: false }} 
+      />
+    </Stack.Navigator>
   );
 }

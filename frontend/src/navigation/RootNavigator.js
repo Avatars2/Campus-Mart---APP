@@ -2,10 +2,11 @@ import React, { useContext } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
+import AdminNavigator from './AdminNavigator';
 import { AuthContext } from '../context/AuthContext';
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading } = useContext(AuthContext);
+  const { isAuthenticated, userRole, isLoading } = useContext(AuthContext);
 
   if (isLoading) {
     return (
@@ -17,7 +18,13 @@ export default function RootNavigator() {
 
   return (
     <>
-      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      {!isAuthenticated ? (
+        <AuthNavigator />
+      ) : userRole === 'admin' ? (
+        <AdminNavigator />
+      ) : (
+        <AppNavigator />
+      )}
     </>
   );
 }

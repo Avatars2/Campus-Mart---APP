@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "407468165504",
+    "project_id": "campus-mart-ff764",
+    "storage_bucket": "campus-mart-ff764.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:407468165504:android:4d94c389c0522c36751965",
+        "android_client_info": {
+          "package_name": "com.campusmart.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAhoIqeCRO1L8iceTFFFoEjrluYb8gUn0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

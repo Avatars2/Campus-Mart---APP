@@ -1,101 +1,170 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, ActivityIndicator, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useCart } from '../../context/CartContext';
-import client from '../../api/client';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, SafeAreaView, Platform } from 'react-native';
 import styles from './styles';
+import { Ionicons } from '@expo/vector-icons';
+import client from '../../api/client';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function BuyScreen({ navigation }) {
-  const { cartItems, removeFromCart, clearCart, cartTotal } = useCart();
-  const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('purchases'); // 'purchases' or 'sales'
 
-  const handleCheckout = async () => {
-    if (cartItems.length === 0) return;
-    setLoading(true);
+  const fetchOrders = async () => {
     try {
-      await client.post('/orders/checkout', {
-        items: cartItems,
-        payment_method: 'Cash',
-        delivery_address: 'Campus Pickup'
-      });
-      clearCart();
-      Alert.alert('Success', 'Order placed successfully!');
-      navigation.navigate('Home');
-    } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to checkout');
+      setError(null);
+      const res = await client.get(`/orders?type=${activeTab}`);
+      setOrders(res.data.orders);
+    } catch (err) {
+      console.error('Fetch Orders Error:', err);
+      setError(err.response?.data?.error || 'Failed to fetch orders');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  if (cartItems.length === 0) {
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [activeTab])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchOrders();
+  };
+
+  const handleMessageUser = (user) => {
+    if (!user) return;
+    navigation.navigate('Messages', {
+      screen: 'ChatScreen',
+      params: { recipientId: user._id || user.id }
+    });
+  };
+
+  const renderOrderItem = ({ item }) => {
+    const orderItem = item.item_id || {};
+    const seller = item.seller_id || {};
+    
+    // Format date beautifully
+    const date = new Date(item.createdAt);
+    const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const otherUser = activeTab === 'purchases' ? item.seller_id : item.buyer_id;
+
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <View style={styles.iconBg}>
-          <Ionicons name="cart-outline" size={52} color="#0052CC" />
+      <View style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          <Text style={styles.orderDate}>{dateString}</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>{item.status === 'pending' ? 'Campus Pickup' : item.status}</Text>
+          </View>
         </View>
-        <Text style={styles.title}>Your Cart is Empty</Text>
-        <Text style={styles.subtitle}>
-          Looks like you haven't added anything to your cart yet.
-        </Text>
-        <TouchableOpacity
-          style={styles.browseButton}
-          onPress={() => navigation.navigate('Home')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.browseButtonText}>Browse Marketplace</Text>
+
+        <View style={styles.orderContent}>
+          <Image 
+            source={{ uri: orderItem.images?.[0] || 'https://via.placeholder.com/100' }} 
+            style={styles.itemImage} 
+          />
+          <View style={styles.orderDetails}>
+            <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
+            <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
+            <Text style={styles.itemPrice}>₹{item.total_price}</Text>
+          </View>
+        </View>
+
+        <View style={styles.orderFooter}>
+          <TouchableOpacity 
+            style={styles.messageButton}
+            onPress={() => handleMessageUser(otherUser)}
+          >
+            <Ionicons name="chatbubble-outline" size={16} color="#0052CC" style={{ marginRight: 6 }} />
+            <Text style={styles.messageButtonText}>Message {activeTab === 'purchases' ? 'Seller' : 'Buyer'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#0052CC" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color="#DC2626" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchOrders}>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const renderItem = ({ item }) => (
-    <View style={styles.cartItem}>
-      <Image source={{ uri: item.images?.[0] || 'https://via.placeholder.com/100' }} style={styles.itemImage} />
-      <View style={styles.itemDetails}>
-        <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.itemPrice}>₹{item.price}</Text>
-      </View>
-      <TouchableOpacity onPress={() => removeFromCart(item.id)} style={styles.removeButton} activeOpacity={0.7}>
-        <Ionicons name="trash-outline" size={20} color="#DC2626" />
-      </TouchableOpacity>
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Shopping Cart</Text>
+        <Text style={styles.headerTitle}>My Orders</Text>
+      </View>
+      
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'purchases' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('purchases')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabText, activeTab === 'purchases' && styles.tabTextActive]}>Purchases</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'sales' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('sales')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabText, activeTab === 'sales' && styles.tabTextActive]}>Sales</Text>
+        </TouchableOpacity>
       </View>
       
       <FlatList
-        data={cartItems}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
+        data={orders}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />
+        }
+        renderItem={renderOrderItem}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.iconBg}>
+              <Ionicons name="bag-handle-outline" size={52} color="#0052CC" />
+            </View>
+            <Text style={styles.emptyTitle}>No {activeTab === 'purchases' ? 'Purchases' : 'Sales'} Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              {activeTab === 'purchases' 
+                ? 'Items you purchase will appear here.'
+                : 'Items you sell to others will appear here.'}
+            </Text>
+            {activeTab === 'purchases' && (
+              <TouchableOpacity
+                style={styles.browseButton}
+                onPress={() => navigation.navigate('Home')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.browseButtonText}>Browse Marketplace</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        }
       />
-      
-      <View style={styles.checkoutBar}>
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total Price</Text>
-          <Text style={styles.totalAmount}>₹{cartTotal}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.checkoutButton}
-          onPress={handleCheckout}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <Text style={styles.checkoutButtonText}>Checkout</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
+
+

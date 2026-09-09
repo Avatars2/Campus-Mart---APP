@@ -16,7 +16,9 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     setErrorMsg('');
 
-    if (!email.toLowerCase().endsWith('@bvmengineering.ac.in')) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const adminEmail = process.env.EXPO_PUBLIC_ADMIN_EMAIL;
+    if (!normalizedEmail.endsWith('@bvmengineering.ac.in') && normalizedEmail !== adminEmail) {
       return setErrorMsg('Please enter a valid college email address.');
     }
     if (!password.trim()) {
@@ -26,12 +28,12 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       const response = await client.post('/auth/login', {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password
       });
 
       // Use the global signIn function which saves token and changes state
-      await signIn(response.data.token);
+      await signIn(response.data.token, response.data.user);
 
     } catch (error) {
       setErrorMsg(error.response?.data?.error || 'Invalid email or password.');

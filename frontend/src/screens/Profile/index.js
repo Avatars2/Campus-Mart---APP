@@ -16,7 +16,7 @@ export default function ProfileScreen({ navigation }) {
 
   const fetchProfile = async () => {
     try {
-      const response = await client.get('/users/me');
+      const response = await client.get('/users/profile');
       setProfile(response.data.user);
     } catch (error) {
       console.error('Failed to fetch profile', error);
@@ -36,13 +36,17 @@ export default function ProfileScreen({ navigation }) {
   if (!profile) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: '#697386', fontSize: 16 }}>Error loading profile.</Text>
+        <Text style={{ color: '#697386', fontSize: 16, marginBottom: 20 }}>Error loading profile.</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const memberSince = profile.created_at
-    ? new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
+  const memberSince = profile.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
     : '—';
 
   return (
