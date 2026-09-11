@@ -1,11 +1,12 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { colors } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0052CC',
+    backgroundColor: colors.ink,
   },
   content: {
     flex: 1,
@@ -97,7 +98,7 @@ export default StyleSheet.create({
   collegeName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0052CC',
+    color: colors.brand,
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -128,8 +129,8 @@ export default StyleSheet.create({
     marginBottom: 14,
   },
   primaryButton: {
-    backgroundColor: '#0052CC',
-    shadowColor: '#0052CC',
+    backgroundColor: colors.brand,
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -147,7 +148,7 @@ export default StyleSheet.create({
     borderColor: '#E3E8EE',
   },
   secondaryButtonText: {
-    color: '#0052CC',
+    color: colors.brand,
     fontSize: 16,
     fontWeight: '700',
   },

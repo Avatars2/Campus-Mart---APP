@@ -9,10 +9,11 @@ export default function CheckoutScreen({ route, navigation }) {
   const { checkoutItems = [], fromCart = false } = route.params || {};
   const { refreshCounts } = useCartWishlist();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('Cash'); // Default and only option for now
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [errorMessage, setErrorMessage] = useState(null);
 
   const total = checkoutItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const deliveryMessage = 'Discuss with seller via Messages';
 
   const handleConfirmOrder = async () => {
     if (checkoutItems.length === 0) return;
@@ -23,7 +24,7 @@ export default function CheckoutScreen({ route, navigation }) {
       const res = await client.post('/orders/checkout', {
         items: checkoutItems,
         payment_method: paymentMethod,
-        delivery_address: 'Campus Pickup',
+        delivery_address: deliveryMessage,
         from_cart: fromCart
       });
 
@@ -31,7 +32,11 @@ export default function CheckoutScreen({ route, navigation }) {
         if (fromCart) {
           refreshCounts();
         }
-        navigation.replace('OrderSuccess', { orders: res.data.orders });
+        navigation.replace('OrderSuccess', {
+          orders: res.data.orders,
+          deliveryMethod: 'Discuss',
+          paymentMethod,
+        });
       } else {
         setErrorMessage(`Unexpected response status: ${res.status}`);
       }
@@ -80,10 +85,10 @@ export default function CheckoutScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Method</Text>
           <View style={styles.deliveryCard}>
-            <Ionicons name="location" size={24} color="#0052CC" style={{ marginRight: 12 }} />
+            <Ionicons name="chatbubbles-outline" size={24} color="#0052CC" style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.deliveryTitle}>Campus Pickup</Text>
-              <Text style={styles.deliverySubtitle}>Meet the seller on campus to receive the item.</Text>
+              <Text style={styles.deliveryTitle}>Discuss with seller</Text>
+              <Text style={styles.deliverySubtitle}>Use Messages to agree on the delivery method, location, and time.</Text>
             </View>
           </View>
         </View>
@@ -100,28 +105,28 @@ export default function CheckoutScreen({ route, navigation }) {
               <Ionicons name="cash-outline" size={24} color={paymentMethod === 'Cash' ? '#0052CC' : '#697386'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.paymentTitle, paymentMethod === 'Cash' && styles.paymentTitleActive]}>Pay on Pickup (Cash/UPI)</Text>
-              <Text style={styles.paymentSubtitle}>Pay the seller directly when you meet.</Text>
+              <Text style={[styles.paymentTitle, paymentMethod === 'Cash' && styles.paymentTitleActive]}>Pay when you receive the item</Text>
+              <Text style={styles.paymentSubtitle}>Pay the seller directly with cash or UPI after agreeing in Messages.</Text>
             </View>
             <View style={[styles.radioOuter, paymentMethod === 'Cash' && styles.radioOuterActive]}>
               {paymentMethod === 'Cash' && <View style={styles.radioInner} />}
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.paymentCard, { opacity: 0.5 }]}
-            activeOpacity={1}
-            disabled={true}
+          <TouchableOpacity
+            style={[styles.paymentCard, paymentMethod === 'UPI' && styles.paymentCardActive]}
+            onPress={() => setPaymentMethod('UPI')}
+            activeOpacity={0.8}
           >
             <View style={styles.paymentIcon}>
-              <Ionicons name="card-outline" size={24} color="#697386" />
+              <Ionicons name="phone-portrait-outline" size={24} color={paymentMethod === 'UPI' ? '#0052CC' : '#697386'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.paymentTitle}>Online Payment</Text>
-              <Text style={styles.paymentSubtitle}>Credit Card, Debit Card, Net Banking</Text>
+              <Text style={[styles.paymentTitle, paymentMethod === 'UPI' && styles.paymentTitleActive]}>Pay now with UPI</Text>
+              <Text style={styles.paymentSubtitle}>Send the UPI payment before the seller hands over the item.</Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Coming Soon</Text>
+            <View style={[styles.radioOuter, paymentMethod === 'UPI' && styles.radioOuterActive]}>
+              {paymentMethod === 'UPI' && <View style={styles.radioInner} />}
             </View>
           </TouchableOpacity>
         </View>

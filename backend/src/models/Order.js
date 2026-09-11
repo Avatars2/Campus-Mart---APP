@@ -35,8 +35,18 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled'],
+    enum: ['pending', 'delivered', 'completed', 'cancelled'],
     default: 'pending',
+  },
+  buyer_rating: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null,
+  },
+  rated_at: {
+    type: Date,
+    default: null,
   }
 }, { timestamps: true });
 

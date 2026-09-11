@@ -45,6 +45,12 @@ export async function POST(request) {
         status: 'pending'
       });
 
+      await order.populate([
+        { path: 'item_id', select: 'name price images' },
+        { path: 'seller_id', select: 'full_name email phone student_id department year_semester' },
+        { path: 'buyer_id', select: 'full_name email phone student_id department year_semester' },
+      ]);
+
       if (dbItem.listing_type !== 'rent') {
         // Decrement quantity based on how many were ordered
         const orderQuantity = itemData.quantity || 1;

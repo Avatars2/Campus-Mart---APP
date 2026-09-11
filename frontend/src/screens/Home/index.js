@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, FlatList, TextInput, ActivityIndicator, TouchableOpacity, Image, RefreshControl, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -6,6 +6,7 @@ import client from '../../api/client';
 import styles from './styles';
 import { useNotifications } from '../../context/NotificationContext';
 import { useCartWishlist } from '../../context/CartWishlistContext';
+import RatingStars from '../../components/commerce/RatingStars';
 
 const CATEGORIES = [
   { name: 'All', icon: 'apps' },
@@ -24,10 +25,12 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeListingType, setActiveListingType] = useState('all');
+  const searchQueryRef = useRef('');
   const { unreadCount } = useNotifications();
   const { cartCount, wishlistCount } = useCartWishlist();
+  searchQueryRef.current = searchQuery;
 
-  const fetchItems = async (query = '', type = activeListingType, cat = activeCategory) => {
+  const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory) => {
     try {
       let url = `/items?listing_type=${type}`;
       if (query) {
@@ -44,12 +47,12 @@ export default function HomeScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [activeListingType, activeCategory]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchItems(searchQuery, activeListingType, activeCategory);
-    }, [])
+      fetchItems(searchQueryRef.current, activeListingType, activeCategory);
+    }, [fetchItems, activeListingType, activeCategory])
   );
 
   const handleSearch = () => {
@@ -108,6 +111,10 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
 
+          <View style={styles.ratingRow}>
+            <RatingStars value={item.average_rating} count={item.ratings_count} size={13} />
+          </View>
+
           <View style={styles.sellerContainer}>
             <Image source={{ uri: sellerImage }} style={styles.sellerAvatar} />
             <Text style={styles.sellerName} numberOfLines={1}>{item.seller_name}</Text>
@@ -123,8 +130,8 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <View>
-            <Text style={styles.greetingText}>Welcome to</Text>
-            <Text style={styles.headerTitle}>CampusMart 🎓</Text>
+            <Text style={styles.greetingText}>BVM Engineering College</Text>
+            <Text style={styles.headerTitle}>CampusMart</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 15 }}>
             <TouchableOpacity 

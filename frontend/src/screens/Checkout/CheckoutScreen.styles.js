@@ -83,12 +83,20 @@ export default StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  deliveryCardActive: {
+    borderColor: '#0052CC',
+    backgroundColor: '#F0F5FF',
   },
   deliveryTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1A1F36',
     marginBottom: 4,
+  },
+  deliveryTitleActive: {
+    color: '#0052CC',
   },
   deliverySubtitle: {
     fontSize: 13,

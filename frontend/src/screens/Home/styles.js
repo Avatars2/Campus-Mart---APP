@@ -1,4 +1,5 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { colors } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
@@ -6,17 +7,17 @@ const cardWidth = (width - 48) / 2;
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.canvas,
   },
   // Header
   header: {
-    backgroundColor: '#0052CC',
+    backgroundColor: colors.ink,
     paddingTop: 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#0052CC',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
@@ -161,16 +162,16 @@ export default StyleSheet.create({
   itemCard: {
     width: cardWidth,
     backgroundColor: '#FFF',
-    borderRadius: 18,
-    marginBottom: 20,
+    borderRadius: 14,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#1A1F36',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 5,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
+    borderColor: colors.line,
   },
   itemImageContainer: {
     position: 'relative',
@@ -210,6 +211,22 @@ export default StyleSheet.create({
     fontWeight: '800',
     color: '#0052CC',
     marginBottom: 8,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  ratingStars: {
+    color: '#F59E0B',
+    fontSize: 13,
+    letterSpacing: 0,
+    marginRight: 5,
+  },
+  ratingText: {
+    color: '#8792A2',
+    fontSize: 11,
+    fontWeight: '600',
   },
   sellerContainer: {
     flexDirection: 'row',

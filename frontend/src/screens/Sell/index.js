@@ -1,37 +1,18 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import styles from './styles';
+import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 export default function SellScreen({ navigation }) {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchMyItems = async () => {
-    try {
-      const response = await client.get('/items/my-items');
-      setItems(response.data);
-    } catch (error) {
-      console.error("Error fetching my items:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchMyItems();
-    }, [])
-  );
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchMyItems();
-  };
+  const loadItems = useCallback(async () => {
+    const response = await client.get('/items/my-items');
+    return response.data;
+  }, []);
+  const saveItems = useCallback((value) => setItems(value), []);
+  const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadItems, saveItems);
 
   const renderItem = ({ item }) => {
     const imageUrl = item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/100';
@@ -74,6 +55,17 @@ export default function SellScreen({ navigation }) {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={{ color: '#697386', marginBottom: 16 }}>Unable to load your listings.</Text>
+        <TouchableOpacity style={styles.emptyButton} onPress={retry} activeOpacity={0.8}>
+          <Text style={styles.emptyButtonText}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -108,7 +100,7 @@ export default function SellScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#0052CC']} />
           }
         />
       )}

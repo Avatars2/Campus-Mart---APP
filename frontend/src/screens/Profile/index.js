@@ -1,29 +1,20 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Image } from 'react-native';
+import React, { useCallback, useContext, useState } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import client from '../../api/client';
 import styles from './styles';
+import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 export default function ProfileScreen({ navigation }) {
   const { signOut } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchProfile();
+  const loadProfile = useCallback(async () => {
+    const response = await client.get('/users/profile');
+    return response.data.user;
   }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const response = await client.get('/users/profile');
-      setProfile(response.data.user);
-    } catch (error) {
-      console.error('Failed to fetch profile', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const saveProfile = useCallback((value) => setProfile(value), []);
+  const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadProfile, saveProfile);
 
   if (loading) {
     return (
@@ -33,10 +24,13 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
-  if (!profile) {
+  if (error || !profile) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: '#697386', fontSize: 16, marginBottom: 20 }}>Error loading profile.</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={retry} activeOpacity={0.8}>
+          <Text style={styles.logoutButtonText}>Try Again</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={styles.logoutButtonText}>Log Out</Text>
@@ -50,7 +44,7 @@ export default function ProfileScreen({ navigation }) {
     : '—';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#0052CC']} />}>
       {/* Blue Header */}
       <View style={styles.headerBg}>
         <Image
@@ -124,7 +118,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.menuCard}>
           <TouchableOpacity
             style={[styles.menuItem, styles.menuItemLast]}
-            onPress={() => navigation.navigate('EditProfile', { profile, onGoBack: fetchProfile })}
+            onPress={() => navigation.navigate('EditProfile', { profile })}
             activeOpacity={0.7}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#FFF7ED' }]}>

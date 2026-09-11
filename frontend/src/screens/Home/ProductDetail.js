@@ -3,14 +3,26 @@ import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Modal } fr
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 import styles from './ProductDetail.styles';
+import RatingStars from '../../components/commerce/RatingStars';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { item } = route.params;
-  const { addToCart, toggleWishlist } = useCartWishlist();
+  const { addToCart, toggleWishlist, wishlistItemIds } = useCartWishlist();
   const [activeSlide, setActiveSlide] = useState(0);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [wishlistUpdating, setWishlistUpdating] = useState(false);
+
+  const itemId = item.id || item._id;
+  const isWishlisted = wishlistItemIds.includes(itemId);
+
+  const handleToggleWishlist = async () => {
+    if (wishlistUpdating) return;
+    setWishlistUpdating(true);
+    await toggleWishlist(item);
+    setWishlistUpdating(false);
+  };
 
   const handleAddToCartClick = () => {
     setConfirmModalVisible(true);
@@ -91,11 +103,14 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           )}
 
-          <TouchableOpacity 
-            style={{ position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(255,255,255,0.8)', padding: 10, borderRadius: 20 }}
-            onPress={() => toggleWishlist(item)}
+          <TouchableOpacity
+            style={styles.wishlistButton}
+            onPress={handleToggleWishlist}
+            disabled={wishlistUpdating}
+            accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            activeOpacity={0.8}
           >
-            <Ionicons name="heart-outline" size={24} color="#FF3B30" />
+            <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color="#FF3B30" />
           </TouchableOpacity>
         </View>
 
@@ -136,6 +151,10 @@ export default function ProductDetailScreen({ route, navigation }) {
                 <Text style={styles.badgeText}>{formatDate(item.created_at)}</Text>
               </View>
             )}
+          </View>
+
+          <View style={styles.ratingSummary}>
+            <RatingStars value={item.average_rating} count={item.ratings_count} size={18} />
           </View>
 
           <Text style={styles.sectionTitle}>Description</Text>

@@ -17,8 +17,8 @@ const NotificationScreen = () => {
     // Example navigation based on type
     if (notification.type === 'MESSAGE' && notification.relatedId) {
       navigation.navigate('Chat', { conversationId: notification.relatedId });
-    } else if (notification.type === 'ORDER') {
-      navigation.navigate('Orders');
+    } else if (notification.type === 'ORDER' && notification.relatedId) {
+      navigation.navigate('OrderNotificationDetail', { notification });
     }
   };
 

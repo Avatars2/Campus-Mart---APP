@@ -58,6 +58,17 @@ export default StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  wishlistButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // Details
   detailsContainer: {
@@ -109,6 +120,27 @@ export default StyleSheet.create({
   badgeText: {
     fontSize: 12,
     color: '#3B5998',
+    fontWeight: '600',
+  },
+  ratingSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  ratingStars: {
+    color: '#F59E0B',
+    fontSize: 18,
+    marginRight: 8,
+  },
+  ratingValue: {
+    color: '#92400E',
+    fontSize: 13,
     fontWeight: '600',
   },
 

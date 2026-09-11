@@ -56,7 +56,7 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to your CampusMart account</Text>
+        <Text style={styles.subtitle}>Your verified BVM Engineering College marketplace</Text>
 
         <View style={styles.formContainer}>
           {/* Email Input */}

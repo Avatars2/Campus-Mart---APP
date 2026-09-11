@@ -1,10 +1,10 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Pusher from 'pusher-js';
 import client from '../api/client';
+import { AuthContext } from './AuthContext';
 
 // Configure how notifications should behave when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -24,7 +24,8 @@ export const useNotifications = () => {
 export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
-  const [userId, setUserId] = useState(null);
+  const { user } = useContext(AuthContext);
+  const userId = user?.id;
   
   const notificationListener = useRef();
   const responseListener = useRef();
@@ -83,17 +84,13 @@ export const NotificationProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const initialize = async () => {
-      const userInfoString = await AsyncStorage.getItem('userInfo');
-      if (userInfoString) {
-        const userInfo = JSON.parse(userInfoString);
-        setUserId(userInfo.id);
-        fetchNotifications(userInfo.id);
-        registerForPushNotificationsAsync();
-      }
-    };
-    
-    initialize();
+    if (userId) {
+      fetchNotifications(userId);
+      registerForPushNotificationsAsync();
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
 
     // Listeners for foreground notifications
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
@@ -107,10 +104,22 @@ export const NotificationProvider = ({ children }) => {
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener.current);
-      Notifications.removeNotificationSubscription(responseListener.current);
+      if (notificationListener.current?.remove) {
+        notificationListener.current.remove();
+      } else if (typeof Notifications.removeNotificationSubscription === 'function') {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+
+      if (responseListener.current?.remove) {
+        responseListener.current.remove();
+      } else if (typeof Notifications.removeNotificationSubscription === 'function') {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+
+      notificationListener.current = undefined;
+      responseListener.current = undefined;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;

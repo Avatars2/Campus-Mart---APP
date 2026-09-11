@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
+import { colors } from '../../theme/colors';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: colors.canvas,
   },
   scrollContent: {
     flexGrow: 1,
@@ -19,11 +20,11 @@ export default StyleSheet.create({
   logoIcon: {
     width: 56,
     height: 56,
-    backgroundColor: '#0052CC',
-    borderRadius: 16,
+    backgroundColor: colors.ink,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0052CC',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -37,13 +38,13 @@ export default StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#1A1F36',
+    color: colors.ink,
     marginBottom: 6,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#697386',
+    color: colors.muted,
     marginBottom: 30,
     textAlign: 'center',
   },
@@ -51,7 +52,7 @@ export default StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -63,13 +64,13 @@ export default StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F5F9',
+    backgroundColor: '#F8FAFC',
     height: 54,
     borderRadius: 12,
     paddingHorizontal: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#E8ECF2',
+    borderColor: colors.line,
   },
   inputIcon: {
     marginRight: 12,
@@ -77,7 +78,7 @@ export default StyleSheet.create({
   inputField: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: colors.ink,
   },
   // Legacy plain input (fallback)
   input: {
@@ -92,13 +93,13 @@ export default StyleSheet.create({
     color: '#333',
   },
   primaryButton: {
-    backgroundColor: '#0052CC',
+    backgroundColor: colors.brand,
     height: 54,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#0052CC',
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -139,7 +140,7 @@ export default StyleSheet.create({
     color: '#697386',
   },
   switchLinkTextBold: {
-    color: '#0052CC',
+    color: colors.brand,
     fontWeight: '700',
   },
   forgotLink: {

@@ -1,9 +1,10 @@
 import { StyleSheet, Platform } from 'react-native';
+import { colors } from '../../theme/colors';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.canvas,
   },
   // Header
   screenHeader: {
@@ -12,7 +13,7 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F2F5',
+    borderBottomColor: colors.line,
   },
   screenHeaderRow: {
     flexDirection: 'row',
@@ -22,10 +23,10 @@ export default StyleSheet.create({
   screenTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1A1F36',
+    color: colors.ink,
   },
   itemCountBadge: {
-    backgroundColor: '#F0F4FF',
+    backgroundColor: colors.brandSoft,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
@@ -91,10 +92,10 @@ export default StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 14,
     marginBottom: 14,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,

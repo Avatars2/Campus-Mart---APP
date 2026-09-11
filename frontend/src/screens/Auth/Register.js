@@ -94,7 +94,7 @@ export default function RegisterScreen({ navigation }) {
 
         <Text style={styles.title}>{step === 1 ? 'Create Account' : 'Verify Email'}</Text>
         <Text style={styles.subtitle}>
-          {step === 1 ? 'Join the BVM campus marketplace' : `Enter the OTP sent to ${email}`}
+          {step === 1 ? 'Create your verified BVM Engineering College account' : `Enter the OTP sent to ${email}`}
         </Text>
 
         {step === 1 ? (

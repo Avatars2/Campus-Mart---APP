@@ -1,20 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../../api/client';
 import Pusher from 'pusher-js';
 import styles from './styles';
+import { AuthContext } from '../../context/AuthContext';
+import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 const MessageList = () => {
   const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
+  const { user } = useContext(AuthContext);
+  const userId = user?.id;
   const navigation = useNavigation();
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
+  const loadConversations = useCallback(async () => {
+    if (!userId) return [];
+    const response = await client.get(`/messages/${userId}`);
+    return response.data.success ? response.data.conversations : [];
+  }, [userId]);
+  const saveConversations = useCallback((value) => setConversations(value), []);
+  const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadConversations, saveConversations, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -27,32 +32,13 @@ const MessageList = () => {
     const channel = pusher.subscribe(`user-${userId}`);
     channel.bind('conversation-update', function(data) {
       // Fetch latest conversations when an update comes in
-      fetchConversations();
+      refresh();
     });
 
     return () => {
       pusher.unsubscribe(`user-${userId}`);
     };
-  }, [userId]);
-
-  const fetchConversations = async () => {
-    try {
-      const userInfoString = await AsyncStorage.getItem('userInfo');
-      if (userInfoString) {
-        const userInfo = JSON.parse(userInfoString);
-        setUserId(userInfo.id);
-        
-        const response = await client.get(`/messages/${userInfo.id}`);
-        if (response.data.success) {
-          setConversations(response.data.conversations);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [userId, refresh]);
 
   const renderItem = ({ item }) => {
     const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
@@ -95,6 +81,17 @@ const MessageList = () => {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.emptyText}>Unable to load messages.</Text>
+        <TouchableOpacity onPress={retry}>
+          <Text style={styles.emptyText}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {conversations.length === 0 ? (
@@ -107,6 +104,7 @@ const MessageList = () => {
           renderItem={renderItem}
           keyExtractor={item => item._id || item.id}
           contentContainerStyle={styles.listContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#0052CC']} />}
         />
       )}
     </View>

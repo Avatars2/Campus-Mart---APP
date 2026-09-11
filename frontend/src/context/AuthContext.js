@@ -6,6 +6,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('student');
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check token on initial load
@@ -17,6 +18,8 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           setIsAuthenticated(true);
           setUserRole(role || 'student');
+          const userInfo = await AsyncStorage.getItem('userInfo');
+          setUser(userInfo ? JSON.parse(userInfo) : null);
         }
       } catch (error) {
         console.error('Failed to check token:', error);
@@ -34,6 +37,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('userRole', user?.role || 'student');
       await AsyncStorage.setItem('userInfo', JSON.stringify(user));
       setUserRole(user?.role || 'student');
+      setUser(user || null);
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Failed to sign in:', error);
@@ -47,13 +51,14 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userInfo');
       setIsAuthenticated(false);
       setUserRole('student');
+      setUser(null);
     } catch (error) {
       console.error('Failed to sign out:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ isAuthenticated, userRole, user, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

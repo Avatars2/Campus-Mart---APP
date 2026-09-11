@@ -1,0 +1,16 @@
+export const colors = {
+  ink: '#14213D',
+  muted: '#64748B',
+  subtle: '#94A3B8',
+  canvas: '#F5F7FB',
+  surface: '#FFFFFF',
+  line: '#E6EAF0',
+  brand: '#0B5ED7',
+  brandDark: '#084298',
+  brandSoft: '#EAF2FF',
+  success: '#15803D',
+  successSoft: '#EAF8EF',
+  warning: '#B45309',
+  warningSoft: '#FFF7E6',
+  danger: '#C2413B',
+};

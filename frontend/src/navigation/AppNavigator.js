@@ -18,6 +18,7 @@ import CartScreen from '../screens/CartScreen';
 import WishlistScreen from '../screens/WishlistScreen';
 import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
 import OrderSuccessScreen from '../screens/Checkout/OrderSuccessScreen';
+import OrderNotificationDetail from '../screens/OrderNotificationDetail';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -124,6 +125,11 @@ export default function AppNavigator() {
           presentation: 'modal',
           headerShown: false 
         }} 
+      />
+      <Stack.Screen
+        name="OrderNotificationDetail"
+        component={OrderNotificationDetail}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="Cart" 

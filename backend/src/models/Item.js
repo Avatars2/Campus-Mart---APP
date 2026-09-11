@@ -32,6 +32,17 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  average_rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0,
+  },
+  ratings_count: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
   listing_type: {
     type: String,
     enum: ['sell', 'rent'],

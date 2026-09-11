@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Pusher from 'pusher-js';
 import client from '../api/client';
+import { AuthContext } from './AuthContext';
 
 const MessageContext = createContext();
 
@@ -11,7 +11,8 @@ export const useMessages = () => {
 
 export const MessageProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [userId, setUserId] = useState(null);
+  const { user } = useContext(AuthContext);
+  const userId = user?.id;
 
   const fetchUnreadCount = async (uid) => {
     try {
@@ -25,17 +26,12 @@ export const MessageProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const initialize = async () => {
-      const userInfoString = await AsyncStorage.getItem('userInfo');
-      if (userInfoString) {
-        const userInfo = JSON.parse(userInfoString);
-        setUserId(userInfo.id);
-        fetchUnreadCount(userInfo.id);
-      }
-    };
-    
-    initialize();
-  }, []);
+    if (userId) {
+      fetchUnreadCount(userId);
+    } else {
+      setUnreadCount(0);
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
