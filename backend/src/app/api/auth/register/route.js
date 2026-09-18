@@ -2,15 +2,18 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
-import { sendOTP } from '@/lib/emailService';
+import { normalizeEmail, validateRegistrationInput } from '@/lib/authValidation';
+import { createAndSendOtp } from '@/lib/otp';
 
 export async function POST(request) {
   try {
     await connectDB();
     const { full_name, email, password, phone, student_id } = await request.json();
+    const normalizedEmail = normalizeEmail(email);
+    const validationError = validateRegistrationInput({ full_name, email: normalizedEmail, password, phone, student_id });
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     const existingStudentId = await User.findOne({ student_id });
 
     if (existingUser && existingUser.is_verified) {
@@ -27,20 +30,20 @@ export async function POST(request) {
     if (existingUser && !existingUser.is_verified) {
       // If user with this email exists but not verified, update their info
       await User.findOneAndUpdate(
-        { email },
-        { full_name, password: hashedPassword, phone, student_id }
+        { email: normalizedEmail },
+        { full_name: full_name.trim(), password: hashedPassword, phone: phone.trim(), student_id: student_id.trim() }
       );
     } else if (existingStudentId && !existingStudentId.is_verified) {
       // If user with this student ID exists but not verified, update their info including email
       await User.findOneAndUpdate(
-        { student_id },
-        { full_name, email, password: hashedPassword, phone }
+        { student_id: student_id.trim() },
+        { full_name: full_name.trim(), email: normalizedEmail, password: hashedPassword, phone: phone.trim() }
       );
     } else {
       // Completely new user
       await User.create({
         full_name,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         phone,
         student_id,
@@ -48,19 +51,9 @@ export async function POST(request) {
       });
     }
 
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60000);
-
-    await OTP.create({
-      email,
-      otp_code: otpCode,
-      expires_at: expiresAt,
-    });
-
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      await sendOTP(email, otpCode);
-    } else {
-      console.log(`[DEV MODE] OTP for ${email} is ${otpCode}`);
+    const otpResult = await createAndSendOtp(normalizedEmail, 'Registration');
+    if (otpResult.error) {
+      return NextResponse.json({ error: otpResult.error }, { status: otpResult.status });
     }
 
     return NextResponse.json({ message: 'OTP sent successfully to your college email.' });

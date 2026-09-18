@@ -1,6 +1,6 @@
 =========================================
 CAMPUS MART - PROGRESS REPORT
-Date: September 9, 2026
+Date: September 16, 2026
 =========================================
 
 PROJECT STATUS:
@@ -10,20 +10,24 @@ and basic rating flows are implemented. Advanced payment, delivery tracking,
 moderation, reporting, and review features remain planned.
 
 IMPLEMENTATION SUMMARY:
-Fully implemented: 7 modules
-Partially implemented: 5 modules
+Fully implemented: 8 modules
+Partially implemented: 4 modules
 Not started: 1 module
-Estimated overall completion: approximately 70%
+Estimated overall completion: approximately 82%
 
 =========================================
 MODULE BREAKDOWN
 =========================================
 
-1. AUTHENTICATION SYSTEM [COMPLETED - 85%]
+1. AUTHENTICATION SYSTEM [COMPLETED - 92%]
    - Registration and login with JWT authentication.
    - Email/OTP-related authentication flows are present.
    - Forgot-password and password-change screens are available.
-   - Account lockout, OAuth, biometric login, and full college-domain enforcement remain to be verified or added.
+   - Backend enforces approved college email addresses and password strength rules.
+   - OTPs expire after 10 minutes, have a resend cooldown, are limited to five attempts, and are single-use.
+   - JWT authentication requires the configured JWT_SECRET without an insecure fallback.
+   - Password reset now uses a verified college email, one-time OTP, expiry/cooldown/attempt rules, and a new strong password.
+   - Account lockout, general request rate limiting, OAuth, biometric login, and refresh tokens remain to be added or verified.
 
 2. STUDENT DASHBOARD [COMPLETED - 100%]
    - Bottom navigation for Home, Buy, Sell, Messages, and Profile.
@@ -35,21 +39,27 @@ MODULE BREAKDOWN
    - Categories include Books, Electronics, Furniture, Stationery, Clothing, and Others.
    - Item cards show seller information, price, condition, quantity, and average rating.
    - Product details show images, description, seller information, and rating summary.
+   - Rental cards show hourly, daily, or monthly rates and currently-rented availability.
    - Featured/trending sections, price filters, sorting, location filters, and announcements are not fully implemented.
 
-4. BUY PAGE AND CHECKOUT [COMPLETED - 90%]
+4. BUY PAGE AND CHECKOUT [COMPLETED - 95%]
    - Cart and wishlist management.
    - Checkout with order summary, payment selection, and delivery discussion text.
    - Buyer Purchases and seller Sales tabs.
    - Ecommerce-style order confirmation screen with buyer, seller, item, payment, delivery, and total details.
    - Invoice generation/printing is implemented without app action buttons in the printed output.
-   - Reorder, returns, exchanges, price comparison, and split-cart workflows remain pending.
+   - Rental checkout supports hourly, daily, or monthly duration selection and calculates the total from rate x duration.
+   - Rental duration, rental rate, and return deadline are stored with the order.
+   - Rental listings that are currently in use are marked unavailable and duplicate rental checkout is blocked.
+   - Reorder, sale-item returns, exchanges, price comparison, and split-cart workflows remain pending.
 
-5. SELL PAGE [COMPLETED - 80%]
+5. SELL PAGE [COMPLETED - 90%]
    - Create listings with item details, category, price, condition, quantity, listing type, and images.
    - Active listing management and sold/inactive item handling.
    - Sales history with buyer information.
    - Seller delivery confirmation is available from the Sales tab.
+   - Rental listings support per-hour, per-day, and per-month pricing.
+   - Sellers can see current rental availability, buyer time remaining, and the return deadline.
    - View counts, interested-buyer analytics, delivery preferences, and payout tracking remain pending.
 
 6. PROFILE PAGE [PARTIALLY COMPLETED - 55%]
@@ -57,16 +67,21 @@ MODULE BREAKDOWN
    - Change-password and profile-related screens exist.
    - Advanced preferences, delivery preferences, reputation summary, report center, and complete profile editing remain to be finished.
 
-7. MESSAGING SYSTEM [COMPLETED - 90%]
+7. MESSAGING SYSTEM [COMPLETED - 100%]
    - Item-specific buyer/seller conversations.
    - Real-time updates powered by Pusher.
    - Conversation list and chat history.
    - Message delivery/read states are implemented.
-   - File sharing, photo exchange, and advanced moderation are pending.
+   - Multiple images and files can be selected and sent in one message.
+   - Images and files are stored in Cloudinary and remain available after refresh.
+   - PDFs and other files open through a backend viewer with the correct MIME type and filename.
+   - Chat UI includes attachment previews, file cards, empty-state guidance, and improved composer styling.
+   - Advanced moderation remains pending.
 
-8. NOTIFICATION SYSTEM [COMPLETED - 85%]
+8. NOTIFICATION SYSTEM [COMPLETED - 90%]
    - In-app notification center with unread count.
    - Order, message, and delivery-related notifications.
+   - Rental notifications cover delivery, rental start, return request, and rental completion.
    - Firebase-related push notification integration is present.
    - Price-drop alerts, followed-category alerts, payment/refund alerts, and report updates remain to be completed.
 
@@ -78,12 +93,16 @@ MODULE BREAKDOWN
    - Actual Google Pay, PhonePe, Paytm, or BHIM gateway integration is not implemented.
    - Escrow, payment verification, refunds, disputes, seller payouts, fees, EMI, and GST invoices are pending.
 
-10. DELIVERY AND ORDER CONFIRMATION [PARTIALLY COMPLETED - 65%]
+10. DELIVERY AND ORDER CONFIRMATION [COMPLETED - 90%]
     - Buyer and seller can discuss delivery method, location, and time through messages.
     - Seller flow: Pending -> Mark item delivered.
     - Buyer flow: Delivered -> Confirm item received -> Completed.
     - Buyer receives an item-delivered notification and transaction-success status.
-    - Delivery confirmation uses buyer confirmation, but meetup scheduling, maps, tracking, delivery partners, photo/signature proof, automatic confirmation, and returns are pending.
+   - Rental flow: Pending -> Delivered -> Rental Active -> Return Requested -> Completed.
+   - Buyer confirmation starts a live rental timer based on the selected hours, days, or months.
+   - Buyer can request return after the rental period ends; seller confirms receipt of the returned item.
+   - Sellers see the buyer's remaining rental time and return deadline.
+   - Meetup scheduling, maps, tracking, delivery partners, photo/signature proof, and automatic confirmation remain pending.
 
 11. ADMIN PANEL [PARTIALLY COMPLETED - 35%]
     - Admin navigation and dashboard structure exist.
@@ -125,6 +144,12 @@ CURRENTLY VERIFIED FLOWS
 - Buyer submits a 1-to-5 item rating after completion.
 - Item ratings appear on home and product details.
 - Buyer/seller messaging and order notifications.
+- Create and edit rental listings with hourly, daily, or monthly rates.
+- Rental checkout with buyer-selected duration and calculated total.
+- Rental delivery confirmation, live timer, return request, seller return confirmation, and completion.
+- Rental availability labels on marketplace and seller listings with duplicate rental protection.
+- Multi-image and multi-file chat attachments stored in Cloudinary.
+- Cloudinary attachment viewer for PDFs and other shared files.
 - Invoice generation with item, buyer, seller, payment, delivery, and total details.
 
 =========================================
@@ -132,6 +157,6 @@ NEXT RECOMMENDED STEPS
 =========================================
 1. Integrate and verify a real UPI payment gateway before accepting online payments.
 2. Add written reviews, rating breakdowns, and review moderation.
-3. Build delivery scheduling, location selection, tracking, and return workflows.
+3. Build delivery scheduling, location selection, maps, tracking, and delivery proof.
 4. Complete admin moderation, reports, analytics, and audit logging.
-5. Add automated tests for checkout, delivery confirmation, ratings, authorization, and payment states.
+5. Add automated tests for rental checkout, delivery confirmation, timers, returns, ratings, authorization, and payment states.

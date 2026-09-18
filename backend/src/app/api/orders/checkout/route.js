@@ -34,19 +34,35 @@ export async function POST(request) {
         return NextResponse.json({ error: `You cannot buy your own item: ${dbItem.name}` }, { status: 400 });
       }
 
+      if (dbItem.listing_type === 'rent') {
+        const activeRental = await Order.exists({
+          item_id: dbItem._id,
+          status: { $in: ['pending', 'delivered', 'rental_active', 'return_requested'] },
+        });
+        if (activeRental) {
+          return NextResponse.json({ error: `${dbItem.name} is currently rented and unavailable` }, { status: 400 });
+        }
+      }
+
+      const rentalDuration = dbItem.listing_type === 'rent' ? Number(itemData.rental_duration || 1) : null;
+      if (dbItem.listing_type === 'rent' && (!Number.isInteger(rentalDuration) || rentalDuration < 1)) {
+        return NextResponse.json({ error: `Choose a valid rental duration for ${dbItem.name}` }, { status: 400 });
+      }
+
       const order = await Order.create({
         buyer_id,
         seller_id: dbItem.seller_id,
         item_id: dbItem._id,
         quantity: 1,
-        total_price: dbItem.price,
+        total_price: dbItem.listing_type === 'rent' ? dbItem.price * rentalDuration : dbItem.price,
+        rental_duration: rentalDuration,
         payment_method: payment_method || 'Cash',
         delivery_address: delivery_address || 'Campus Pickup',
         status: 'pending'
       });
 
       await order.populate([
-        { path: 'item_id', select: 'name price images' },
+        { path: 'item_id', select: 'name price images listing_type rental_period' },
         { path: 'seller_id', select: 'full_name email phone student_id department year_semester' },
         { path: 'buyer_id', select: 'full_name email phone student_id department year_semester' },
       ]);
@@ -72,7 +88,9 @@ export async function POST(request) {
         senderId: buyer_id,
         type: 'ORDER',
         title: 'New Order Received!',
-        body: `Someone just bought your item: ${dbItem.name}`,
+        body: dbItem.listing_type === 'rent'
+          ? `Someone requested to rent ${dbItem.name} for ${rentalDuration} ${dbItem.rental_period || 'day'}${rentalDuration === 1 ? '' : 's'}.`
+          : `Someone just bought your item: ${dbItem.name}`,
         relatedId: order._id
       }).catch(err => console.error('Notification failed to send:', err));
     }

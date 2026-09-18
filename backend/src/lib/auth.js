@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
+import { getJwtSecret } from '@/lib/authValidation';
 
 export async function verifyAuth(request) {
   try {
@@ -9,7 +10,7 @@ export async function verifyAuth(request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const decoded = jwt.verify(token, getJwtSecret());
     
     return { user: decoded };
   } catch (error) {

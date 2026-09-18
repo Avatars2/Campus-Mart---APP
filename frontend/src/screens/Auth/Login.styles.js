@@ -1,76 +1,84 @@
-import { StyleSheet } from 'react-native';
+﻿import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.ink,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    paddingVertical: 50,
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 40,
   },
-  // Branded header
+  // Header
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 28,
+    width: '100%',
+  },
   logoContainer: {
-    marginBottom: 8,
-  },
-  logoIcon: {
-    width: 56,
-    height: 56,
-    backgroundColor: colors.ink,
-    borderRadius: 20,
+    width: 108,
+    height: 108,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 16,
+    padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  logoText: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '900',
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
-    color: colors.ink,
-    marginBottom: 6,
+    color: '#FFFFFF',
+    marginBottom: 8,
     letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: colors.muted,
-    marginBottom: 30,
     textAlign: 'center',
   },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    lineHeight: 22,
+  },
+  // Form Card
   formContainer: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 440,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  // Input with icon
+  // Inputs — borderColor & backgroundColor animated via Animated.View interpolate
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    height: 54,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 14,
     paddingHorizontal: 14,
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderWidth: 1.5,
   },
   inputIcon: {
     marginRight: 12,
@@ -79,31 +87,56 @@ export default StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: colors.ink,
+    fontWeight: '500',
+    paddingVertical: 0,
   },
-  // Legacy plain input (fallback)
-  input: {
-    backgroundColor: '#F3F5F9',
-    height: 54,
+  // Error
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    fontSize: 15,
-    borderColor: '#E8ECF2',
-    borderWidth: 1,
-    color: '#333',
+    marginBottom: 12,
   },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '500',
+    marginLeft: 6,
+    flex: 1,
+    lineHeight: 18,
+  },
+  // OTP / Forgot link
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 18,
+    marginTop: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  forgotLinkText: {
+    color: colors.brand,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  // Sign In button
   primaryButton: {
     backgroundColor: colors.brand,
     height: 54,
     borderRadius: 14,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
     shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 6,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -111,46 +144,30 @@ export default StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 13,
-    marginBottom: 10,
-    textAlign: 'center',
-    backgroundColor: '#FEF2F2',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
+  // Sign Up link
+  switchLinkContainer: {
+    marginTop: 22,
+    alignItems: 'center',
+    paddingBottom: 2,
   },
+  switchLinkText: {
+    fontSize: 14,
+    color: colors.muted,
+  },
+  switchLinkTextBold: {
+    color: colors.ink,
+    fontWeight: '700',
+  },
+  // Back button
   backButton: {
-    marginTop: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 28,
     padding: 12,
   },
   backButtonText: {
     fontSize: 15,
-    color: '#697386',
+    color: 'rgba(255,255,255,0.65)',
     fontWeight: '600',
-  },
-  switchLinkContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  switchLinkText: {
-    fontSize: 14,
-    color: '#697386',
-  },
-  switchLinkTextBold: {
-    color: colors.brand,
-    fontWeight: '700',
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginBottom: 18,
-    marginTop: 2,
-  },
-  forgotLinkText: {
-    color: '#0052CC',
-    fontWeight: '600',
-    fontSize: 13,
   },
 });

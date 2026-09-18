@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import Item from '@/models/Item';
 import Category from '@/models/Category';
 import User from '@/models/User';
+import Order from '@/models/Order';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 
@@ -20,10 +21,15 @@ export async function POST(request) {
     const condition_rating = formData.get('condition_rating');
     const category_id = formData.get('category_id');
     const listing_type = formData.get('listing_type');
+    const rental_period = formData.get('rental_period');
     const quantity = formData.get('quantity') || 1;
 
     if (!name || !description || !price || !condition_rating || !category_id || !listing_type) {
       return NextResponse.json({ error: 'All required fields must be provided' }, { status: 400 });
+    }
+
+    if (listing_type === 'rent' && !['hour', 'day', 'month'].includes(rental_period)) {
+      return NextResponse.json({ error: 'Please select a rental period' }, { status: 400 });
     }
 
     const seller_id = authResult.user.id;
@@ -54,6 +60,7 @@ export async function POST(request) {
       condition_rating: Number(condition_rating),
       quantity: Number(quantity),
       listing_type,
+      rental_period: listing_type === 'rent' ? rental_period : null,
       images,
     });
 
@@ -98,11 +105,19 @@ export async function GET(request) {
       .populate('seller_id', 'full_name profile_photo_url')
       .sort({ createdAt: -1 });
 
+    const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
+    const rentedItemIds = await Order.find({
+      item_id: { $in: rentalItemIds },
+      status: { $in: ['pending', 'delivered', 'rental_active', 'return_requested'] },
+    }).distinct('item_id');
+    const rentedItemIdSet = new Set(rentedItemIds.map(id => id.toString()));
+
     const formattedItems = items.map(item => ({
       ...item.toJSON(),
       category_name: item.category_id?.name,
       seller_name: item.seller_id?.full_name,
       seller_image: item.seller_id?.profile_photo_url,
+      is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
     }));
 
     return NextResponse.json(formattedItems);

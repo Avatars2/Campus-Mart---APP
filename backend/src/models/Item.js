@@ -49,6 +49,11 @@ const itemSchema = new mongoose.Schema({
     default: 'sell',
     required: true,
   },
+  rental_period: {
+    type: String,
+    enum: ['hour', 'day', 'month'],
+    default: null,
+  },
   images: {
     type: [String],
     default: [],

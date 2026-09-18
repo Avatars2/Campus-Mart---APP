@@ -27,10 +27,31 @@ export async function GET(request) {
     }
 
     const orders = await Order.find(query)
-      .populate('item_id', 'name price images')
+      .populate('item_id', 'name price images listing_type rental_period')
       .populate('seller_id', 'full_name email phone student_id profile_photo_url')
       .populate('buyer_id', 'full_name email phone student_id profile_photo_url')
       .sort({ createdAt: -1 });
+
+    for (const order of orders) {
+      if (
+        order.status === 'rental_active'
+        && order.rental_started_at
+        && order.rental_due_at
+        && order.rental_due_at <= order.rental_started_at
+        && order.item_id?.listing_type === 'rent'
+      ) {
+        const repairedDueAt = new Date(order.rental_started_at);
+        const rentalDuration = order.rental_duration || 1;
+        const rentalPeriod = ['hour', 'day', 'month'].includes(order.item_id.rental_period)
+          ? order.item_id.rental_period
+          : 'day';
+        if (rentalPeriod === 'hour') repairedDueAt.setHours(repairedDueAt.getHours() + rentalDuration);
+        if (rentalPeriod === 'day') repairedDueAt.setDate(repairedDueAt.getDate() + rentalDuration);
+        if (rentalPeriod === 'month') repairedDueAt.setMonth(repairedDueAt.getMonth() + rentalDuration);
+        order.rental_due_at = repairedDueAt;
+        await order.save();
+      }
+    }
 
     return NextResponse.json({ orders }, { status: 200 });
   } catch (error) {
@@ -74,22 +95,13 @@ export async function PATCH(request) {
       return NextResponse.json({ message: 'Rating saved', order: ratedOrder }, { status: 200 });
     }
 
-    if (!order_id || !['delivered', 'completed'].includes(status)) {
+    if (!order_id || !['delivered', 'completed', 'rental_active', 'return_requested'].includes(status)) {
       return NextResponse.json({ error: 'A valid order and status are required' }, { status: 400 });
     }
 
     await connectDB();
-    const isSellerDelivery = status === 'delivered';
-    const order = await Order.findOneAndUpdate(
-      {
-        _id: order_id,
-        [isSellerDelivery ? 'seller_id' : 'buyer_id']: authResult.user.id,
-        status: isSellerDelivery ? 'pending' : 'delivered',
-      },
-      { status },
-      { new: true }
-    )
-      .populate('item_id', 'name price images')
+    const order = await Order.findOne({ _id: order_id })
+      .populate('item_id', 'name price images listing_type rental_period')
       .populate('seller_id', 'full_name email phone student_id department year_semester')
       .populate('buyer_id', 'full_name email phone student_id department year_semester');
 
@@ -97,11 +109,73 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Order not found or cannot be completed' }, { status: 404 });
     }
 
-    const recipientId = isSellerDelivery ? order.buyer_id._id : order.seller_id._id;
-    const notificationTitle = isSellerDelivery ? 'Item delivered' : 'Transaction successful';
-    const notificationBody = isSellerDelivery
+    const userId = authResult.user.id.toString();
+    const sellerId = order.seller_id._id.toString();
+    const buyerId = order.buyer_id._id.toString();
+    const isSeller = userId === sellerId;
+    const isBuyer = userId === buyerId;
+    const isRental = order.item_id.listing_type === 'rent';
+    const now = new Date();
+
+    if (status === 'delivered') {
+      if (!isSeller || order.status !== 'pending') {
+        return NextResponse.json({ error: 'Only the seller can mark a pending order as delivered' }, { status: 400 });
+      }
+    } else if (status === 'completed') {
+      if (isRental) {
+        if (!isSeller || order.status !== 'return_requested') {
+          return NextResponse.json({ error: 'Only the seller can confirm a requested rental return' }, { status: 400 });
+        }
+        order.returned_at = now;
+      } else if (!isBuyer || order.status !== 'delivered') {
+        return NextResponse.json({ error: 'Only the buyer can confirm a delivered sale' }, { status: 400 });
+      }
+    } else if (status === 'rental_active') {
+      if (!isBuyer || !isRental || order.status !== 'delivered') {
+        return NextResponse.json({ error: 'The buyer can confirm receipt only after delivery' }, { status: 400 });
+      }
+
+      const rentalStartedAt = now;
+      const rentalDueAt = new Date(rentalStartedAt);
+      const rentalDuration = order.rental_duration || 1;
+      const rentalPeriod = ['hour', 'day', 'month'].includes(order.item_id.rental_period)
+        ? order.item_id.rental_period
+        : 'day';
+      if (rentalPeriod === 'hour') rentalDueAt.setHours(rentalDueAt.getHours() + rentalDuration);
+      if (rentalPeriod === 'day') rentalDueAt.setDate(rentalDueAt.getDate() + rentalDuration);
+      if (rentalPeriod === 'month') rentalDueAt.setMonth(rentalDueAt.getMonth() + rentalDuration);
+      order.rental_started_at = rentalStartedAt;
+      order.rental_due_at = rentalDueAt;
+    } else if (status === 'return_requested') {
+      if (!isBuyer || !isRental || order.status !== 'rental_active') {
+        return NextResponse.json({ error: 'The buyer can request a return only during an active rental' }, { status: 400 });
+      }
+      if (order.rental_due_at && now < order.rental_due_at) {
+        return NextResponse.json({ error: `The rental ends on ${order.rental_due_at.toLocaleString()}` }, { status: 400 });
+      }
+      order.return_requested_at = now;
+    }
+
+    order.status = status;
+    await order.save();
+
+    const recipientId = isSeller ? buyerId : sellerId;
+    const notificationTitle = status === 'delivered'
+      ? 'Item delivered'
+      : status === 'rental_active'
+        ? 'Rental started'
+        : status === 'return_requested'
+          ? 'Rental return requested'
+          : isRental ? 'Rental completed' : 'Transaction successful';
+    const notificationBody = status === 'delivered'
       ? `${order.item_id.name} was marked delivered. Please confirm that you received it.`
-      : `${order.item_id.name} has been confirmed as received by the buyer.`;
+      : status === 'rental_active'
+        ? `${order.item_id.name} rental started. Please return it by ${order.rental_due_at.toLocaleString()}.`
+        : status === 'return_requested'
+          ? `${order.item_id.name} is ready to be returned. Please discuss the handover in Messages.`
+          : isRental
+            ? `${order.item_id.name} was returned and the rental is complete.`
+            : `${order.item_id.name} has been confirmed as received by the buyer.`;
 
     await sendNotification({
       recipientId: recipientId.toString(),

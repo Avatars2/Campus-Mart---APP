@@ -2,12 +2,18 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use 10.0.2.2 for Android emulator to access localhost, or localhost for iOS simulator
+// Your laptop's local Wi-Fi IP address (run `ipconfig` to get this if it changes)
+// ⚠️ Important: Change this if your Wi-Fi IP changes (e.g. different network)
+const LOCAL_IP = '10.25.218.91';
+
+// Backend runs on Next.js at port 3000
 const getBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
+  if (Platform.OS === 'android' && !__DEV__) {
+    // Production APK — replace with your deployed backend URL
+    return 'https://your-production-backend.com/api';
   }
-  return 'http://localhost:3000/api';
+  // Development (Expo Go on real phone, Android Emulator, iOS Simulator)
+  return `http://${LOCAL_IP}:3000/api`;
 };
 
 const client = axios.create({

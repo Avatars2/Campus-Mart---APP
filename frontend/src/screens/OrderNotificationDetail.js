@@ -60,8 +60,16 @@ export default function OrderNotificationDetail({ route, navigation }) {
   const item = order.item_id || {};
   const buyer = order.buyer_id || {};
   const seller = order.seller_id || {};
-  const statusLabel = order.status === 'completed' ? 'Transaction Successful' : order.status === 'delivered' ? 'Item Delivered' : 'Pending';
-  const statusColor = order.status === 'completed' ? '#15803D' : order.status === 'delivered' ? '#B45309' : '#0052CC';
+  const statusLabel = order.status === 'completed'
+    ? (item.listing_type === 'rent' ? 'Rental Completed' : 'Transaction Successful')
+    : order.status === 'return_requested'
+      ? 'Return Requested'
+      : order.status === 'rental_active'
+        ? 'Rental Active'
+        : order.status === 'delivered'
+          ? 'Item Delivered'
+          : 'Pending';
+  const statusColor = order.status === 'completed' ? '#15803D' : order.status === 'pending' ? '#0052CC' : '#B45309';
   const paymentLabel = order.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item';
 
   return (
@@ -85,7 +93,7 @@ export default function OrderNotificationDetail({ route, navigation }) {
         <View style={styles.statusCard}>
           <Text style={styles.statusLabel}>Current status</Text>
           <View style={styles.statusRow}>
-            <Ionicons name={order.status === 'completed' ? 'checkmark-circle' : order.status === 'delivered' ? 'cube' : 'time'} size={24} color={statusColor} />
+            <Ionicons name={order.status === 'completed' ? 'checkmark-circle' : order.status === 'delivered' ? 'cube' : order.status === 'return_requested' ? 'return-down-back' : order.status === 'rental_active' ? 'timer-outline' : 'time'} size={24} color={statusColor} />
             <Text style={[styles.statusValue, { color: statusColor }]}>{statusLabel}</Text>
           </View>
         </View>
@@ -97,6 +105,8 @@ export default function OrderNotificationDetail({ route, navigation }) {
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.name || 'Item'}</Text>
               <Text style={styles.detailText}>Quantity: {order.quantity || 1}</Text>
+              {item.listing_type === 'rent' && <Text style={styles.detailText}>Rate: ₹{item.price} per {item.rental_period || 'day'}</Text>}
+              {order.rental_due_at && <Text style={styles.detailText}>Return by: {new Date(order.rental_due_at).toLocaleString()}</Text>}
               <Text style={styles.amount}>₹{order.total_price}</Text>
             </View>
           </View>

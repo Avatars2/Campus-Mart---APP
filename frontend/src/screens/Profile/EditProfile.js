@@ -6,7 +6,8 @@ import client from '../../api/client';
 import styles from './EditProfile.styles';
 
 export default function EditProfileScreen({ route, navigation }) {
-  const { profile, onGoBack } = route.params;
+  const profile = route?.params?.profile || {};
+  const onGoBack = route?.params?.onGoBack;
 
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [phone, setPhone] = useState(profile.phone || '');
@@ -111,7 +112,6 @@ export default function EditProfileScreen({ route, navigation }) {
         year_semester: year
       });
       
-      onGoBack(); // Refresh profile screen data
       navigation.goBack();
     } catch (error) {
       setErrorMsg(error.response?.data?.error || 'Something went wrong.');

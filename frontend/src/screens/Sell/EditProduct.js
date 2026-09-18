@@ -13,6 +13,7 @@ export default function EditProductScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(item.quantity ? item.quantity.toString() : '1');
   const [isActive, setIsActive] = useState(item.is_active);
   const [listingType, setListingType] = useState(item.listing_type || 'sell');
+  const [rentalPeriod, setRentalPeriod] = useState(item.rental_period || 'day');
   
   const conditions = [
     { label: 'New', value: 5 },
@@ -92,6 +93,7 @@ export default function EditProductScreen({ route, navigation }) {
     if (!name.trim()) return setErrorMsg('Item Name cannot be empty.');
     if (!description.trim()) return setErrorMsg('Description cannot be empty.');
     if (!price || isNaN(price)) return setErrorMsg('Please enter a valid price.');
+    if (listingType === 'rent' && !rentalPeriod) return setErrorMsg('Please select a rental period.');
     if (!category) return setErrorMsg('Please select a category.');
     if (imageUris.length === 0) return setErrorMsg('Please add at least one photo.');
 
@@ -104,6 +106,7 @@ export default function EditProductScreen({ route, navigation }) {
       formData.append('price', price);
       formData.append('quantity', quantity);
       formData.append('listing_type', listingType);
+      if (listingType === 'rent') formData.append('rental_period', rentalPeriod);
       formData.append('condition_rating', condition.value);
       formData.append('category_id', category.id);
       formData.append('is_active', isActive);
@@ -260,7 +263,7 @@ export default function EditProductScreen({ route, navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Price (₹)</Text>
+            <Text style={styles.label}>{listingType === 'rent' ? 'Rental Price (₹)' : 'Price (₹)'}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="wallet-outline" size={20} color="#8792A2" style={styles.inputIcon} />
               <TextInput
@@ -273,6 +276,24 @@ export default function EditProductScreen({ route, navigation }) {
               />
             </View>
           </View>
+
+          {listingType === 'rent' && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Rental Period</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {['hour', 'day', 'month'].map((period) => (
+                  <TouchableOpacity
+                    key={period}
+                    style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 0, borderColor: rentalPeriod === period ? '#0052CC' : '#E5E9F0', backgroundColor: rentalPeriod === period ? '#F0F5FF' : '#FFF' }]}
+                    onPress={() => setRentalPeriod(period)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: rentalPeriod === period ? '#0052CC' : '#1A1F36', fontWeight: '600' }}>Per {period}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Quantity</Text>

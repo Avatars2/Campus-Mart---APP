@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import Pusher from 'pusher-js';
+import { Pusher } from 'pusher-js/react-native';
 import client from '../api/client';
 import { AuthContext } from './AuthContext';
 

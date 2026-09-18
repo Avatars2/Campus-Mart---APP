@@ -1,19 +1,34 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
-import Pusher from 'pusher-js';
+import { Pusher } from 'pusher-js/react-native';
 import client from '../api/client';
 import { AuthContext } from './AuthContext';
 
-// Configure how notifications should behave when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+const isExpoGo =
+  (typeof isRunningInExpoGo === 'function' && isRunningInExpoGo()) ||
+  Constants?.appOwnership === 'expo' ||
+  Constants?.executionEnvironment === ExecutionEnvironment?.StoreClient;
+
+// In Expo Go SDK 53+, importing expo-notifications crashes at module load time on Android.
+// We dynamically require it only in standalone / production builds.
+let Notifications = null;
+if (!isExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } catch (e) {
+    console.warn('Could not load expo-notifications:', e);
+  }
+}
 
 const NotificationContext = createContext();
 
@@ -45,42 +60,53 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const registerForPushNotificationsAsync = async () => {
-    let token;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
+    // Remote push notifications (FCM) were removed from Expo Go in SDK 53+
+    // They work in standalone APK / production development builds
+    if (isExpoGo || !Notifications) {
+      console.log('Push notifications: Remote push notifications are disabled in Expo Go.');
+      return;
     }
 
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
-        return;
-      }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-      console.log('Push Token:', token);
-      
-      // Save token to backend
-      try {
-        await client.post('/users/token', { fcmToken: token });
-      } catch (e) {
-        console.error('Failed to save push token to backend', e);
-      }
-    } else {
-      console.log('Must use physical device for Push Notifications');
-    }
+    try {
+      let token;
 
-    return token;
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
+      if (Device.isDevice) {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+          console.log('Failed to get push token for push notification!');
+          return;
+        }
+        token = (await Notifications.getExpoPushTokenAsync()).data;
+        console.log('Push Token:', token);
+        
+        // Save token to backend
+        try {
+          await client.post('/users/token', { fcmToken: token });
+        } catch (e) {
+          console.error('Failed to save push token to backend', e);
+        }
+      } else {
+        console.log('Must use physical device for Push Notifications');
+      }
+
+      return token;
+    } catch (error) {
+      console.warn('Push notification registration skipped or failed:', error);
+    }
   };
 
   useEffect(() => {
@@ -92,27 +118,33 @@ export const NotificationProvider = ({ children }) => {
       setUnreadCount(0);
     }
 
-    // Listeners for foreground notifications
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Notification received in foreground
-      fetchNotifications();
-    });
+    // Listeners for foreground notifications (skip if in Expo Go to avoid SDK 53+ crash)
+    if (!isExpoGo && Notifications) {
+      try {
+        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+          // Notification received in foreground
+          fetchNotifications();
+        });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('User tapped notification:', response.notification.request.content);
-      // Navigation logic can go here if needed
-    });
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+          console.log('User tapped notification:', response.notification.request.content);
+          // Navigation logic can go here if needed
+        });
+      } catch (e) {
+        console.warn('Could not register notification listeners:', e);
+      }
+    }
 
     return () => {
       if (notificationListener.current?.remove) {
         notificationListener.current.remove();
-      } else if (typeof Notifications.removeNotificationSubscription === 'function') {
+      } else if (notificationListener.current && typeof Notifications?.removeNotificationSubscription === 'function') {
         Notifications.removeNotificationSubscription(notificationListener.current);
       }
 
       if (responseListener.current?.remove) {
         responseListener.current.remove();
-      } else if (typeof Notifications.removeNotificationSubscription === 'function') {
+      } else if (responseListener.current && typeof Notifications?.removeNotificationSubscription === 'function') {
         Notifications.removeNotificationSubscription(responseListener.current);
       }
 

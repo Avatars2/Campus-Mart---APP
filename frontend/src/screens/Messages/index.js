@@ -1,14 +1,16 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
-import Pusher from 'pusher-js';
+import { Pusher } from 'pusher-js/react-native';
 import styles from './styles';
 import { AuthContext } from '../../context/AuthContext';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 const MessageList = () => {
   const [conversations, setConversations] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useContext(AuthContext);
   const userId = user?.id;
   const navigation = useNavigation();
@@ -39,9 +41,18 @@ const MessageList = () => {
       pusher.unsubscribe(`user-${userId}`);
     };
   }, [userId, refresh]);
+  const filteredConversations = conversations.filter(item => {
+    const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
+    return otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const renderItem = ({ item }) => {
     const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
+    const lastMessage = item.lastMessage;
+    const attachmentCount = lastMessage?.attachments?.length || (lastMessage?.attachment?.url ? 1 : 0);
+    const previewText = lastMessage?.content
+      || (attachmentCount > 1 ? `${attachmentCount} attachments` : lastMessage?.attachments?.[0]?.fileName || lastMessage?.attachment?.fileName)
+      || 'Attachment';
     
     return (
       <TouchableOpacity 
@@ -50,7 +61,8 @@ const MessageList = () => {
           itemId: item.item._id || item.item.id,
           otherUserId: otherParticipant._id || otherParticipant.id,
           itemName: item.item.name,
-          otherUserName: otherParticipant.full_name
+          otherUserName: otherParticipant.full_name,
+          otherUserPhoto: otherParticipant.profile_photo_url || null,
         })}
       >
         <Image 
@@ -66,7 +78,7 @@ const MessageList = () => {
           </View>
           <Text style={styles.itemName}>Item: {item.item.name}</Text>
           <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.lastMessage ? item.lastMessage.content : 'No messages yet'}
+            {item.lastMessage ? previewText : 'No messages yet'}
           </Text>
         </View>
       </TouchableOpacity>
@@ -94,13 +106,31 @@ const MessageList = () => {
 
   return (
     <View style={styles.container}>
-      {conversations.length === 0 ? (
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#888" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by user name..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color="#888" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      {filteredConversations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No messages yet.</Text>
+          <Text style={styles.emptyText}>
+            {searchQuery ? 'No users found.' : 'No messages yet.'}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={conversations}
+          data={filteredConversations}
           renderItem={renderItem}
           keyExtractor={item => item._id || item.id}
           contentContainerStyle={styles.listContainer}

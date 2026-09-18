@@ -99,7 +99,9 @@ export default function CartScreen({ navigation }) {
       id: ci.item.id || ci.item._id,
       name: ci.item.name,
       price: ci.item.price,
-      quantity: ci.quantity
+      quantity: ci.quantity,
+      listing_type: ci.item.listing_type,
+      rental_period: ci.item.rental_period
     }));
 
     // Navigate to the Checkout screen

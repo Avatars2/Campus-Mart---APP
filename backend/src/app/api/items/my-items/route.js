@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
 import Category from '@/models/Category';
+import Order from '@/models/Order';
 import { verifyAuth } from '@/lib/auth';
 
 export async function GET(request) {
@@ -18,9 +19,17 @@ export async function GET(request) {
       .populate('category_id', 'name')
       .sort({ createdAt: -1 });
 
+    const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
+    const rentedItemIds = await Order.find({
+      item_id: { $in: rentalItemIds },
+      status: { $in: ['pending', 'delivered', 'rental_active', 'return_requested'] },
+    }).distinct('item_id');
+    const rentedItemIdSet = new Set(rentedItemIds.map(id => id.toString()));
+
     const formattedItems = items.map(item => ({
       ...item.toJSON(),
       category_name: item.category_id?.name,
+      is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
     }));
 
     return NextResponse.json(formattedItems);

@@ -11,9 +11,26 @@ export default function CheckoutScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [errorMessage, setErrorMessage] = useState(null);
+  const [rentalDurations, setRentalDurations] = useState(() => (
+    checkoutItems.reduce((durations, item, index) => {
+      if (item.listing_type === 'rent') durations[item.id || item._id || index] = 1;
+      return durations;
+    }, {})
+  ));
 
-  const total = checkoutItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const getItemKey = (item, index) => item.id || item._id || index;
+  const getRentalDuration = (item, index) => rentalDurations[getItemKey(item, index)] || 1;
+  const getItemTotal = (item, index) => item.price * item.quantity * (item.listing_type === 'rent' ? getRentalDuration(item, index) : 1);
+  const total = checkoutItems.reduce((sum, item, index) => sum + getItemTotal(item, index), 0);
   const deliveryMessage = 'Discuss with seller via Messages';
+
+  const updateRentalDuration = (item, index, change) => {
+    const key = getItemKey(item, index);
+    setRentalDurations((current) => ({
+      ...current,
+      [key]: Math.max(1, Math.min(999, (current[key] || 1) + change)),
+    }));
+  };
 
   const handleConfirmOrder = async () => {
     if (checkoutItems.length === 0) return;
@@ -22,7 +39,10 @@ export default function CheckoutScreen({ route, navigation }) {
     setLoading(true);
     try {
       const res = await client.post('/orders/checkout', {
-        items: checkoutItems,
+        items: checkoutItems.map((item, index) => ({
+          ...item,
+          ...(item.listing_type === 'rent' ? { rental_duration: getRentalDuration(item, index) } : {}),
+        })),
         payment_method: paymentMethod,
         delivery_address: deliveryMessage,
         from_cart: fromCart
@@ -67,12 +87,40 @@ export default function CheckoutScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
           {checkoutItems.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
+            <View key={index} style={{ marginBottom: 16 }}>
+              <View style={styles.itemRow}>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+                <Text style={styles.itemQuantity}>Qty: {item.quantity}{item.listing_type === 'rent' ? ` · ₹${item.price} per ${item.rental_period || 'day'}` : ''}</Text>
               </View>
-              <Text style={styles.itemPrice}>₹{item.price * item.quantity}</Text>
+              <Text style={styles.itemPrice}>₹{getItemTotal(item, index)}</Text>
+              </View>
+              {item.listing_type === 'rent' && (
+                <View style={{ backgroundColor: '#F0F5FF', borderRadius: 10, padding: 12, marginTop: 4 }}>
+                  <Text style={{ color: '#1A1F36', fontWeight: '600', marginBottom: 8 }}>
+                    How many {item.rental_period || 'day'}{getRentalDuration(item, index) === 1 ? '' : 's'} do you want?
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#B8C7E6' }}
+                      onPress={() => updateRentalDuration(item, index, -1)}
+                      accessibilityLabel="Decrease rental duration"
+                    >
+                      <Ionicons name="remove" size={20} color="#0052CC" />
+                    </TouchableOpacity>
+                    <Text style={{ minWidth: 100, textAlign: 'center', color: '#0052CC', fontSize: 16, fontWeight: '700' }}>
+                      {getRentalDuration(item, index)} {item.rental_period || 'day'}{getRentalDuration(item, index) === 1 ? '' : 's'}
+                    </Text>
+                    <TouchableOpacity
+                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#B8C7E6' }}
+                      onPress={() => updateRentalDuration(item, index, 1)}
+                      accessibilityLabel="Increase rental duration"
+                    >
+                      <Ionicons name="add" size={20} color="#0052CC" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           ))}
           <View style={styles.divider} />

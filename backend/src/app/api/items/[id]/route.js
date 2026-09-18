@@ -29,15 +29,23 @@ export async function PUT(request, { params }) {
     const condition_rating = formData.get('condition_rating');
     const category_id = formData.get('category_id');
     const listing_type = formData.get('listing_type');
+    const rental_period = formData.get('rental_period');
     const quantity = formData.get('quantity');
     const is_active = formData.get('is_active');
+
+    if (listing_type === 'rent' && !['hour', 'day', 'month'].includes(rental_period)) {
+      return NextResponse.json({ error: 'Please select a rental period' }, { status: 400 });
+    }
 
     if (name) item.name = name;
     if (description) item.description = description;
     if (price) item.price = Number(price);
     if (condition_rating) item.condition_rating = Number(condition_rating);
     if (category_id) item.category_id = category_id;
-    if (listing_type) item.listing_type = listing_type;
+    if (listing_type) {
+      item.listing_type = listing_type;
+      item.rental_period = listing_type === 'rent' ? rental_period : null;
+    }
     if (quantity !== null && quantity !== undefined) item.quantity = Number(quantity);
     if (is_active !== null && is_active !== undefined) item.is_active = is_active === 'true';
 

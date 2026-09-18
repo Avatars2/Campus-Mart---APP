@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, SafeAreaView, Platform, Alert, Modal } from 'react-native';
+import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -7,6 +8,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import RatingStars from '../../components/commerce/RatingStars';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 export default function BuyScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
@@ -18,6 +21,7 @@ export default function BuyScreen({ navigation }) {
   const [ratingPrompt, setRatingPrompt] = useState(null);
   const [selectedRating, setSelectedRating] = useState(0);
   const [invoiceLoading, setInvoiceLoading] = useState(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const fetchOrders = async () => {
     try {
@@ -39,9 +43,29 @@ export default function BuyScreen({ navigation }) {
     }, [activeTab])
   );
 
+  useEffect(() => {
+    const hasActiveRental = orders.some((order) => order.status === 'rental_active' && order.rental_due_at);
+    if (!hasActiveRental) return undefined;
+
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [orders]);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchOrders();
+  };
+
+  const formatRentalTimeRemaining = (dueAt) => {
+    const remainingSeconds = Math.max(0, Math.floor((new Date(dueAt).getTime() - currentTime) / 1000));
+    const days = Math.floor(remainingSeconds / 86400);
+    const hours = Math.floor((remainingSeconds % 86400) / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = remainingSeconds % 60;
+
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    return `${minutes}m ${seconds}s`;
   };
 
   const handleMessageUser = (user, item) => {
@@ -68,16 +92,33 @@ export default function BuyScreen({ navigation }) {
   const confirmOrderStatus = async () => {
     if (!confirmation) return;
 
+    const { order, nextStatus } = confirmation;
     try {
       await client.patch('/orders', {
-        order_id: confirmation.order._id || confirmation.order.id,
-        status: confirmation.nextStatus,
+        order_id: order._id || order.id,
+        status: nextStatus,
       });
       setConfirmation(null);
       await fetchOrders();
-      if (confirmation.nextStatus === 'completed') {
+      if (nextStatus === 'return_requested') {
+        const buyerId = order.buyer_id?._id || order.buyer_id?.id;
+        const sellerId = order.seller_id?._id || order.seller_id?.id;
+        const itemId = order.item_id?._id || order.item_id?.id;
+        try {
+          await client.post('/messages', {
+            senderId: buyerId,
+            receiverId: sellerId,
+            itemId,
+            content: `I am ready to return ${order.item_id?.name || 'the rented item'}. Please discuss the return handover with me.`,
+          });
+        } catch (messageError) {
+          console.error('Return message failed:', messageError);
+        }
+        handleMessageUser(order.seller_id, order.item_id);
+      }
+      if (nextStatus === 'completed' && order.item_id?.listing_type !== 'rent') {
         setSelectedRating(0);
-        setRatingPrompt(confirmation.order);
+        setRatingPrompt(order);
       }
     } catch (error) {
       setConfirmation(null);
@@ -111,7 +152,15 @@ export default function BuyScreen({ navigation }) {
     const item = order.item_id && typeof order.item_id === 'object' ? order.item_id : {};
     const buyer = order.buyer_id && typeof order.buyer_id === 'object' ? order.buyer_id : {};
     const seller = order.seller_id && typeof order.seller_id === 'object' ? order.seller_id : {};
-    const status = order.status === 'completed' ? 'Completed' : order.status === 'delivered' ? 'Delivered' : 'Pending';
+    const status = order.status === 'completed'
+      ? 'Completed'
+      : order.status === 'return_requested'
+        ? 'Return requested'
+        : order.status === 'rental_active'
+          ? 'Rental active'
+          : order.status === 'delivered'
+            ? 'Delivered'
+            : 'Pending';
     const orderNumber = String(order._id || order.id || 'CAMPUSMART').slice(-10).toUpperCase();
     const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
     const payment = order.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item';
@@ -169,12 +218,25 @@ export default function BuyScreen({ navigation }) {
         invoiceWindow.document.close();
         invoiceWindow.document.title = `CampusMart Invoice ${orderId}`;
       } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        const { base64 } = await Print.printToFileAsync({ html, base64: true });
+        const fileName = `CampusMart_Invoice_${String(orderId).slice(-8).toUpperCase()}.pdf`;
+        const localUri = FileSystem.documentDirectory + fileName;
+        await FileSystem.writeAsStringAsync(localUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+        
+        if (Platform.OS === 'android') {
+          const contentUri = await FileSystem.getContentUriAsync(localUri);
+          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+            data: contentUri,
+            flags: 1,
+            type: 'application/pdf',
+          });
+        } else {
+          await Sharing.shareAsync(localUri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        }
       }
     } catch (error) {
       console.error('Error generating invoice:', error);
-      Alert.alert('Invoice error', 'Failed to generate the invoice. Please try again.');
+      Alert.alert('Invoice error', error?.message || 'Failed to generate the invoice. Please try again.');
     } finally {
       setInvoiceLoading(null);
     }
@@ -208,7 +270,15 @@ export default function BuyScreen({ navigation }) {
           <View style={styles.orderHeaderActions}>
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>
-                {item.status === 'completed' ? 'Completed' : item.status === 'delivered' ? 'Delivered' : 'Pending'}
+                {item.status === 'completed'
+                  ? 'Completed'
+                  : item.status === 'return_requested'
+                    ? 'Return requested'
+                    : item.status === 'rental_active'
+                      ? 'Rental active'
+                      : item.status === 'delivered'
+                        ? 'Delivered'
+                        : 'Pending'}
               </Text>
             </View>
             <TouchableOpacity
@@ -232,7 +302,15 @@ export default function BuyScreen({ navigation }) {
             <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
             <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
             <Text style={styles.sellerName}>{item.delivery_address || 'Discuss with seller via Messages'} · {item.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item'}</Text>
-            <Text style={styles.itemPrice}>₹{item.total_price}</Text>
+            <Text style={styles.itemPrice}>₹{item.total_price}{orderItem.listing_type === 'rent' ? ` / ${orderItem.rental_period || 'day'}` : ''}</Text>
+            {orderItem.listing_type === 'rent' && item.rental_due_at && item.status === 'rental_active' && (
+              <View>
+                <Text style={styles.sellerName}>
+                  {activeTab === 'sales' ? 'Buyer time remaining' : 'Time remaining'}: {formatRentalTimeRemaining(item.rental_due_at)}
+                </Text>
+                <Text style={styles.sellerName}>Return by: {new Date(item.rental_due_at).toLocaleString()}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -252,7 +330,7 @@ export default function BuyScreen({ navigation }) {
               <Text style={styles.completeButtonText}>Mark item delivered</Text>
             </TouchableOpacity>
           )}
-          {activeTab === 'purchases' && item.status === 'delivered' && (
+          {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
             <View style={styles.receivedGroup}>
               <Text style={styles.receivedPrompt}>Did you receive this item?</Text>
               <TouchableOpacity
@@ -270,11 +348,68 @@ export default function BuyScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           )}
+          {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type === 'rent' && (
+            <View style={styles.receivedGroup}>
+              <Text style={styles.receivedPrompt}>Did you receive this rental item?</Text>
+              <TouchableOpacity
+                style={styles.confirmReceivedButton}
+                onPress={() => updateOrderStatus(
+                  item,
+                  'rental_active',
+                  'Start rental period?',
+                  'Confirm that you received the item. The rental period starts now.'
+                )}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.confirmReceivedText}>Confirm receipt</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {activeTab === 'purchases' && item.status === 'rental_active' && (
+            <View style={styles.receivedGroup}>
+              <Text style={styles.receivedPrompt}>
+                {item.rental_due_at && new Date(item.rental_due_at).getTime() > currentTime
+                  ? `Time remaining: ${formatRentalTimeRemaining(item.rental_due_at)}`
+                  : 'Rental time has ended. Return the item to the seller.'}
+              </Text>
+              {item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
+                <TouchableOpacity
+                  style={styles.confirmReceivedButton}
+                  onPress={() => updateOrderStatus(
+                    item,
+                    'return_requested',
+                    'Request item return?',
+                    'Confirm that you are returning the item to the seller.'
+                  )}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="return-down-back-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.confirmReceivedText}>Return item</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+          {activeTab === 'sales' && item.status === 'return_requested' && (
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={() => updateOrderStatus(
+                item,
+                'completed',
+                'Confirm item returned?',
+                'Confirm that you received the returned rental item from the buyer.'
+              )}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-done-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.completeButtonText}>Confirm return</Text>
+            </TouchableOpacity>
+          )}
           {activeTab === 'purchases' && item.status === 'completed' && (
             <View style={styles.completedGroup}>
               <View style={styles.successMessage}>
                 <Ionicons name="checkmark-circle" size={17} color="#15803D" style={{ marginRight: 6 }} />
-                <Text style={styles.successMessageText}>Transaction successful</Text>
+                <Text style={styles.successMessageText}>{orderItem.listing_type === 'rent' ? 'Rental completed' : 'Transaction successful'}</Text>
               </View>
               {item.buyer_rating ? (
                 <View style={styles.ratingSubmitted}>
@@ -404,7 +539,7 @@ export default function BuyScreen({ navigation }) {
       
       <SectionList
         sections={orderSections}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => item._id || item.id || String(index)}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />

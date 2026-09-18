@@ -2,29 +2,19 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
+import { getJwtSecret, normalizeEmail } from '@/lib/authValidation';
+import { verifyOtp } from '@/lib/otp';
 
 export async function POST(request) {
   try {
     await connectDB();
     const { email, otp } = await request.json();
-
-    const latestOtp = await OTP.findOne({ email }).sort({ createdAt: -1 });
-
-    if (!latestOtp) {
-      return NextResponse.json({ error: 'No OTP found for this email.' }, { status: 400 });
-    }
-
-    if (latestOtp.otp_code !== otp) {
-      return NextResponse.json({ error: 'Invalid OTP code.' }, { status: 400 });
-    }
-
-    if (new Date() > latestOtp.expires_at) {
-      return NextResponse.json({ error: 'OTP code has expired.' }, { status: 400 });
-    }
+    const normalizedEmail = normalizeEmail(email);
+    const otpResult = await verifyOtp(normalizedEmail, otp);
+    if (otpResult.error) return NextResponse.json({ error: otpResult.error }, { status: otpResult.status });
 
     const user = await User.findOneAndUpdate(
-      { email },
+      { email: normalizedEmail },
       { is_verified: true },
       { new: true }
     );
@@ -35,7 +25,7 @@ export async function POST(request) {
 
     const token = jwt.sign(
       { id: user._id, email: user.email, name: user.full_name, role: user.role },
-      process.env.JWT_SECRET || 'secret_key',
+      getJwtSecret(),
       { expiresIn: '30d' }
     );
 

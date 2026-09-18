@@ -23,7 +23,7 @@ export default function SellScreen({ navigation }) {
           <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.itemCategory}>{item.category_name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.itemPrice}>₹{item.price}</Text>
+            <Text style={styles.itemPrice}>₹{item.price}{item.listing_type === 'rent' ? ` / ${item.rental_period || 'day'}` : ''}</Text>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => navigation.navigate('EditProduct', { item })}
@@ -36,9 +36,9 @@ export default function SellScreen({ navigation }) {
             <Text style={styles.itemCondition}>
               {{ 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' }[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')}
             </Text>
-            <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusSold]}>
-              <Text style={[styles.statusText, item.is_active ? styles.statusTextActive : styles.statusTextSold]}>
-                {item.is_active ? 'Active' : 'Sold'}
+            <View style={[styles.statusBadge, item.is_currently_rented ? styles.statusSold : item.is_active ? styles.statusActive : styles.statusSold]}>
+              <Text style={[styles.statusText, item.is_currently_rented ? styles.statusTextSold : item.is_active ? styles.statusTextActive : styles.statusTextSold]}>
+                {item.is_currently_rented ? 'Currently rented' : item.is_active ? 'Active' : 'Sold'}
               </Text>
             </View>
           </View>

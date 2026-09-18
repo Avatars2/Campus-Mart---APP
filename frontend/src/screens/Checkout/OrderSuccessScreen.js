@@ -4,6 +4,7 @@ import styles from './OrderSuccessScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 export default function OrderSuccessScreen({ route, navigation }) {
   const {
@@ -122,8 +123,14 @@ export default function OrderSuccessScreen({ route, navigation }) {
 
     try {
       const html = generateInvoiceHtml();
-      const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      const { uri: tempUri } = await Print.printToFileAsync({ html });
+      
+      const fileName = `CampusMart_Invoice_${String(orderNumber)}.pdf`;
+      const cacheUri = FileSystem.cacheDirectory + fileName;
+      await FileSystem.copyAsync({ from: tempUri, to: cacheUri });
+
+      await Sharing.shareAsync(cacheUri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      await FileSystem.deleteAsync(tempUri, { idempotent: true });
     } catch (error) {
       console.error('Error generating PDF:', error);
       Alert.alert('Error', 'Failed to generate invoice PDF.');

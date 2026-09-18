@@ -34,11 +34,14 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleBuyNow = () => {
+    if (item.is_currently_rented) return;
     navigation.navigate('Checkout', { 
       checkoutItems: [{
         id: item.id || item._id,
         name: item.name,
         price: item.price,
+        listing_type: item.listing_type,
+        rental_period: item.rental_period,
         quantity: 1
       }],
       fromCart: false
@@ -118,7 +121,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         <View style={styles.detailsContainer}>
           <View style={styles.titlePriceRow}>
             <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPrice}>₹{item.price}</Text>
+            <Text style={styles.itemPrice}>₹{item.price}{item.listing_type === 'rent' ? ` / ${item.rental_period || 'day'}` : ''}</Text>
           </View>
 
           <View style={styles.badgesRow}>
@@ -169,7 +172,8 @@ export default function ProductDetailScreen({ route, navigation }) {
                 itemId: item._id || item.id,
                 otherUserId: item.seller_id || (typeof item.seller === 'object' ? (item.seller._id || item.seller.id) : item.seller),
                 itemName: item.name,
-                otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller')
+                otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
+                otherUserPhoto: typeof item.seller === 'object' ? (item.seller.profile_photo_url || null) : null,
               }
             })}
           >
@@ -186,20 +190,22 @@ export default function ProductDetailScreen({ route, navigation }) {
       {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
         <TouchableOpacity 
-          style={styles.secondaryButton} 
+          style={[styles.secondaryButton, item.is_currently_rented && { opacity: 0.5 }]}
           activeOpacity={0.85}
           onPress={handleAddToCartClick}
+          disabled={item.is_currently_rented}
         >
           <Ionicons name="cart-outline" size={20} color="#0052CC" />
           <Text style={styles.secondaryButtonText}>Add to Cart</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.primaryButton} 
+          style={[styles.primaryButton, item.is_currently_rented && { opacity: 0.5 }]}
           activeOpacity={0.85}
           onPress={handleBuyNow}
+          disabled={item.is_currently_rented}
         >
           <Ionicons name="flash-outline" size={20} color="#FFF" />
-          <Text style={styles.primaryButtonText}>Buy Now</Text>
+          <Text style={styles.primaryButtonText}>{item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
         </TouchableOpacity>
       </View>
 

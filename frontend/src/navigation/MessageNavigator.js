@@ -27,6 +27,7 @@ export default function MessageNavigator() {
         component={MessageList} 
         options={{ 
           title: 'Messages',
+          headerBackVisible: false,
           headerLeft: () => null 
         }} 
       />

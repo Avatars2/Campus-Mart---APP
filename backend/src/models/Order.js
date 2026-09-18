@@ -25,6 +25,11 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  rental_duration: {
+    type: Number,
+    min: 1,
+    default: null,
+  },
   payment_method: {
     type: String,
     default: 'Cash',
@@ -35,8 +40,24 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'delivered', 'completed', 'cancelled'],
+    enum: ['pending', 'delivered', 'rental_active', 'return_requested', 'completed', 'cancelled'],
     default: 'pending',
+  },
+  rental_started_at: {
+    type: Date,
+    default: null,
+  },
+  rental_due_at: {
+    type: Date,
+    default: null,
+  },
+  return_requested_at: {
+    type: Date,
+    default: null,
+  },
+  returned_at: {
+    type: Date,
+    default: null,
   },
   buyer_rating: {
     type: Number,

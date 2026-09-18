@@ -93,7 +93,7 @@ export default function HomeScreen({ navigation }) {
           <Image source={{ uri: imageUrl }} style={styles.itemImage} />
           {item.listing_type === 'rent' ? (
             <View style={[styles.conditionBadge, { backgroundColor: '#E53E3E', top: 8, right: 8, left: 'auto' }]}>
-              <Text style={styles.conditionBadgeText}>For Rent</Text>
+              <Text style={styles.conditionBadgeText}>{item.is_currently_rented ? 'Currently rented' : 'For Rent'}</Text>
             </View>
           ) : null}
           {condition ? (
@@ -105,7 +105,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.itemDetails}>
           <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-            <Text style={styles.itemPrice}>₹{item.price}</Text>
+            <Text style={styles.itemPrice}>₹{item.price}{item.listing_type === 'rent' ? ` / ${item.rental_period || 'day'}` : ''}</Text>
             {item.quantity !== undefined && (
               <Text style={{ fontSize: 12, color: '#697386' }}>Qty: {item.quantity}</Text>
             )}
