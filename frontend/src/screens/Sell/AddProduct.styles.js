@@ -15,22 +15,20 @@ export default StyleSheet.create({
     backgroundColor: '#FFF',
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F2F5',
+    justifyContent: 'center',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    zIndex: 10,
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1F36',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#0F1111',
+    letterSpacing: -0.5,
   },
   // Scroll Content
   scrollContent: {
@@ -40,7 +38,7 @@ export default StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1F36',
+    color: '#0F1111',
     marginBottom: 16,
     marginTop: 24,
   },
@@ -54,9 +52,9 @@ export default StyleSheet.create({
   imageUploadBox: {
     width: '100%',
     height: 140,
-    backgroundColor: '#F0F4FF',
+    backgroundColor: '#E6F7F9',
     borderWidth: 2,
-    borderColor: '#0052CC',
+    borderColor: '#007185',
     borderStyle: 'dashed',
     borderRadius: 16,
     justifyContent: 'center',
@@ -64,7 +62,7 @@ export default StyleSheet.create({
     marginBottom: 16,
   },
   imageUploadText: {
-    color: '#0052CC',
+    color: '#007185',
     fontSize: 15,
     fontWeight: '700',
     marginTop: 8,
@@ -140,7 +138,7 @@ export default StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1A1F36',
+    color: '#0F1111',
     fontWeight: '500',
   },
   textAreaWrapper: {
@@ -169,7 +167,7 @@ export default StyleSheet.create({
   },
   selectorText: {
     fontSize: 16,
-    color: '#1A1F36',
+    color: '#0F1111',
     fontWeight: '500',
   },
   // Toggle
@@ -194,7 +192,7 @@ export default StyleSheet.create({
   toggleTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1F36',
+    color: '#0F1111',
     marginBottom: 4,
   },
   toggleSubtitle: {
@@ -215,11 +213,11 @@ export default StyleSheet.create({
     elevation: 10,
   },
   primaryButton: {
-    backgroundColor: '#0052CC',
+    backgroundColor: '#007185',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#0052CC',
+    shadowColor: '#007185',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -266,7 +264,7 @@ export default StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1A1F36',
+    color: '#0F1111',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -278,7 +276,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   modalItemActive: {
-    backgroundColor: '#F0F4FF',
+    backgroundColor: '#E6F7F9',
     borderRadius: 12,
     borderBottomWidth: 0,
     paddingHorizontal: 16,
@@ -286,12 +284,12 @@ export default StyleSheet.create({
   },
   modalItemText: {
     fontSize: 16,
-    color: '#1A1F36',
+    color: '#0F1111',
     fontWeight: '500',
     flex: 1,
   },
   modalItemTextActive: {
-    color: '#0052CC',
+    color: '#007185',
     fontWeight: '700',
   },
   modalCloseButton: {
@@ -304,6 +302,6 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
-    color: '#1A1F36',
+    color: '#0F1111',
   },
 });

@@ -3,48 +3,67 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFFFFF',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingTop: 50,
+    paddingBottom: 15,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: { 
+    fontSize: 22, 
+    fontWeight: '900', 
+    color: '#0F1111' 
+  },
+
+  searchWrapper: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    margin: 10,
-    marginBottom: 0,
+    backgroundColor: '#F0F2F2',
     paddingHorizontal: 12,
     height: 44,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#D5D9D9',
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 15,
-    color: '#333',
+    color: '#0F1111',
   },
+  
   listContainer: {
-    padding: 10,
+    paddingBottom: 20,
   },
   conversationItem: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   avatar: {
     width: 50,
@@ -64,22 +83,39 @@ export default StyleSheet.create({
   },
   participantName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#0F1111',
   },
   time: {
     fontSize: 12,
-    color: '#888',
+    color: '#565959',
   },
   itemName: {
-    fontSize: 12,
-    color: '#4CAF50',
+    fontSize: 13,
+    color: '#007185',
     marginBottom: 4,
     fontWeight: '500',
   },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 10,
+  },
   lastMessage: {
     fontSize: 14,
-    color: '#666',
+    color: '#565959',
+    flex: 1,
+  },
+  unreadText: {
+    fontWeight: '700',
+    color: '#0F1111',
+  },
+  unreadBadge: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#007185', // Amazon Link Blue / WhatsApp Blue tint
+    marginLeft: 8,
   },
   emptyContainer: {
     flex: 1,
@@ -88,6 +124,6 @@ export default StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#888',
+    color: '#565959',
   },
 });

@@ -125,9 +125,9 @@ export default function EditProfileScreen({ route, navigation }) {
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+          <Ionicons name="arrow-back" size={24} color="#0F1111" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={styles.headerTitle}>Edit<Text style={{ color: '#007185' }}>Profile</Text></Text>
       </View>
 
       <KeyboardAvoidingView 
@@ -289,7 +289,7 @@ export default function EditProfileScreen({ route, navigation }) {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.modalItemText, isActive && styles.modalItemTextActive]}>{item}</Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#0052CC" />}
+                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#007185" />}
                   </TouchableOpacity>
                 );
               }}
@@ -320,7 +320,7 @@ export default function EditProfileScreen({ route, navigation }) {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.modalItemText, isActive && styles.modalItemTextActive]}>{item}</Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#0052CC" />}
+                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#007185" />}
                   </TouchableOpacity>
                 );
               }}

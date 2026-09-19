@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Modal, FlatList, Switch } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -29,6 +29,7 @@ export default function AddProductScreen({ navigation }) {
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [conditionModalVisible, setConditionModalVisible] = useState(false);
@@ -100,6 +101,7 @@ export default function AddProductScreen({ navigation }) {
       if (listingType === 'rent') formData.append('rental_period', rentalPeriod);
       formData.append('condition_rating', condition.value);
       formData.append('category_id', category.id);
+      formData.append('is_active', isActive);
 
       if (imageUris.length > 0) {
         for (const uri of imageUris) {
@@ -144,9 +146,9 @@ export default function AddProductScreen({ navigation }) {
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+          <Ionicons name="arrow-back" size={24} color="#0F1111" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add New Item</Text>
+        <Text style={styles.headerTitle}>Add<Text style={{ color: '#007185' }}>Item</Text></Text>
       </View>
 
       <KeyboardAvoidingView 
@@ -155,11 +157,25 @@ export default function AddProductScreen({ navigation }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>Photos</Text>
+          <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>Status</Text>
+          <View style={styles.toggleContainer}>
+            <View style={styles.toggleTextContainer}>
+              <Text style={styles.toggleTitle}>Item Visibility</Text>
+              <Text style={styles.toggleSubtitle}>Active items are visible to buyers in the marketplace.</Text>
+            </View>
+            <Switch
+              value={isActive}
+              onValueChange={setIsActive}
+              trackColor={{ false: "#E5E9F0", true: "#007185" }}
+              thumbColor={Platform.OS === 'ios' ? "#FFF" : isActive ? "#FFF" : "#F3F5F9"}
+            />
+          </View>
+
+          <Text style={styles.sectionTitle}>Photos</Text>
           <View style={styles.imageSection}>
             {imageUris.length === 0 ? (
               <TouchableOpacity style={styles.imageUploadBox} onPress={pickImage} activeOpacity={0.7}>
-                <Ionicons name="images-outline" size={36} color="#0052CC" />
+                <Ionicons name="images-outline" size={36} color="#007185" />
                 <Text style={styles.imageUploadText}>Upload Photos</Text>
                 <Text style={styles.imageUploadSubtext}>Add up to 5 photos of your item</Text>
               </TouchableOpacity>
@@ -179,7 +195,7 @@ export default function AddProductScreen({ navigation }) {
                     onPress={pickImage} 
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="add" size={32} color="#0052CC" />
+                    <Ionicons name="add" size={32} color="#007185" />
                   </TouchableOpacity>
                 )}
               </ScrollView>
@@ -195,25 +211,25 @@ export default function AddProductScreen({ navigation }) {
                 style={[
                   styles.input, 
                   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 0, 
-                    borderColor: listingType === 'sell' ? '#0052CC' : '#E5E9F0', 
-                    backgroundColor: listingType === 'sell' ? '#F0F5FF' : '#FFF' }
+                    borderColor: listingType === 'sell' ? '#007185' : '#E5E9F0', 
+                    backgroundColor: listingType === 'sell' ? '#E6F7F9' : '#FFF' }
                 ]}
                 onPress={() => setListingType('sell')}
                 activeOpacity={0.7}
               >
-                <Text style={{ color: listingType === 'sell' ? '#0052CC' : '#1A1F36', fontWeight: '600' }}>For Sale</Text>
+                <Text style={{ color: listingType === 'sell' ? '#007185' : '#0F1111', fontWeight: '600' }}>For Sale</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[
                   styles.input, 
                   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 0,
-                    borderColor: listingType === 'rent' ? '#0052CC' : '#E5E9F0', 
-                    backgroundColor: listingType === 'rent' ? '#F0F5FF' : '#FFF' }
+                    borderColor: listingType === 'rent' ? '#007185' : '#E5E9F0', 
+                    backgroundColor: listingType === 'rent' ? '#E6F7F9' : '#FFF' }
                 ]}
                 onPress={() => setListingType('rent')}
                 activeOpacity={0.7}
               >
-                <Text style={{ color: listingType === 'rent' ? '#0052CC' : '#1A1F36', fontWeight: '600' }}>For Rent</Text>
+                <Text style={{ color: listingType === 'rent' ? '#007185' : '#0F1111', fontWeight: '600' }}>For Rent</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -254,11 +270,11 @@ export default function AddProductScreen({ navigation }) {
                 {['hour', 'day', 'month'].map((period) => (
                   <TouchableOpacity
                     key={period}
-                    style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 0, borderColor: rentalPeriod === period ? '#0052CC' : '#E5E9F0', backgroundColor: rentalPeriod === period ? '#F0F5FF' : '#FFF' }]}
+                    style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 0, borderColor: rentalPeriod === period ? '#007185' : '#E5E9F0', backgroundColor: rentalPeriod === period ? '#E6F7F9' : '#FFF' }]}
                     onPress={() => setRentalPeriod(period)}
                     activeOpacity={0.7}
                   >
-                    <Text style={{ color: rentalPeriod === period ? '#0052CC' : '#1A1F36', fontWeight: '600' }}>Per {period}</Text>
+                    <Text style={{ color: rentalPeriod === period ? '#007185' : '#0F1111', fontWeight: '600' }}>Per {period}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -365,7 +381,7 @@ export default function AddProductScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.modalItemText, isActive && styles.modalItemTextActive]}>{item.name}</Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#0052CC" />}
+                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#007185" />}
                   </TouchableOpacity>
                 );
               }}
@@ -396,7 +412,7 @@ export default function AddProductScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.modalItemText, isActive && styles.modalItemTextActive]}>{item.label}</Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#0052CC" />}
+                    {isActive && <Ionicons name="checkmark-circle" size={24} color="#007185" />}
                   </TouchableOpacity>
                 );
               }}

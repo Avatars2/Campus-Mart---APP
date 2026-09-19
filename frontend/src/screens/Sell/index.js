@@ -29,7 +29,7 @@ export default function SellScreen({ navigation }) {
               onPress={() => navigation.navigate('EditProduct', { item })}
               activeOpacity={0.7}
             >
-              <Ionicons name="pencil" size={18} color="#0052CC" />
+              <Ionicons name="pencil" size={18} color="#007185" />
             </TouchableOpacity>
           </View>
           <View style={styles.itemFooter}>
@@ -50,7 +50,7 @@ export default function SellScreen({ navigation }) {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0052CC" />
+        <ActivityIndicator size="large" color="#007185" />
       </View>
     );
   }
@@ -70,18 +70,13 @@ export default function SellScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.screenHeader}>
-        <View style={styles.screenHeaderRow}>
-          <Text style={styles.screenTitle}>My Listings</Text>
-          <View style={styles.itemCountBadge}>
-            <Text style={styles.itemCountText}>{items.length} items</Text>
-          </View>
-        </View>
+        <Text style={styles.screenTitle}>My<Text style={{ color: '#007185' }}>Listings</Text></Text>
       </View>
 
       {items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconBg}>
-            <Ionicons name="pricetag-outline" size={44} color="#0052CC" />
+            <Ionicons name="pricetag-outline" size={44} color="#007185" />
           </View>
           <Text style={styles.emptyText}>No listings yet</Text>
           <Text style={styles.emptySubText}>Start selling by adding your first item to the marketplace!</Text>
@@ -100,7 +95,7 @@ export default function SellScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#0052CC']} />
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#007185']} />
           }
         />
       )}
@@ -115,3 +110,4 @@ export default function SellScreen({ navigation }) {
     </View>
   );
 }
+

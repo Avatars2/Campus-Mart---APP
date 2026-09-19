@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import styles from './NotificationScreen.styles';
 import { useNotifications } from '../context/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,25 @@ import { useNavigation } from '@react-navigation/native';
 const NotificationScreen = () => {
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const navigation = useNavigation();
+
+  const titleFadeAnim = useRef(new Animated.Value(0)).current;
+  const titleSlideAnim = useRef(new Animated.Value(-15)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(titleFadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleSlideAnim, {
+        toValue: 0,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const handleNotificationPress = (notification) => {
     if (!notification.read) {
@@ -28,9 +47,9 @@ const NotificationScreen = () => {
       onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.iconContainer}>
-        {item.type === 'MESSAGE' && <Ionicons name="chatbubble-outline" size={24} color="#007AFF" />}
-        {item.type === 'ORDER' && <Ionicons name="cart-outline" size={24} color="#34C759" />}
-        {item.type === 'SYSTEM' && <Ionicons name="information-circle-outline" size={24} color="#FF9500" />}
+        {item.type === 'MESSAGE' && <Ionicons name="chatbubble-outline" size={24} color="#007185" />}
+        {item.type === 'ORDER' && <Ionicons name="cart-outline" size={24} color="#007185" />}
+        {item.type === 'SYSTEM' && <Ionicons name="information-circle-outline" size={24} color="#E77600" />}
       </View>
       
       <View style={styles.textContainer}>
@@ -46,7 +65,9 @@ const NotificationScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
+          Notifi<Text style={{ color: '#007185' }}>cations</Text>
+        </Animated.Text>
         <TouchableOpacity onPress={markAllAsRead}>
           <Text style={styles.markAllText}>Mark all as read</Text>
         </TouchableOpacity>

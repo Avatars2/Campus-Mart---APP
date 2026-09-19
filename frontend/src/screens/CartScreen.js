@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import styles from './CartScreen.styles';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
@@ -10,8 +10,27 @@ export default function CartScreen({ navigation }) {
   const [cartItems, setCartItems] = useState([]);
   const [savedItems, setSavedItems] = useState([]);
   const [removePromptItem, setRemovePromptItem] = useState(null);
-  const { removeFromCart, removeFromWishlist, addToCart, refreshCounts } = useCartWishlist();
   const [updatingItemId, setUpdatingItemId] = useState(null);
+  const { fetchCounts, refreshCounts, removeFromCart, addToCart, removeFromWishlist } = useCartWishlist();
+
+  const titleFadeAnim = useRef(new Animated.Value(0)).current;
+  const titleSlideAnim = useRef(new Animated.Value(-15)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(titleFadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleSlideAnim, {
+        toValue: 0,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const loadCart = useCallback(async () => {
     const [cartResponse, wishlistResponse] = await Promise.all([
@@ -63,7 +82,6 @@ export default function CartScreen({ navigation }) {
       refreshCounts();
       await handleRemove(itemId);
       setSavedItems((items) => [cartItem.item, ...items.filter((item) => (item.id || item._id) !== itemId)]);
-      Alert.alert('Saved for later', 'Item moved to your Wishlist.');
     } catch (error) {
       Alert.alert('Unable to save item', 'Please try again.');
     }
@@ -171,11 +189,9 @@ export default function CartScreen({ navigation }) {
         </View>
       </Modal>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Cart</Text>
-        <View style={{ width: 24 }} />
+        <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
+          My<Text style={{ color: '#007185' }}>Cart</Text>
+        </Animated.Text>
       </View>
 
       <FlatList
@@ -189,82 +205,108 @@ export default function CartScreen({ navigation }) {
             <Text style={styles.emptyText}>Your cart is empty</Text>
           </View>
         }
-        renderItem={({ item: ci }) => (
-          <View style={[styles.itemCard, !ci.item.is_active && { opacity: 0.6 }]}>
-            <Image source={{ uri: ci.item.images?.[0] || 'https://via.placeholder.com/150' }} style={styles.itemImage} />
-            <View style={styles.itemDetails}>
-              <Text style={styles.itemName} numberOfLines={2}>{ci.item.name}</Text>
-              <Text style={styles.itemPrice}>₹{ci.item.price}</Text>
-              
-              {!ci.item.is_active && (
-                <Text style={styles.unavailableText}>Out of stock (Someone else bought this)</Text>
-              )}
-              <View style={styles.itemActionsRow}>
-                <View style={styles.quantityControl}>
+        renderItem={({ item: ci }) => {
+          const conditionMap = { 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' };
+          const condition = ci.item.condition_rating ? (conditionMap[ci.item.condition_rating] || ci.item.condition_rating.toString().replace('_', ' ')) : '';
+          
+          return (
+            <View style={[styles.itemCard, !ci.item.is_active && { opacity: 0.6 }]}>
+              <View style={styles.itemImageContainer}>
+                <Image source={{ uri: ci.item.images?.[0] || 'https://via.placeholder.com/150' }} style={styles.itemImage} />
+              </View>
+              <View style={styles.itemDetails}>
+                <Text style={styles.itemName} numberOfLines={2}>{ci.item.name}</Text>
+                <Text style={styles.itemPrice}>₹{ci.item.price}</Text>
+                
+                <View style={styles.badgeRow}>
+                  {ci.item.listing_type === 'rent' ? (
+                    <View style={[styles.conditionBadge, { backgroundColor: '#007185' }]}>
+                      <Text style={styles.conditionBadgeText}>{ci.item.is_currently_rented ? 'Rented' : 'Rent'}</Text>
+                    </View>
+                  ) : condition ? (
+                    <View style={styles.conditionBadge}>
+                      <Text style={styles.conditionBadgeText}>{condition}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {ci.item.is_active ? (
+                  <Text style={styles.stockText}>In Stock</Text>
+                ) : (
+                  <Text style={styles.unavailableText}>Currently unavailable.</Text>
+                )}
+
+                <View style={styles.itemActionsRow}>
+                  <View style={styles.quantityControl}>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => updateQuantity(ci, ci.quantity - 1)}
+                      disabled={ci.quantity <= 1 || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
+                      accessibilityLabel="Decrease quantity"
+                    >
+                      <Ionicons name="remove" size={16} color={ci.quantity <= 1 ? '#D5D9D9' : '#0F1111'} />
+                    </TouchableOpacity>
+                    <Text style={styles.quantityValue}>{ci.quantity}</Text>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => updateQuantity(ci, ci.quantity + 1)}
+                      disabled={ci.quantity >= ci.item.quantity || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
+                      accessibilityLabel="Increase quantity"
+                    >
+                      <Ionicons name="add" size={16} color={ci.quantity >= ci.item.quantity ? '#D5D9D9' : '#0F1111'} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.secondaryActions}>
                   <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => updateQuantity(ci, ci.quantity - 1)}
-                    disabled={ci.quantity <= 1 || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
-                    accessibilityLabel="Decrease quantity"
+                    onPress={() => setRemovePromptItem(ci)}
+                    disabled={updatingItemId === (ci.item.id || ci.item._id)}
+                    style={styles.textAction}
                   >
-                    <Ionicons name="remove" size={16} color={ci.quantity <= 1 ? '#B0B7C3' : '#1A1F36'} />
+                    <Text style={styles.textActionLabel}>Delete</Text>
                   </TouchableOpacity>
-                  <Text style={styles.quantityValue}>{ci.quantity}</Text>
+                  
+                  <Text style={styles.textActionSeparator}>|</Text>
+                  
                   <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => updateQuantity(ci, ci.quantity + 1)}
-                    disabled={ci.quantity >= ci.item.quantity || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
-                    accessibilityLabel="Increase quantity"
+                    onPress={() => handleSaveForLater(ci)}
+                    disabled={updatingItemId === (ci.item.id || ci.item._id)}
+                    style={styles.textAction}
                   >
-                    <Ionicons name="add" size={16} color={ci.quantity >= ci.item.quantity ? '#B0B7C3' : '#1A1F36'} />
+                    <Text style={styles.textActionLabel}>Save for later</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.secondaryActions}>
-                <TouchableOpacity
-                  onPress={() => handleSaveForLater(ci)}
-                  disabled={updatingItemId === (ci.item.id || ci.item._id)}
-                  style={styles.textAction}
-                >
-                  <Text style={styles.textActionLabel}>Save for later</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setRemovePromptItem(ci)}
-                  disabled={updatingItemId === (ci.item.id || ci.item._id)}
-                  style={styles.textAction}
-                >
-                  <Text style={styles.removeActionLabel}>Remove</Text>
-                </TouchableOpacity>
-              </View>
             </View>
-            <View style={styles.itemSummary}>
-              <Text style={styles.subtotalLabel}>Subtotal</Text>
-              <Text style={styles.subtotalAmount}>₹{ci.item.price * ci.quantity}</Text>
-            </View>
-          </View>
-        )}
+          );
+        }}
         ListFooterComponent={savedItems.length > 0 ? (
           <View style={styles.savedSection}>
             <View style={styles.savedSectionHeader}>
-              <Ionicons name="bookmark-outline" size={19} color="#0052CC" />
-              <Text style={styles.savedSectionTitle}>Saved for Later</Text>
+              <Text style={styles.savedSectionTitle}>Saved for later ({savedItems.length} items)</Text>
             </View>
             {savedItems.map((item) => {
               const itemId = item.id || item._id;
               return (
                 <View key={itemId} style={styles.savedCard}>
-                  <Image source={{ uri: item.images?.[0] || 'https://via.placeholder.com/100' }} style={styles.savedImage} />
+                  <View style={styles.savedImageContainer}>
+                    <Image source={{ uri: item.images?.[0] || 'https://via.placeholder.com/100' }} style={styles.savedImage} />
+                  </View>
                   <View style={styles.savedDetails}>
                     <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
                     <Text style={styles.itemPrice}>₹{item.price}</Text>
-                    {!item.is_active && <Text style={styles.unavailableText}>Out of stock</Text>}
+                    {item.is_active ? (
+                      <Text style={styles.stockText}>In Stock</Text>
+                    ) : (
+                      <Text style={styles.unavailableText}>Currently unavailable.</Text>
+                    )}
                     <TouchableOpacity
                       style={styles.moveToCartButton}
                       onPress={() => handleMoveSavedToCart(item)}
                       disabled={!item.is_active || updatingItemId === itemId}
                     >
-                      <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
-                      <Text style={styles.moveToCartText}>{item.is_active ? 'Move to Cart' : 'Unavailable'}</Text>
+                      <Text style={styles.moveToCartText}>Move to Cart</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -277,7 +319,7 @@ export default function CartScreen({ navigation }) {
       {cartItems.length > 0 && (
         <View style={styles.footer}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>Subtotal ({cartItems.length} items):</Text>
             <Text style={styles.totalAmount}>₹{total}</Text>
           </View>
           <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>

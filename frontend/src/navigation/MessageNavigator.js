@@ -26,9 +26,7 @@ export default function MessageNavigator() {
         name="MessageList" 
         component={MessageList} 
         options={{ 
-          title: 'Messages',
-          headerBackVisible: false,
-          headerLeft: () => null 
+          headerShown: false
         }} 
       />
       <Stack.Screen 

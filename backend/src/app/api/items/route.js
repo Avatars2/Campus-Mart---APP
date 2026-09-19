@@ -100,9 +100,30 @@ export async function GET(request) {
       }
     }
 
+    const min_price = searchParams.get('min_price');
+    const max_price = searchParams.get('max_price');
+    if (min_price || max_price) {
+      query.price = {};
+      if (min_price) query.price.$gte = Number(min_price);
+      if (max_price) query.price.$lte = Number(max_price);
+    }
+
+    const condition_rating = searchParams.get('condition_rating');
+    if (condition_rating) {
+      // Support comma-separated condition ratings e.g. "4,5"
+      const conditions = condition_rating.split(',').map(Number);
+      query.condition_rating = { $in: conditions };
+    }
+
+    const seller_id = searchParams.get('seller_id');
+    if (seller_id) {
+      query.seller_id = seller_id;
+    }
+
     const items = await Item.find(query)
       .populate('category_id', 'name')
       .populate('seller_id', 'full_name profile_photo_url')
+      .populate('seller_id', 'full_name profile_photo_url phone')
       .sort({ createdAt: -1 });
 
     const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);

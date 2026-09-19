@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -187,7 +187,7 @@ export default function RegisterScreen({ navigation }) {
           )}
 
           <TouchableOpacity style={styles.backButton} onPress={() => (step === 2 ? setStep(1) : navigation.goBack())}>
-            <Ionicons name="arrow-back" size={18} color="rgba(255,255,255,0.65)" style={{ marginRight: 6 }} />
+            <Ionicons name="arrow-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
             <Text style={styles.backButtonText}>{step === 2 ? 'Back to Details' : 'Back to Home'}</Text>
           </TouchableOpacity>
         </ScrollView>

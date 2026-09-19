@@ -64,7 +64,11 @@ const MessageSchema = new mongoose.Schema({
   read: {
     type: Boolean,
     default: false,
-  }
+  },
+  deletedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }]
 }, { timestamps: true });
 
 export default mongoose.models.Message || mongoose.model('Message', MessageSchema);

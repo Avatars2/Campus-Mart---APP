@@ -99,6 +99,7 @@ export async function POST(req) {
 
     if (conversation) {
       conversation.lastMessage = newMessage._id;
+      conversation.deletedBy = []; // Re-show conversation if it was deleted
       await conversation.save();
     } else {
       await Conversation.create({

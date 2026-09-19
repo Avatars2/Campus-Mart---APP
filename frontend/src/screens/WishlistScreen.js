@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl, Modal } from 'react-native';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
 import styles from './WishlistScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
@@ -11,6 +11,25 @@ export default function WishlistScreen({ navigation }) {
   const [cartPromptItem, setCartPromptItem] = useState(null);
   const [removePromptItem, setRemovePromptItem] = useState(null);
   const { removeFromWishlist, addToCart } = useCartWishlist();
+
+  const titleFadeAnim = useRef(new Animated.Value(0)).current;
+  const titleSlideAnim = useRef(new Animated.Value(-15)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(titleFadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleSlideAnim, {
+        toValue: 0,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const loadWishlist = useCallback(async () => {
     const response = await client.get('/wishlist');
@@ -159,11 +178,9 @@ export default function WishlistScreen({ navigation }) {
         </View>
       </Modal>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Wishlist</Text>
-        <View style={{ width: 24 }} />
+        <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
+          My<Text style={{ color: '#007185' }}>Wishlist</Text>
+        </Animated.Text>
       </View>
 
       <FlatList
@@ -177,34 +194,58 @@ export default function WishlistScreen({ navigation }) {
             <Text style={styles.emptyText}>Your wishlist is empty</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={styles.itemCard}>
-            <TouchableOpacity style={styles.itemSummary} onPress={() => handleOpenItem(item)} activeOpacity={0.75}>
-              <Image source={{ uri: item.images?.[0] || 'https://via.placeholder.com/150' }} style={styles.itemImage} />
+        renderItem={({ item }) => {
+          const conditionMap = { 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' };
+          const condition = item.condition_rating ? (conditionMap[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')) : '';
+          
+          return (
+            <View style={styles.itemCard}>
+              <TouchableOpacity style={styles.itemImageContainer} onPress={() => handleOpenItem(item)} activeOpacity={0.75}>
+                <Image source={{ uri: item.images?.[0] || 'https://via.placeholder.com/150' }} style={styles.itemImage} />
+              </TouchableOpacity>
+              
               <View style={styles.itemDetails}>
-                <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.itemPrice}>₹{item.price}</Text>
+                <TouchableOpacity onPress={() => handleOpenItem(item)} activeOpacity={0.75}>
+                  <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.itemPrice}>₹{item.price}</Text>
+                </TouchableOpacity>
 
-                {!item.is_active && (
-                  <Text style={styles.unavailableText}>Out of stock</Text>
+                <View style={styles.badgeRow}>
+                  {item.listing_type === 'rent' ? (
+                    <View style={[styles.conditionBadge, { backgroundColor: '#007185' }]}>
+                      <Text style={styles.conditionBadgeText}>{item.is_currently_rented ? 'Rented' : 'Rent'}</Text>
+                    </View>
+                  ) : condition ? (
+                    <View style={styles.conditionBadge}>
+                      <Text style={styles.conditionBadgeText}>{condition}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {item.is_active ? (
+                  <Text style={styles.stockText}>In Stock</Text>
+                ) : (
+                  <Text style={styles.unavailableText}>Currently unavailable.</Text>
                 )}
+
+                <View style={styles.actionContainer}>
+                  <TouchableOpacity 
+                    style={[styles.cartBtn, !item.is_active && styles.disabledBtn]} 
+                    onPress={() => handleCartPress(item)}
+                    disabled={!item.is_active}
+                    accessibilityLabel="Add to cart"
+                  >
+                    <Text style={styles.cartBtnText}>Add to Cart</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleRemovePress(item)}>
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </TouchableOpacity>
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => handleRemovePress(item)}>
-                <Ionicons name="trash-outline" size={22} color="#FF3B30" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.cartBtn, !item.is_active && styles.disabledBtn]} 
-                onPress={() => handleCartPress(item)}
-                disabled={!item.is_active}
-                accessibilityLabel="Add to cart"
-              >
-                <Ionicons name="cart-outline" size={22} color="#FFF" />
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
+          );
+        }}
       />
     </View>
   );

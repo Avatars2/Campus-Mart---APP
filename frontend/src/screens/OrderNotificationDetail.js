@@ -69,7 +69,7 @@ export default function OrderNotificationDetail({ route, navigation }) {
         : order.status === 'delivered'
           ? 'Item Delivered'
           : 'Pending';
-  const statusColor = order.status === 'completed' ? '#15803D' : order.status === 'pending' ? '#0052CC' : '#B45309';
+  const statusColor = order.status === 'completed' ? '#007600' : order.status === 'pending' ? '#007185' : '#E77600';
   const paymentLabel = order.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item';
 
   return (
@@ -78,7 +78,7 @@ export default function OrderNotificationDetail({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#1A1F36" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Notification</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{notification?.title || 'Order Details'}</Text>
         <View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

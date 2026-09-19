@@ -14,6 +14,10 @@ const ConversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message'
   },
+  deletedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
 }, { timestamps: true });
 
 export default mongoose.models.Conversation || mongoose.model('Conversation', ConversationSchema);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal } from 'react-native';
+import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -148,7 +148,7 @@ export default function BuyScreen({ navigation }) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-  const generateInvoiceHtml = (order) => {
+    const generateInvoiceHtml = (order) => {
     const item = order.item_id && typeof order.item_id === 'object' ? order.item_id : {};
     const buyer = order.buyer_id && typeof order.buyer_id === 'object' ? order.buyer_id : {};
     const seller = order.seller_id && typeof order.seller_id === 'object' ? order.seller_id : {};
@@ -168,36 +168,61 @@ export default function BuyScreen({ navigation }) {
     return `
       <html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><style>
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 36px; color: #1A1F36; font-family: Arial, sans-serif; font-size: 13px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 3px solid #0052CC; padding-bottom: 20px; }
-        .brand { color: #0052CC; font-size: 28px; font-weight: 800; margin: 0 0 5px; }
-        .muted { color: #697386; }
+        body { margin: 0; padding: 36px; color: #0F1111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E5E7EB; padding-bottom: 24px; }
+        .brand { color: #0F1111; font-size: 32px; font-weight: 900; margin: 0 0 4px; letter-spacing: -0.5px; }
+        .brand span { color: #007185; }
+        .muted { color: #565959; }
         .meta { text-align: right; line-height: 1.7; }
-        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 26px 0; }
-        .party { border: 1px solid #D9E2F2; border-radius: 8px; padding: 16px; min-height: 110px; }
-        .party h3 { color: #0052CC; font-size: 12px; margin: 0 0 10px; text-transform: uppercase; }
-        .party strong, .party span { display: block; line-height: 1.6; }
-        .summary { background: #F0F5FF; border-radius: 8px; padding: 14px 16px; margin-bottom: 26px; }
-        .summary span { display: inline-block; margin-right: 28px; line-height: 1.8; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-        th { background: #0052CC; color: white; text-align: left; padding: 11px 10px; }
-        td { border-bottom: 1px solid #E2E8F0; padding: 12px 10px; vertical-align: top; }
-        .amount { font-weight: 700; text-align: right; white-space: nowrap; }
-        .total { text-align: right; font-size: 18px; font-weight: 800; color: #0052CC; }
-        .invoice-actions { margin-top: 28px; text-align: center; }
-        .invoice-actions button { border: 0; border-radius: 6px; background: #0052CC; color: #FFFFFF; cursor: pointer; font-size: 14px; font-weight: 700; padding: 11px 18px; }
-        @media print { .invoice-actions { display: none; } }
+        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 32px 0; }
+        .party { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; min-height: 120px; background: #FAFAFA; }
+        .party h3 { color: #565959; font-size: 12px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .party strong { font-size: 16px; margin-bottom: 8px; display: block; color: #0F1111; }
+        .party span { display: block; line-height: 1.6; color: #565959; }
+        .summary { background: #E6F7F9; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; display: flex; gap: 32px; border: 1px solid #B4E4EA; }
+        .summary div { display: flex; flex-direction: column; }
+        .summary div span:first-child { color: #565959; font-size: 12px; text-transform: uppercase; margin-bottom: 4px; }
+        .summary div span:last-child { font-weight: 700; color: #007185; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        th { background: #F3F4F6; color: #565959; text-align: left; padding: 14px 16px; font-weight: 600; text-transform: uppercase; font-size: 12px; border-bottom: 2px solid #E5E7EB; }
+        td { border-bottom: 1px solid #E5E7EB; padding: 16px; vertical-align: middle; }
+        .amount { font-weight: 700; text-align: right; white-space: nowrap; color: #0F1111; }
+        .total-row { border-top: 2px solid #E5E7EB; margin-top: 16px; padding-top: 24px; display: flex; justify-content: flex-end; align-items: center; }
+        .total-label { font-size: 16px; color: #565959; margin-right: 16px; }
+        .total-amount { font-size: 24px; font-weight: 900; color: #007185; }
+        .details-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 1px solid #E5E7EB; }
+        .details-box p { margin: 0 0 12px 0; }
+        .details-box p:last-child { margin: 0; }
+        .invoice-actions { margin-top: 40px; text-align: center; }
+        .invoice-actions button { border: 0; border-radius: 8px; background: #007185; color: #FFFFFF; cursor: pointer; font-size: 15px; font-weight: 700; padding: 14px 24px; box-shadow: 0 2px 4px rgba(0,113,133,0.2); }
+        @media print { .invoice-actions { display: none; } body { padding: 0; } }
       </style></head><body>
-        <div class="header"><div><p class="brand">CampusMart</p><span class="muted">Student marketplace invoice</span></div><div class="meta"><strong>ORDER INVOICE</strong><br><span class="muted">Issued ${escapeHtml(new Date().toLocaleDateString('en-IN'))}</span></div></div>
+        <div class="header"><div><p class="brand">Campus<span>Mart</span></p><span class="muted">Student Marketplace Invoice</span></div><div class="meta"><strong>ORDER INVOICE</strong><br><span class="muted">Issued ${escapeHtml(new Date().toLocaleDateString('en-IN'))}</span></div></div>
         <div class="parties">
-          <div class="party"><h3>Buyer</h3><strong>${escapeHtml(buyer.full_name || 'Buyer')}</strong><span>Mobile No: ${escapeHtml(buyer.phone)}</span><span>Student ID: ${escapeHtml(buyer.student_id)}</span></div>
-          <div class="party"><h3>Seller</h3><strong>${escapeHtml(seller.full_name || 'Seller')}</strong><span>Mobile No: ${escapeHtml(seller.phone)}</span><span>Student ID: ${escapeHtml(seller.student_id)}</span></div>
+          <div class="party"><h3>Buyer Details</h3><strong>${escapeHtml(buyer.full_name || 'Buyer')}</strong><span>Mobile: ${escapeHtml(buyer.phone)}</span><span>Student ID: ${escapeHtml(buyer.student_id)}</span></div>
+          <div class="party"><h3>Seller Details</h3><strong>${escapeHtml(seller.full_name || 'Seller')}</strong><span>Mobile: ${escapeHtml(seller.phone)}</span><span>Student ID: ${escapeHtml(seller.student_id)}</span></div>
         </div>
-        <div class="summary"><span><strong>Order:</strong> #${escapeHtml(orderNumber)}</span><span><strong>Date:</strong> ${escapeHtml(orderDate)}</span><span><strong>Status:</strong> ${status}</span></div>
-        <table><thead><tr><th>Item</th><th>Quantity</th><th style="text-align:right">Amount</th></tr></thead><tbody><tr><td><strong>${escapeHtml(item.name || 'Item')}</strong></td><td>${order.quantity || 1}</td><td class="amount">₹${escapeHtml(order.total_price)}</td></tr></tbody></table>
-        <p><strong>Delivery:</strong> ${escapeHtml(order.delivery_address || 'Discuss with seller via Messages')}</p>
-        <p><strong>Payment:</strong> ${escapeHtml(payment)}</p>
-        <div class="total">Total amount: ₹${escapeHtml(order.total_price)}</div>
+        <div class="summary">
+          <div><span>Order Number</span><span>#${escapeHtml(orderNumber)}</span></div>
+          <div><span>Order Date</span><span>${escapeHtml(orderDate)}</span></div>
+          <div><span>Status</span><span>${status}</span></div>
+        </div>
+        <table>
+          <thead><tr><th>Item Description</th><th style="text-align:center">Quantity</th><th style="text-align:right">Amount</th></tr></thead>
+          <tbody><tr>
+            <td><strong style="color: #0F1111; font-size: 15px;">${escapeHtml(item.name || 'Item')}</strong></td>
+            <td style="text-align:center; color: #565959;">${order.quantity || 1}</td>
+            <td class="amount">₹${escapeHtml(order.total_price)}</td>
+          </tr></tbody>
+        </table>
+        <div class="details-box">
+          <p><strong>Delivery Details:</strong> ${escapeHtml(order.delivery_address || 'Discuss with seller via Messages')}</p>
+          <p><strong>Payment Method:</strong> ${escapeHtml(payment)}</p>
+        </div>
+        <div class="total-row">
+          <span class="total-label">Total Amount:</span>
+          <span class="total-amount">₹${escapeHtml(order.total_price)}</span>
+        </div>
       </body></html>
     `;
   };
@@ -263,13 +288,28 @@ export default function BuyScreen({ navigation }) {
 
     const otherUser = activeTab === 'purchases' ? item.seller_id : item.buyer_id;
 
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'completed':
+        case 'delivered':
+        case 'rental_active':
+          return { bg: '#E8F5E9', text: '#2E7D32' };
+        case 'return_requested':
+        case 'pending':
+          return { bg: '#FFF8E1', text: '#F59E0B' };
+        default:
+          return { bg: '#F3F4F6', text: '#565959' };
+      }
+    };
+    const statusColors = getStatusColor(item.status);
+
     return (
       <View style={styles.orderCard}>
         <View style={styles.orderHeader}>
           <Text style={styles.orderDate}>{dateString}</Text>
           <View style={styles.orderHeaderActions}>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
+            <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+              <Text style={[styles.statusText, { color: statusColors.text }]}>
                 {item.status === 'completed'
                   ? 'Completed'
                   : item.status === 'return_requested'
@@ -288,7 +328,7 @@ export default function BuyScreen({ navigation }) {
               accessibilityLabel="Generate invoice"
               activeOpacity={0.8}
             >
-              <Ionicons name="receipt-outline" size={19} color="#0052CC" />
+              <Ionicons name="receipt-outline" size={19} color="#007185" />
             </TouchableOpacity>
           </View>
         </View>
@@ -301,14 +341,12 @@ export default function BuyScreen({ navigation }) {
           <View style={styles.orderDetails}>
             <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
             <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
-            <Text style={styles.sellerName}>{item.delivery_address || 'Discuss with seller via Messages'} · {item.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item'}</Text>
             <Text style={styles.itemPrice}>₹{item.total_price}{orderItem.listing_type === 'rent' ? ` / ${orderItem.rental_period || 'day'}` : ''}</Text>
             {orderItem.listing_type === 'rent' && item.rental_due_at && item.status === 'rental_active' && (
-              <View>
+              <View style={{ marginTop: 4 }}>
                 <Text style={styles.sellerName}>
                   {activeTab === 'sales' ? 'Buyer time remaining' : 'Time remaining'}: {formatRentalTimeRemaining(item.rental_due_at)}
                 </Text>
-                <Text style={styles.sellerName}>Return by: {new Date(item.rental_due_at).toLocaleString()}</Text>
               </View>
             )}
           </View>
@@ -327,68 +365,55 @@ export default function BuyScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <Ionicons name="cube-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.completeButtonText}>Mark item delivered</Text>
+              <Text style={styles.completeButtonText}>Mark delivered</Text>
             </TouchableOpacity>
           )}
           {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
-            <View style={styles.receivedGroup}>
-              <Text style={styles.receivedPrompt}>Did you receive this item?</Text>
-              <TouchableOpacity
-                style={styles.confirmReceivedButton}
-                onPress={() => updateOrderStatus(
-                  item,
-                  'completed',
-                  'Confirm item received?',
-                  'Tap Yes to confirm that the item was successfully received.'
-                )}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmReceivedText}>Yes, received</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.confirmReceivedButton}
+              onPress={() => updateOrderStatus(
+                item,
+                'completed',
+                'Confirm item received?',
+                'Tap Yes to confirm that the item was successfully received.'
+              )}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.confirmReceivedText}>Confirm Receipt</Text>
+            </TouchableOpacity>
           )}
           {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type === 'rent' && (
-            <View style={styles.receivedGroup}>
-              <Text style={styles.receivedPrompt}>Did you receive this rental item?</Text>
+            <TouchableOpacity
+              style={styles.confirmReceivedButton}
+              onPress={() => updateOrderStatus(
+                item,
+                'rental_active',
+                'Start rental period?',
+                'Confirm that you received the item. The rental period starts now.'
+              )}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.confirmReceivedText}>Start Rental</Text>
+            </TouchableOpacity>
+          )}
+          {activeTab === 'purchases' && item.status === 'rental_active' && (
+            item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
               <TouchableOpacity
                 style={styles.confirmReceivedButton}
                 onPress={() => updateOrderStatus(
                   item,
-                  'rental_active',
-                  'Start rental period?',
-                  'Confirm that you received the item. The rental period starts now.'
+                  'return_requested',
+                  'Request item return?',
+                  'Confirm that you are returning the item to the seller.'
                 )}
                 activeOpacity={0.8}
               >
-                <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmReceivedText}>Confirm receipt</Text>
+                <Ionicons name="return-down-back-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.confirmReceivedText}>Return item</Text>
               </TouchableOpacity>
-            </View>
-          )}
-          {activeTab === 'purchases' && item.status === 'rental_active' && (
-            <View style={styles.receivedGroup}>
-              <Text style={styles.receivedPrompt}>
-                {item.rental_due_at && new Date(item.rental_due_at).getTime() > currentTime
-                  ? `Time remaining: ${formatRentalTimeRemaining(item.rental_due_at)}`
-                  : 'Rental time has ended. Return the item to the seller.'}
-              </Text>
-              {item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
-                <TouchableOpacity
-                  style={styles.confirmReceivedButton}
-                  onPress={() => updateOrderStatus(
-                    item,
-                    'return_requested',
-                    'Request item return?',
-                    'Confirm that you are returning the item to the seller.'
-                  )}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="return-down-back-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.confirmReceivedText}>Return item</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            ) : null
           )}
           {activeTab === 'sales' && item.status === 'return_requested' && (
             <TouchableOpacity
@@ -405,26 +430,29 @@ export default function BuyScreen({ navigation }) {
               <Text style={styles.completeButtonText}>Confirm return</Text>
             </TouchableOpacity>
           )}
-          {activeTab === 'purchases' && item.status === 'completed' && (
-            <View style={styles.completedGroup}>
-              <View style={styles.successMessage}>
-                <Ionicons name="checkmark-circle" size={17} color="#15803D" style={{ marginRight: 6 }} />
-                <Text style={styles.successMessageText}>{orderItem.listing_type === 'rent' ? 'Rental completed' : 'Transaction successful'}</Text>
-              </View>
-              {item.buyer_rating ? (
-                <View style={styles.ratingSubmitted}>
-                  <Text style={styles.ratingSubmittedLabel}>Your rating:</Text>
-                  <RatingStars value={item.buyer_rating} count={0} size={13} showCount={false} />
-                </View>
-              ) : null}
-            </View>
-          )}
+          
+          <TouchableOpacity 
+            style={[styles.messageButton, { backgroundColor: '#F3F4F6' }]}
+            onPress={() => {
+              if (otherUser?.phone) {
+                Linking.openURL(`tel:${otherUser.phone}`).catch(() => {
+                  Alert.alert('Error', 'Unable to make a call at this time.');
+                });
+              } else {
+                Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.');
+              }
+            }}
+          >
+            <Ionicons name="call-outline" size={16} color="#0F1111" style={{ marginRight: 6 }} />
+            <Text style={[styles.messageButtonText, { color: '#0F1111' }]}>Call</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity 
             style={styles.messageButton}
             onPress={() => handleMessageUser(otherUser, orderItem)}
           >
-            <Ionicons name="chatbubble-outline" size={16} color="#0052CC" style={{ marginRight: 6 }} />
-            <Text style={styles.messageButtonText}>Message {activeTab === 'purchases' ? 'Seller' : 'Buyer'}</Text>
+            <Ionicons name="chatbubble-outline" size={16} color="#007185" style={{ marginRight: 6 }} />
+            <Text style={styles.messageButtonText}>Message</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -517,7 +545,7 @@ export default function BuyScreen({ navigation }) {
         </View>
       </Modal>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Orders</Text>
+        <Text style={styles.headerTitle}>My<Text style={{ color: '#007185' }}>Orders</Text></Text>
       </View>
       
       <View style={styles.tabContainer}>
@@ -574,5 +602,8 @@ export default function BuyScreen({ navigation }) {
     </SafeAreaView>
   );
 }
+
+
+
 
 

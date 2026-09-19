@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     flexGrow: 1,
@@ -20,19 +20,19 @@ export default StyleSheet.create({
     width: '100%',
   },
   logoContainer: {
-    width: 108,
-    height: 108,
+    width: 96,
+    height: 96,
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    padding: 6,
+    marginBottom: 14,
+    padding: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowRadius: 14,
+    elevation: 8,
   },
   logoImage: {
     width: '100%',
@@ -42,14 +42,14 @@ export default StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.ink,
     marginBottom: 8,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.muted,
     textAlign: 'center',
     paddingHorizontal: 16,
     lineHeight: 22,
@@ -157,7 +157,7 @@ export default StyleSheet.create({
   },
   backButtonText: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.65)',
+    color: colors.muted,
     fontWeight: '600',
   },
 });

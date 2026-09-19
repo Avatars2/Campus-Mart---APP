@@ -3,80 +3,79 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
+    paddingBottom: 10,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F1111',
+    marginBottom: 4,
   },
   markAllText: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: '#007185', // Amazon link blue
+    fontSize: 13,
+    marginBottom: 6,
   },
   listContainer: {
-    padding: 10,
+    paddingBottom: 20, // Replaced padding: 10 with paddingBottom to allow full width borders
   },
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'flex-start', // Align to top for better text flow
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   unreadCard: {
-    backgroundColor: '#E8F2FF', // Very light blue to denote unread
+    backgroundColor: '#F7FAFA', // Very subtle light gray/blue tint for unread
   },
   iconContainer: {
     width: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
-    paddingHorizontal: 10,
+    justifyContent: 'flex-start',
   },
   title: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    color: '#0F1111',
     marginBottom: 4,
+    lineHeight: 22,
   },
   unreadText: {
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '700',
   },
   body: {
     fontSize: 14,
-    color: '#666',
+    color: '#565959',
     marginBottom: 6,
+    lineHeight: 20,
   },
   time: {
     fontSize: 12,
-    color: '#999',
+    color: '#565959',
   },
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#007AFF',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E77600', // Amazon orange
+    marginLeft: 8,
+    marginTop: 6,
   },
   emptyContainer: {
     flex: 1,
@@ -85,7 +84,7 @@ export default StyleSheet.create({
   },
   emptyText: {
     marginTop: 15,
-    fontSize: 18,
-    color: '#999',
+    fontSize: 16,
+    color: '#565959',
   },
 });

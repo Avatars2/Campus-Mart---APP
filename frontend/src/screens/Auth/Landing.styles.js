@@ -1,5 +1,7 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
+
+const { width, height } = Dimensions.get('window');
 
 export default StyleSheet.create({
   container: {
@@ -21,24 +23,22 @@ export default StyleSheet.create({
     paddingBottom: 40, // Increased bottom padding to prevent overlap
   },
   logoContainer: {
-    width: 108,
-    height: 108,
-    backgroundColor: '#FFFFFF',   // White background so navy logo is visible
-    borderRadius: 28,
+    width: 110,
+    height: 110,
+    backgroundColor: 'transparent', // Removing white background so the icon itself acts as the logo
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    padding: 6,
+    marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
     elevation: 10,
   },
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
+    borderRadius: 28, // Matches typical icon radius
   },
   title: {
     fontSize: 40,

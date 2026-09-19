@@ -1,20 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, Animated, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Animated, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import styles from './Landing.styles';
 
+const { height } = Dimensions.get('window');
+
 export default function LandingScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(60)).current;
-
-  // Create staggered animations for 3 features + 2 buttons
+  
+  // Create staggered animations for the 3 features and 2 buttons
   const staggerItems = useRef([...Array(5)].map(() => new Animated.Value(0))).current;
   const staggerSlides = useRef([...Array(5)].map(() => new Animated.Value(30))).current;
 
   useEffect(() => {
-    // 1. Base layout: hero fade + card slide up
+    // Base layout animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -25,28 +27,25 @@ export default function LandingScreen({ navigation }) {
         toValue: 0,
         duration: 700,
         useNativeDriver: true,
-      }),
+      })
     ]).start();
 
-    // 2. Staggered children: wait for card to finish (700ms), then cascade in
-    const staggerAnimations = staggerItems.map((anim, index) =>
+    // Staggered children animations
+    Animated.stagger(100, staggerItems.map((anim, index) => 
       Animated.parallel([
         Animated.timing(anim, {
           toValue: 1,
-          duration: 500,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(staggerSlides[index], {
           toValue: 0,
-          duration: 500,
+          duration: 600,
           useNativeDriver: true,
-        }),
+        })
       ])
-    );
-
-    const staggerSequence = Animated.stagger(90, staggerAnimations);
-    setTimeout(() => staggerSequence.start(), 700);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    )).start();
+  }, [fadeAnim, slideAnim, staggerItems, staggerSlides]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

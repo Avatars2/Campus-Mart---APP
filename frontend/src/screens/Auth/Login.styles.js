@@ -1,10 +1,10 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     flexGrow: 1,
@@ -43,14 +43,14 @@ export default StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.ink,
     marginBottom: 8,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.muted,
     textAlign: 'center',
     paddingHorizontal: 16,
     lineHeight: 22,
@@ -167,7 +167,7 @@ export default StyleSheet.create({
   },
   backButtonText: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.65)',
+    color: colors.muted,
     fontWeight: '600',
   },
 });

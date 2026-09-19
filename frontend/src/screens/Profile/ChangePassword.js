@@ -69,9 +69,9 @@ export default function ChangePasswordScreen({ navigation }) {
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+          <Ionicons name="arrow-back" size={24} color="#0F1111" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Security</Text>
+        <Text style={styles.headerTitle}>Change<Text style={{ color: '#007185' }}>Password</Text></Text>
       </View>
 
       <KeyboardAvoidingView 
@@ -81,7 +81,7 @@ export default function ChangePasswordScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
           <View style={styles.headerIcon}>
-            <Ionicons name="shield-checkmark" size={32} color="#7C3AED" />
+            <Ionicons name="shield-checkmark" size={32} color="#007185" />
           </View>
 
           <Text style={styles.pageTitle}>Change Password</Text>
