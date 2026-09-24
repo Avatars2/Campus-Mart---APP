@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking } from 'react-native';
+import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ export default function BuyScreen({ navigation }) {
   const [ratingPrompt, setRatingPrompt] = useState(null);
   const [selectedRating, setSelectedRating] = useState(0);
   const [invoiceLoading, setInvoiceLoading] = useState(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const fetchOrders = async () => {
@@ -278,66 +279,177 @@ export default function BuyScreen({ navigation }) {
     },
   ].filter((section) => section.data.length > 0);
 
-  const renderOrderItem = ({ item }) => {
+    const renderOrderDetailsModal = () => {
+    if (!selectedOrderDetails) return null;
+    const item = selectedOrderDetails;
     const orderItem = item.item_id || {};
     const seller = item.seller_id || {};
-    
-    // Format date beautifully
+    const otherUser = activeTab === 'purchases' ? item.seller_id : item.buyer_id;
     const date = new Date(item.createdAt);
     const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-    const otherUser = activeTab === 'purchases' ? item.seller_id : item.buyer_id;
+    const formatDateTime = (dateStr) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    };
+    const orderDateString = formatDateTime(item.createdAt);
+    const updatedDateString = formatDateTime(item.updatedAt);
 
     const getStatusColor = (status) => {
       switch (status) {
-        case 'completed':
-        case 'delivered':
-        case 'rental_active':
-          return { bg: '#E8F5E9', text: '#2E7D32' };
-        case 'return_requested':
-        case 'pending':
-          return { bg: '#FFF8E1', text: '#F59E0B' };
-        default:
-          return { bg: '#F3F4F6', text: '#565959' };
+        case 'completed': case 'delivered': case 'rental_active': return { bg: '#E8F5E9', text: '#2E7D32' };
+        case 'return_requested': case 'pending': return { bg: '#FFF8E1', text: '#F59E0B' };
+        default: return { bg: '#F3F4F6', text: '#565959' };
       }
     };
     const statusColors = getStatusColor(item.status);
 
     return (
-      <View style={styles.orderCard}>
+      <Modal visible={true} transparent animationType="slide" onRequestClose={() => setSelectedOrderDetails(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#111827' }}>Order Details</Text>
+              <TouchableOpacity onPress={() => setSelectedOrderDetails(null)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Placed: {orderDateString}</Text>
+                  {item.status === 'completed' && (
+                    <Text style={{ fontSize: 13, color: '#059669', fontWeight: '500' }}>Confirmed: {updatedDateString}</Text>
+                  )}
+                  {item.status === 'delivered' && (
+                    <Text style={{ fontSize: 13, color: '#059669', fontWeight: '500' }}>Delivered: {updatedDateString}</Text>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColors.bg, marginRight: 12 }]}>
+                    <Text style={[styles.statusText, { color: statusColors.text }]}>
+                      {item.status === 'completed' ? 'Completed' : item.status === 'return_requested' ? 'Return requested' : item.status === 'rental_active' ? 'Rental active' : item.status === 'delivered' ? 'Delivered' : 'Pending'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.invoiceIconButton}
+                    onPress={() => handleInvoice(item)}
+                    disabled={invoiceLoading === (item._id || item.id)}
+                    activeOpacity={0.8}
+                  >
+                    {invoiceLoading === (item._id || item.id) ? (
+                      <ActivityIndicator size="small" color="#007185" />
+                    ) : (
+                      <Ionicons name="receipt-outline" size={19} color="#007185" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={[styles.orderContent, { borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 16, marginBottom: 16 }]}>
+                <Image source={{ uri: orderItem.images?.[0] || 'https://via.placeholder.com/100' }} style={styles.itemImage} />
+                <View style={styles.orderDetails}>
+                  <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
+                  <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
+                  <Text style={styles.itemPrice}>₹{item.total_price}{orderItem.listing_type === 'rent' ? ` / ${orderItem.rental_period || 'day'}` : ''}</Text>
+                  {orderItem.listing_type === 'rent' && item.rental_due_at && item.status === 'rental_active' && (
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={styles.sellerName}>
+                        {activeTab === 'sales' ? 'Buyer time remaining' : 'Time remaining'}: {formatRentalTimeRemaining(item.rental_due_at)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#111827' }}>Actions</Text>
+              
+              <View style={{ gap: 12 }}>
+                {activeTab === 'sales' && item.status === 'pending' && (
+                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'delivered', 'Mark item as delivered?', 'Confirm that you delivered this item to the buyer.'); }}>
+                    <Ionicons name="cube-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.completeButtonText}>Mark delivered</Text>
+                  </TouchableOpacity>
+                )}
+                {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
+                  <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item received?', 'Tap Yes to confirm that the item was successfully received.'); }}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.confirmReceivedText}>Confirm Receipt</Text>
+                  </TouchableOpacity>
+                )}
+                {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type === 'rent' && (
+                  <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'rental_active', 'Start rental period?', 'Confirm that you received the item. The rental period starts now.'); }}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.confirmReceivedText}>Start Rental</Text>
+                  </TouchableOpacity>
+                )}
+                {activeTab === 'purchases' && item.status === 'rental_active' && (
+                  item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
+                    <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'return_requested', 'Request item return?', 'Confirm that you are returning the item to the seller.'); }}>
+                      <Ionicons name="return-down-back-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.confirmReceivedText}>Return item</Text>
+                    </TouchableOpacity>
+                  ) : null
+                )}
+                {activeTab === 'sales' && item.status === 'return_requested' && (
+                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item returned?', 'Confirm that you received the returned rental item from the buyer.'); }}>
+                    <Ionicons name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.completeButtonText}>Confirm return</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <TouchableOpacity style={[styles.messageButton, { flex: 1, backgroundColor: '#F3F4F6' }]} onPress={() => {
+                    if (otherUser?.phone) { Linking.openURL(`tel:${otherUser.phone}`); } else { Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.'); }
+                  }}>
+                    <Ionicons name="call-outline" size={18} color="#0F1111" style={{ marginRight: 8 }} />
+                    <Text style={[styles.messageButtonText, { color: '#0F1111' }]}>Call</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={[styles.messageButton, { flex: 1 }]} onPress={() => { setSelectedOrderDetails(null); handleMessageUser(otherUser, orderItem); }}>
+                    <Ionicons name="chatbubble-outline" size={18} color="#007185" style={{ marginRight: 8 }} />
+                    <Text style={styles.messageButtonText}>Message</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderOrderItem = ({ item }) => {
+    const orderItem = item.item_id || {};
+    const date = new Date(item.createdAt);
+    const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const otherUser = activeTab === 'purchases' ? item.seller_id : item.buyer_id;
+
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'completed': case 'delivered': case 'rental_active': return { bg: '#E8F5E9', text: '#2E7D32' };
+        case 'return_requested': case 'pending': return { bg: '#FFF8E1', text: '#F59E0B' };
+        default: return { bg: '#F3F4F6', text: '#565959' };
+      }
+    };
+    const statusColors = getStatusColor(item.status);
+
+    return (
+      <TouchableOpacity style={styles.orderCard} onPress={() => setSelectedOrderDetails(item)} activeOpacity={0.7}>
         <View style={styles.orderHeader}>
           <Text style={styles.orderDate}>{dateString}</Text>
           <View style={styles.orderHeaderActions}>
             <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
               <Text style={[styles.statusText, { color: statusColors.text }]}>
-                {item.status === 'completed'
-                  ? 'Completed'
-                  : item.status === 'return_requested'
-                    ? 'Return requested'
-                    : item.status === 'rental_active'
-                      ? 'Rental active'
-                      : item.status === 'delivered'
-                        ? 'Delivered'
-                        : 'Pending'}
+                {item.status === 'completed' ? 'Completed' : item.status === 'return_requested' ? 'Return requested' : item.status === 'rental_active' ? 'Rental active' : item.status === 'delivered' ? 'Delivered' : 'Pending'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.invoiceIconButton}
-              onPress={() => handleInvoice(item)}
-              disabled={invoiceLoading === (item._id || item.id)}
-              accessibilityLabel="Generate invoice"
-              activeOpacity={0.8}
-            >
-              <Ionicons name="receipt-outline" size={19} color="#007185" />
-            </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.orderContent}>
-          <Image 
-            source={{ uri: orderItem.images?.[0] || 'https://via.placeholder.com/100' }} 
-            style={styles.itemImage} 
-          />
+          <Image source={{ uri: orderItem.images?.[0] || 'https://via.placeholder.com/100' }} style={styles.itemImage} />
           <View style={styles.orderDetails}>
             <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
             <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
@@ -351,111 +463,7 @@ export default function BuyScreen({ navigation }) {
             )}
           </View>
         </View>
-
-        <View style={styles.orderFooter}>
-          {activeTab === 'sales' && item.status === 'pending' && (
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => updateOrderStatus(
-                item,
-                'delivered',
-                'Mark item as delivered?',
-                'Confirm that you delivered this item to the buyer.'
-              )}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="cube-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.completeButtonText}>Mark delivered</Text>
-            </TouchableOpacity>
-          )}
-          {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
-            <TouchableOpacity
-              style={styles.confirmReceivedButton}
-              onPress={() => updateOrderStatus(
-                item,
-                'completed',
-                'Confirm item received?',
-                'Tap Yes to confirm that the item was successfully received.'
-              )}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.confirmReceivedText}>Confirm Receipt</Text>
-            </TouchableOpacity>
-          )}
-          {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type === 'rent' && (
-            <TouchableOpacity
-              style={styles.confirmReceivedButton}
-              onPress={() => updateOrderStatus(
-                item,
-                'rental_active',
-                'Start rental period?',
-                'Confirm that you received the item. The rental period starts now.'
-              )}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.confirmReceivedText}>Start Rental</Text>
-            </TouchableOpacity>
-          )}
-          {activeTab === 'purchases' && item.status === 'rental_active' && (
-            item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
-              <TouchableOpacity
-                style={styles.confirmReceivedButton}
-                onPress={() => updateOrderStatus(
-                  item,
-                  'return_requested',
-                  'Request item return?',
-                  'Confirm that you are returning the item to the seller.'
-                )}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="return-down-back-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmReceivedText}>Return item</Text>
-              </TouchableOpacity>
-            ) : null
-          )}
-          {activeTab === 'sales' && item.status === 'return_requested' && (
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => updateOrderStatus(
-                item,
-                'completed',
-                'Confirm item returned?',
-                'Confirm that you received the returned rental item from the buyer.'
-              )}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="checkmark-done-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.completeButtonText}>Confirm return</Text>
-            </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity 
-            style={[styles.messageButton, { backgroundColor: '#F3F4F6' }]}
-            onPress={() => {
-              if (otherUser?.phone) {
-                Linking.openURL(`tel:${otherUser.phone}`).catch(() => {
-                  Alert.alert('Error', 'Unable to make a call at this time.');
-                });
-              } else {
-                Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.');
-              }
-            }}
-          >
-            <Ionicons name="call-outline" size={16} color="#0F1111" style={{ marginRight: 6 }} />
-            <Text style={[styles.messageButtonText, { color: '#0F1111' }]}>Call</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.messageButton}
-            onPress={() => handleMessageUser(otherUser, orderItem)}
-          >
-            <Ionicons name="chatbubble-outline" size={16} color="#007185" style={{ marginRight: 6 }} />
-            <Text style={styles.messageButtonText}>Message</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -481,6 +489,7 @@ export default function BuyScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {renderOrderDetailsModal()}
       <Modal
         visible={Boolean(confirmation)}
         transparent

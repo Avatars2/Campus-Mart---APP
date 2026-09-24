@@ -6,7 +6,7 @@ import client from '../../api/client';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 
 export default function CheckoutScreen({ route, navigation }) {
-  const { checkoutItems = [], fromCart = false } = route.params || {};
+  const { checkoutItems = [], fromCart = false, offerPayload = null } = route.params || {};
   const { refreshCounts } = useCartWishlist();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -51,6 +51,11 @@ export default function CheckoutScreen({ route, navigation }) {
       if (res.status === 201 || res.status === 200) {
         if (fromCart) {
           refreshCounts();
+        }
+        if (offerPayload) {
+          try {
+            await client.post('/messages', { action: 'accept_offer', ...offerPayload });
+          } catch (e) { console.log('Failed to accept offer status', e); }
         }
         navigation.replace('OrderSuccess', {
           orders: res.data.orders,

@@ -11,7 +11,15 @@ export default function SellScreen({ navigation }) {
     const response = await client.get('/items/my-items');
     return response.data;
   }, []);
-  const saveItems = useCallback((value) => setItems(value), []);
+  const saveItems = useCallback((value) => {
+    // Sort items: active first, then sold/inactive
+    const sortedItems = [...value].sort((a, b) => {
+      if (a.is_active && !b.is_active) return -1;
+      if (!a.is_active && b.is_active) return 1;
+      return 0;
+    });
+    setItems(sortedItems);
+  }, []);
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadItems, saveItems);
 
   const renderItem = ({ item }) => {

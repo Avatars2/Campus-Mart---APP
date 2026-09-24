@@ -131,7 +131,8 @@ export default StyleSheet.create({
   menuValue: {
     fontSize: 15,
     color: '#6B7280',
-    maxWidth: '50%',
+    maxWidth: '70%',
+    textAlign: 'right',
   },
   logoutButton: {
     flexDirection: 'row',

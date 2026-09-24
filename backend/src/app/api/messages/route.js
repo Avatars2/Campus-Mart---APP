@@ -62,8 +62,63 @@ export async function POST(req) {
           bytes: file.size,
         });
       }
-    } else {
-      ({ senderId, receiverId, itemId, content = '' } = await req.json());
+} else {
+      const body = await req.json();
+      
+      // -- INJECTED OFFER LOGIC --
+      if (body.action === 'create_offer') {
+        const { senderId, receiverId, itemId, offerPrice } = body;
+        if (!senderId || !receiverId || !itemId || !offerPrice) return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
+        const Item = require('@/models/Item').default || require('@/models/Item');
+        const item = await Item.findById(itemId);
+        if (!item) return NextResponse.json({ success: false, message: 'Item not found' }, { status: 404 });
+        if (item.seller_id.toString() !== senderId) return NextResponse.json({ success: false, message: 'Only the seller can send an offer' }, { status: 403 });
+
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        const newMessage = await Message.create({
+          sender: senderId, receiver: receiverId, item: itemId,
+          content: `I've sent you a custom offer for ₹${offerPrice}!`,
+          isSystemMessage: true,
+          offer: { price: offerPrice, expiresAt, status: 'PENDING' }
+        });
+        
+        let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] }, item: itemId });
+        if (conversation) { conversation.lastMessage = newMessage._id; conversation.deletedBy = []; await conversation.save(); }
+        else { await Conversation.create({ participants: [senderId, receiverId], item: itemId, lastMessage: newMessage._id }); }
+        
+        const channelName = `chat-${itemId}-${[senderId, receiverId].sort().join('-')}`;
+        const populatedMessage = await Message.findById(newMessage._id).populate('sender', 'full_name profile_photo_url').populate('receiver', 'full_name profile_photo_url');
+        await pusherServer.trigger(channelName, 'new-message', populatedMessage);
+        await pusherServer.trigger(`user-${receiverId}`, 'conversation-update', { type: 'new_message', conversationId: conversation?._id });
+        return NextResponse.json({ success: true, message: populatedMessage }, { status: 201 });
+      }
+
+      if (body.action === 'accept_offer') {
+        const { messageId, userId } = body;
+        if (!messageId || !userId) return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
+        const message = await Message.findById(messageId).populate('sender receiver');
+        if (!message || !message.isSystemMessage || !message.offer) return NextResponse.json({ success: false, message: 'Invalid offer' }, { status: 400 });
+        if (message.receiver._id.toString() !== userId) return NextResponse.json({ success: false, message: 'Only receiver can accept' }, { status: 403 });
+        if (message.offer.status !== 'PENDING') return NextResponse.json({ success: false, message: `Offer is ${message.offer.status}` }, { status: 400 });
+        
+        if (new Date() > new Date(message.offer.expiresAt)) {
+          message.offer.status = 'EXPIRED'; await message.save();
+          const channelName = `chat-${message.item.toString()}-${[message.sender._id.toString(), message.receiver._id.toString()].sort().join('-')}`;
+          await pusherServer.trigger(channelName, 'offer-updated', message);
+          return NextResponse.json({ success: false, message: 'Expired' }, { status: 400 });
+        }
+        
+        message.offer.status = 'ACCEPTED'; await message.save();
+        const channelName = `chat-${message.item.toString()}-${[message.sender._id.toString(), message.receiver._id.toString()].sort().join('-')}`;
+        await pusherServer.trigger(channelName, 'offer-updated', message);
+        return NextResponse.json({ success: true, message }, { status: 200 });
+      }
+      // -- END INJECTED OFFER LOGIC --
+
+      senderId = body.senderId;
+      receiverId = body.receiverId;
+      itemId = body.itemId;
+      content = body.content || '';
     }
 
     if (!senderId || !receiverId || !itemId || (!content.trim() && attachments.length === 0)) {
@@ -129,3 +184,5 @@ export async function POST(req) {
     return NextResponse.json({ success: false, message: 'Server Error' }, { status: 500 });
   }
 }
+
+

@@ -49,12 +49,14 @@ export async function POST(request) {
         return NextResponse.json({ error: `Choose a valid rental duration for ${dbItem.name}` }, { status: 400 });
       }
 
+      const itemPrice = itemData.price !== undefined ? Number(itemData.price) : dbItem.price;
+
       const order = await Order.create({
         buyer_id,
         seller_id: dbItem.seller_id,
         item_id: dbItem._id,
         quantity: 1,
-        total_price: dbItem.listing_type === 'rent' ? dbItem.price * rentalDuration : dbItem.price,
+        total_price: dbItem.listing_type === 'rent' ? itemPrice * rentalDuration : itemPrice,
         rental_duration: rentalDuration,
         payment_method: payment_method || 'Cash',
         delivery_address: delivery_address || 'Campus Pickup',

@@ -95,10 +95,15 @@ export default StyleSheet.create({
     paddingBottom: 7,
     borderRadius: 18,
     marginBottom: 9,
-    shadowColor: '#1D2B24',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+    ...Platform.select({
+      web: { boxShadow: '0px 1px 3px rgba(29, 43, 36, 0.06)' },
+      default: {
+        shadowColor: '#1D2B24',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3
+      }
+    }),
     elevation: 1,
   },
   myMessage: {
@@ -231,10 +236,15 @@ export default StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: '#00A884',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
+    ...Platform.select({
+      web: { boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.15)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2
+      }
+    }),
     elevation: 2,
   },
   attachMenuContainer: {
@@ -248,10 +258,15 @@ export default StyleSheet.create({
     paddingBottom: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.15)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10
+      }
+    }),
     elevation: 5,
     zIndex: 100,
   },
@@ -359,4 +374,58 @@ export default StyleSheet.create({
     color: '#565959',
     marginTop: 2,
   },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 340,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0F1111',
+    marginBottom: 16,
+  },
+  deleteModalOption: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  deleteModalText: {
+    fontSize: 16,
+    color: '#0F1111',
+  },
+  deleteModalCancelBtn: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  deleteModalCancelText: {
+    fontSize: 16,
+    color: '#007185',
+    fontWeight: 'bold',
+  },
+  contactModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  contactModalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: '60%',
+    padding: 16,
+  },
+  locModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  }
 });

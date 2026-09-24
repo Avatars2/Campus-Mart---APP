@@ -11,6 +11,7 @@ import useScreenRefresh from '../../hooks/useScreenRefresh';
 const MessageList = () => {
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('Buying');
   const { user } = useContext(AuthContext);
   const userId = user?.id;
   const navigation = useNavigation();
@@ -62,7 +63,14 @@ const MessageList = () => {
   }, [userId, refresh]);
   const filteredConversations = conversations.filter(item => {
     const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
-    return otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // The owner can be an object (if populated) or string ID. We'll check its ID just in case.
+    const ownerId = item.item?.seller_id?._id || item.item?.seller_id?.id || item.item?.seller_id;
+    const isOwner = ownerId === userId;
+    
+    const matchesTab = activeTab === 'Selling' ? isOwner : !isOwner;
+    return matchesSearch && matchesTab;
   });
 
   const handleLongPress = (item) => {
@@ -100,7 +108,7 @@ const MessageList = () => {
     const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
     const lastMessage = item.lastMessage;
     const attachmentCount = lastMessage?.attachments?.length || (lastMessage?.attachment?.url ? 1 : 0);
-    const previewText = lastMessage?.content
+    const previewText = (lastMessage?.content ? lastMessage.content.replace(/â,¹/g, '₹').replace(/â‚¹/g, '₹').replace(/,1/g, '₹') : '')
       || (attachmentCount > 1 ? `${attachmentCount} attachments` : lastMessage?.attachments?.[0]?.fileName || lastMessage?.attachment?.fileName)
       || 'Attachment';
     
@@ -112,13 +120,17 @@ const MessageList = () => {
         style={styles.conversationItem}
         onLongPress={() => handleLongPress(item)}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('ChatThread', {
-          itemId: item.item?._id || item.item?.id,
-          otherUserId: otherParticipant?._id || otherParticipant?.id,
-          itemName: item.item?.name,
-          otherUserName: otherParticipant?.full_name,
-          otherUserPhoto: otherParticipant?.profile_photo_url || null,
-        })}
+        onPress={() => {
+          const ownerId = item.item?.seller_id?._id || item.item?.seller_id?.id || item.item?.seller_id;
+          navigation.navigate('ChatThread', {
+            itemId: item.item?._id || item.item?.id,
+            otherUserId: otherParticipant?._id || otherParticipant?.id,
+            itemName: item.item?.name,
+            otherUserName: otherParticipant?.full_name,
+            otherUserPhoto: otherParticipant?.profile_photo_url || null,
+            isOwnItem: String(ownerId) === String(userId)
+          });
+        }}
       >
         <Image 
           source={{ uri: otherParticipant?.profile_photo_url || 'https://via.placeholder.com/50' }} 
@@ -196,6 +208,21 @@ const MessageList = () => {
             </TouchableOpacity>
           )}
         </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+        <TouchableOpacity 
+          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: activeTab === 'Buying' ? 2 : 0, borderBottomColor: '#007185' }}
+          onPress={() => setActiveTab('Buying')}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '600', color: activeTab === 'Buying' ? '#007185' : '#565959' }}>Buying</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: activeTab === 'Selling' ? 2 : 0, borderBottomColor: '#007185' }}
+          onPress={() => setActiveTab('Selling')}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '600', color: activeTab === 'Selling' ? '#007185' : '#565959' }}>Selling</Text>
+        </TouchableOpacity>
       </View>
       
       {filteredConversations.length === 0 ? (

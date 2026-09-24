@@ -224,33 +224,7 @@ export default function EditProfileScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionLabel}>Account (Read-Only)</Text>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>College Email</Text>
-              <View style={[styles.inputWrapper, styles.inputWrapperDisabled]}>
-                <Ionicons name="mail-outline" size={20} color="#A0A8B8" style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.inputDisabled]}
-                  value={profile.email}
-                  editable={false}
-                />
-                <Ionicons name="lock-closed" size={16} color="#CBD5E1" style={styles.lockIcon} />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Student ID</Text>
-              <View style={[styles.inputWrapper, styles.inputWrapperDisabled]}>
-                <Ionicons name="id-card-outline" size={20} color="#A0A8B8" style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.inputDisabled]}
-                  value={profile.student_id}
-                  editable={false}
-                />
-                <Ionicons name="lock-closed" size={16} color="#CBD5E1" style={styles.lockIcon} />
-              </View>
-            </View>
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Image, Platform } from 'react-native';
 import styles from './OrderSuccessScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,7 +63,7 @@ export default function OrderSuccessScreen({ route, navigation }) {
           <td><strong>${escapeHtml(itemName)}</strong><small>Order #${escapeHtml(String(order.id || order._id || '').slice(-8))}</small></td>
           <td>${escapeHtml(sellerName)}<small>${escapeHtml(seller.phone || seller.email || 'Contact through Messages')}</small></td>
           <td>${order.quantity || 1}</td>
-          <td class="amount">₹${order.total_price}</td>
+          <td class="amount">₹{order.total_price}</td>
         </tr>
       `;
     }).join('');
@@ -109,7 +109,7 @@ export default function OrderSuccessScreen({ route, navigation }) {
         </div>
         <div class="summary"><span><strong>Delivery:</strong> ${escapeHtml(deliveryLabel)}</span><span><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</span><span><strong>Status:</strong> Pending seller confirmation</span></div>
         <table><thead><tr><th>#</th><th>Item</th><th>Seller</th><th>Qty</th><th style="text-align:right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
-        <div class="total">Total amount: ₹${totalAmount}</div>
+        <div class="total">Total amount: ₹{totalAmount}</div>
       </body>
       </html>
     `;
@@ -248,4 +248,6 @@ export default function OrderSuccessScreen({ route, navigation }) {
     </SafeAreaView>
   );
 }
+
+
 

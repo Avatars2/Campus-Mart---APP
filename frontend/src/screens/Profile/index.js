@@ -94,7 +94,7 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons name="mail" size={20} color="#007185" />
               </View>
               <Text style={styles.menuText}>Email</Text>
-              <Text style={styles.menuValue} numberOfLines={1}>{profile.email}</Text>
+              <Text style={styles.menuValue}>{profile.email}</Text>
             </View>
             <View style={[styles.menuItem, styles.menuItemLast]}>
               <View style={styles.menuIconContainer}>

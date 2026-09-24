@@ -1,7 +1,8 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useContext } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Modal, TextInput, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../../context/CartWishlistContext';
+import { AuthContext } from '../../context/AuthContext';
 import styles from './ProductDetail.styles';
 import RatingStars from '../../components/commerce/RatingStars';
 
@@ -10,9 +11,10 @@ const { width } = Dimensions.get('window');
 export default function ProductDetailScreen({ route, navigation }) {
   const { item } = route.params;
   const { addToCart, toggleWishlist, wishlistItemIds } = useCartWishlist();
+  const { user } = useContext(AuthContext);
+  
   const [activeSlide, setActiveSlide] = useState(0);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  const [wishlistModalVisible, setWishlistModalVisible] = useState(false);
   const [wishlistUpdating, setWishlistUpdating] = useState(false);
 
   useLayoutEffect(() => {
@@ -39,17 +41,16 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const itemId = item.id || item._id;
   const isWishlisted = wishlistItemIds.includes(itemId);
+  
+  const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));
+  const currentUserId = user?.id || user?._id;
+  const isOwnItem = sId && currentUserId && String(sId) === String(currentUserId);
 
-  const handleToggleWishlistClick = () => {
-    setWishlistModalVisible(true);
-  };
-
-  const confirmToggleWishlist = async () => {
+  const handleToggleWishlistClick = async () => {
     if (wishlistUpdating) return;
     setWishlistUpdating(true);
     await toggleWishlist(item);
     setWishlistUpdating(false);
-    setWishlistModalVisible(false);
   };
 
   const handleAddToCartClick = () => {
@@ -155,13 +156,13 @@ export default function ProductDetailScreen({ route, navigation }) {
 
           {/* Wishlist Button over Image */}
           <TouchableOpacity
-            style={styles.wishlistButton}
-            onPress={handleToggleWishlistClick}
-            disabled={wishlistUpdating}
+            style={[styles.wishlistButton, isOwnItem && { opacity: 0.5 }]}
+            onPress={isOwnItem ? null : handleToggleWishlistClick}
+            disabled={wishlistUpdating || isOwnItem}
             accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             activeOpacity={0.8}
           >
-            <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color="#FF3B30" />
+            <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color={isOwnItem ? "#B0B7C3" : "#FF3B30"} />
           </TouchableOpacity>
         </View>
 
@@ -176,21 +177,21 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
 
           <TouchableOpacity 
-            style={[styles.actionButtonYellow, item.is_currently_rented && styles.disabledButton]}
+            style={[styles.actionButtonYellow, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
             activeOpacity={0.85}
             onPress={handleAddToCartClick}
-            disabled={item.is_currently_rented}
+            disabled={item.is_currently_rented || isOwnItem}
           >
-            <Text style={styles.actionButtonYellowText}>Add to Cart</Text>
+            <Text style={styles.actionButtonYellowText}>{isOwnItem ? 'Your Item' : 'Add to Cart'}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.actionButtonOrange, item.is_currently_rented && styles.disabledButton]}
+            style={[styles.actionButtonOrange, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
             activeOpacity={0.85}
             onPress={handleBuyNow}
-            disabled={item.is_currently_rented}
+            disabled={item.is_currently_rented || isOwnItem}
           >
-            <Text style={styles.actionButtonOrangeText}>{item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
+            <Text style={styles.actionButtonOrangeText}>{isOwnItem ? 'Your Item' : item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -259,36 +260,42 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              {(() => {
-                const sellerPhone = typeof item.seller_id === 'object' ? item.seller_id.phone : (typeof item.seller === 'object' ? item.seller.phone : null);
-                if (sellerPhone) {
-                  return (
-                    <TouchableOpacity 
-                      onPress={() => Linking.openURL(`tel:${sellerPhone}`)}
-                      style={{ padding: 8, backgroundColor: '#E8F5E9', borderRadius: 20 }}
-                    >
-                      <Ionicons name="call" size={20} color="#2E7D32" />
-                    </TouchableOpacity>
-                  );
-                }
-                return null;
-              })()}
-              
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('Messages', {
-                  screen: 'ChatThread',
-                  params: {
-                    itemId: item._id || item.id,
-                    otherUserId: typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller)),
-                    itemName: item.name,
-                    otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
-                    otherUserPhoto: item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null),
-                  }
-                })}
-                style={{ padding: 8, backgroundColor: '#E0E7FF', borderRadius: 20 }}
-              >
-                <Ionicons name="chatbubble" size={20} color="#0052CC" />
-              </TouchableOpacity>
+              {isOwnItem ? (
+                <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '500', marginRight: 4 }}>Your Item</Text>
+              ) : (
+                <>
+                  {(() => {
+                    const sellerPhone = typeof item.seller_id === 'object' ? item.seller_id.phone : (typeof item.seller === 'object' ? item.seller.phone : null);
+                    if (sellerPhone) {
+                      return (
+                        <TouchableOpacity 
+                          onPress={() => Linking.openURL(`tel:${sellerPhone}`)}
+                          style={{ padding: 8, backgroundColor: '#E8F5E9', borderRadius: 20 }}
+                        >
+                          <Ionicons name="call" size={20} color="#2E7D32" />
+                        </TouchableOpacity>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('Messages', {
+                      screen: 'ChatThread',
+                      params: {
+                        itemId: item._id || item.id,
+                        otherUserId: typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller)),
+                        itemName: item.name,
+                        otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
+                        otherUserPhoto: item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null),
+                      }
+                    })}
+                    style={{ padding: 8, backgroundColor: '#E0E7FF', borderRadius: 20 }}
+                  >
+                    <Ionicons name="chatbubble" size={20} color="#0052CC" />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -303,77 +310,36 @@ export default function ProductDetailScreen({ route, navigation }) {
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: '85%', maxWidth: 400, backgroundColor: '#FFF', borderRadius: 16, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#E0E7FF', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-              <Ionicons name="cart" size={32} color="#0052CC" />
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0F2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <Ionicons name="cart" size={32} color="#0F1111" />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1F36', marginBottom: 8, textAlign: 'center' }}>Add to Cart?</Text>
-            <Text style={{ fontSize: 16, color: '#697386', marginBottom: 24, textAlign: 'center', lineHeight: 22 }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F1111', marginBottom: 8, textAlign: 'center' }}>Add to Cart?</Text>
+            <Text style={{ fontSize: 16, color: '#565959', marginBottom: 24, textAlign: 'center', lineHeight: 22 }}>
               Are you sure you want to add "{item.name}" to your cart?
             </Text>
             
             <View style={{ width: '100%', flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#F0F5FF', paddingVertical: 12, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#D6E4FF' }}
+                style={{ flex: 1, backgroundColor: '#FFF', paddingVertical: 12, borderRadius: 100, alignItems: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
                 onPress={() => setConfirmModalVisible(false)}
                 activeOpacity={0.85}
               >
-                <Text style={{ color: '#0052CC', fontSize: 16, fontWeight: '600' }}>No</Text>
+                <Text style={{ color: '#0F1111', fontSize: 16, fontWeight: '500' }}>No</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#0052CC', paddingVertical: 12, borderRadius: 10, alignItems: 'center' }}
+                style={{ flex: 1, backgroundColor: '#FFD814', paddingVertical: 12, borderRadius: 100, alignItems: 'center', borderWidth: 1, borderColor: '#FCD200' }}
                 onPress={confirmAddToCart}
                 activeOpacity={0.85}
               >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Yes</Text>
+                <Text style={{ color: '#0F1111', fontSize: 16, fontWeight: '500' }}>Yes</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Wishlist Confirmation Modal */}
-      <Modal
-        visible={wishlistModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setWishlistModalVisible(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: '85%', maxWidth: 400, backgroundColor: '#FFF', borderRadius: 16, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: isWishlisted ? '#FFEBEB' : '#E0E7FF', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-              <Ionicons name={isWishlisted ? "heart-dislike" : "heart"} size={32} color={isWishlisted ? "#FF3B30" : "#0052CC"} />
-            </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1F36', marginBottom: 8, textAlign: 'center' }}>
-              {isWishlisted ? 'Remove from Wishlist?' : 'Add to Wishlist?'}
-            </Text>
-            <Text style={{ fontSize: 16, color: '#697386', marginBottom: 24, textAlign: 'center', lineHeight: 22 }}>
-              {isWishlisted 
-                ? `Are you sure you want to remove "${item.name}" from your wishlist?`
-                : `Are you sure you want to add "${item.name}" to your wishlist?`
-              }
-            </Text>
-            
-            <View style={{ width: '100%', flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: isWishlisted ? '#FFF0F0' : '#F0F5FF', paddingVertical: 12, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: isWishlisted ? '#FFD6D6' : '#D6E4FF' }}
-                onPress={() => setWishlistModalVisible(false)}
-                activeOpacity={0.85}
-              >
-                <Text style={{ color: isWishlisted ? '#FF3B30' : '#0052CC', fontSize: 16, fontWeight: '600' }}>No</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: isWishlisted ? '#FF3B30' : '#0052CC', paddingVertical: 12, borderRadius: 10, alignItems: 'center' }}
-                onPress={confirmToggleWishlist}
-                activeOpacity={0.85}
-              >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Yes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

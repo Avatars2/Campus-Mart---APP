@@ -65,10 +65,21 @@ const MessageSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isSystemMessage: {
+    type: Boolean,
+    default: false,
+  },
+  offer: {
+    price: { type: Number },
+    expiresAt: { type: Date },
+    status: { type: String, enum: ['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'] }
+  },
   deletedBy: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   }]
 }, { timestamps: true });
 
-export default mongoose.models.Message || mongoose.model('Message', MessageSchema);
+delete mongoose.models.Message;
+export default mongoose.model('Message', MessageSchema);
+

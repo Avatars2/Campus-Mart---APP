@@ -372,7 +372,7 @@ export default function EditProductScreen({ route, navigation }) {
             disabled={loading}
             activeOpacity={0.85}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Update Item</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Update</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

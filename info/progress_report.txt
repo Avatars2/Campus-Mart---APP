@@ -1,4 +1,4 @@
-=========================================
+﻿=========================================
 CAMPUS MART - PROGRESS REPORT
 Date: September 16, 2026
 =========================================
@@ -46,6 +46,7 @@ MODULE BREAKDOWN
    - Cart and wishlist management.
    - Checkout with order summary, payment selection, and delivery discussion text.
    - Buyer Purchases and seller Sales tabs.
+   - Order Details Modal: Tapping an order card opens a detailed modal with delivery/receipt actions, invoice generation, and detailed timestamps (Order Placed vs Confirmed dates).
    - Ecommerce-style order confirmation screen with buyer, seller, item, payment, delivery, and total details.
    - Invoice generation/printing is implemented without app action buttons in the printed output.
    - Rental checkout supports hourly, daily, or monthly duration selection and calculates the total from rate x duration.
@@ -70,12 +71,15 @@ MODULE BREAKDOWN
 7. MESSAGING SYSTEM [COMPLETED - 100%]
    - Item-specific buyer/seller conversations.
    - Real-time updates powered by Pusher.
+   - Custom/Special Offers: Sellers can negotiate and send custom price offers in chat.
+   - Buyers can accept custom offers, skipping the cart and jumping straight to checkout at the negotiated price.
    - Conversation list and chat history.
    - Message delivery/read states are implemented.
    - Multiple images and files can be selected and sent in one message.
    - Images and files are stored in Cloudinary and remain available after refresh.
    - PDFs and other files open through a backend viewer with the correct MIME type and filename.
-   - Chat UI includes attachment previews, file cards, empty-state guidance, and improved composer styling.
+   - Chat UI includes attachment previews, file cards, custom offer cards, empty-state guidance, and improved composer styling.
+   - React Navigation state caching is handled to strictly isolate chat threads and prevent stale messages.
    - Advanced moderation remains pending.
 
 8. NOTIFICATION SYSTEM [COMPLETED - 90%]
@@ -151,6 +155,7 @@ CURRENTLY VERIFIED FLOWS
 - Multi-image and multi-file chat attachments stored in Cloudinary.
 - Cloudinary attachment viewer for PDFs and other shared files.
 - Invoice generation with item, buyer, seller, payment, delivery, and total details.
+- Dynamic fallback for native Expo modules (Contacts, IntentLauncher, FileSystem) to fully support React Native Web.
 
 =========================================
 NEXT RECOMMENDED STEPS
@@ -160,3 +165,4 @@ NEXT RECOMMENDED STEPS
 3. Build delivery scheduling, location selection, maps, tracking, and delivery proof.
 4. Complete admin moderation, reports, analytics, and audit logging.
 5. Add automated tests for rental checkout, delivery confirmation, timers, returns, ratings, authorization, and payment states.
+

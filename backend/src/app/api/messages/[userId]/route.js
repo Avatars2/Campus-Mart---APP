@@ -19,7 +19,7 @@ export async function GET(req, { params }) {
       deletedBy: { $ne: userId }
     })
       .populate('participants', 'full_name profile_photo_url')
-      .populate('item', 'name images price')
+      .populate('item', 'name images price seller_id')
       .populate('lastMessage')
       .sort({ updatedAt: -1 });
 
