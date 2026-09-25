@@ -79,135 +79,127 @@ export default function CheckoutScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={{ position: 'absolute', left: 16, bottom: 15, zIndex: 10, padding: 4 }}
+        >
+          <Ionicons name="arrow-back" size={26} color="#0F1111" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>
+          Pay<Text style={{ color: '#007185' }}>ment</Text>
+        </Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          {checkoutItems.map((item, index) => (
-            <View key={index} style={{ marginBottom: 16 }}>
-              <View style={styles.itemRow}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.itemQuantity}>Qty: {item.quantity}{item.listing_type === 'rent' ? ` · ₹${item.price} per ${item.rental_period || 'day'}` : ''}</Text>
-              </View>
-              <Text style={styles.itemPrice}>₹{getItemTotal(item, index)}</Text>
-              </View>
-              {item.listing_type === 'rent' && (
-                <View style={{ backgroundColor: '#F0F5FF', borderRadius: 10, padding: 12, marginTop: 4 }}>
-                  <Text style={{ color: '#1A1F36', fontWeight: '600', marginBottom: 8 }}>
-                    How many {item.rental_period || 'day'}{getRentalDuration(item, index) === 1 ? '' : 's'} do you want?
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity
-                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#B8C7E6' }}
-                      onPress={() => updateRentalDuration(item, index, -1)}
-                      accessibilityLabel="Decrease rental duration"
-                    >
-                      <Ionicons name="remove" size={20} color="#0052CC" />
-                    </TouchableOpacity>
-                    <Text style={{ minWidth: 100, textAlign: 'center', color: '#0052CC', fontSize: 16, fontWeight: '700' }}>
-                      {getRentalDuration(item, index)} {item.rental_period || 'day'}{getRentalDuration(item, index) === 1 ? '' : 's'}
+
+        <View style={styles.orderSummaryCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.orderSummaryTitle}>
+              Pay <Text style={styles.orderSummaryPrice}>₹{total}</Text>
+            </Text>
+            <Text style={styles.orderSummarySubtitle}>
+              for {checkoutItems.length} item{checkoutItems.length > 1 ? 's' : ''}
+            </Text>
+            {checkoutItems.map((item, index) => (
+              <View key={index} style={{ marginTop: 12 }}>
+                <Text style={{ fontSize: 13, color: '#0F1111', fontWeight: '500' }}>{item.name}</Text>
+                <Text style={{ fontSize: 12, color: '#555' }}>Qty: {item.quantity}{item.listing_type === 'rent' ? ` · ₹${item.price} / ${item.rental_period || 'day'}` : ''}</Text>
+                
+                {item.listing_type === 'rent' && (
+                  <View style={{ backgroundColor: '#F0F8FA', borderRadius: 8, padding: 8, marginTop: 6, borderWidth: 1, borderColor: '#D5D9D9' }}>
+                    <Text style={{ color: '#0F1111', fontSize: 12, fontWeight: '500', marginBottom: 6 }}>
+                      Duration ({item.rental_period || 'day'}s):
                     </Text>
-                    <TouchableOpacity
-                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#B8C7E6' }}
-                      onPress={() => updateRentalDuration(item, index, 1)}
-                      accessibilityLabel="Increase rental duration"
-                    >
-                      <Ionicons name="add" size={20} color="#0052CC" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity
+                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
+                        onPress={() => updateRentalDuration(item, index, -1)}
+                      >
+                        <Ionicons name="remove" size={16} color="#007185" />
+                      </TouchableOpacity>
+                      <Text style={{ minWidth: 40, textAlign: 'center', color: '#0F1111', fontSize: 14, fontWeight: '700' }}>
+                        {getRentalDuration(item, index)}
+                      </Text>
+                      <TouchableOpacity
+                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
+                        onPress={() => updateRentalDuration(item, index, 1)}
+                      >
+                        <Ionicons name="add" size={16} color="#007185" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              )}
-            </View>
-          ))}
-          <View style={styles.divider} />
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total to Pay</Text>
-            <Text style={styles.totalAmount}>₹{total}</Text>
+                )}
+              </View>
+            ))}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Method</Text>
-          <View style={styles.deliveryCard}>
-            <Ionicons name="chatbubbles-outline" size={24} color="#0052CC" style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.deliveryTitle}>Discuss with seller</Text>
-              <Text style={styles.deliverySubtitle}>Use Messages to agree on the delivery method, location, and time.</Text>
-            </View>
-          </View>
+        <View style={{ backgroundColor: '#E4F4EC', marginHorizontal: 16, padding: 12, borderRadius: 4, flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <Ionicons name="information-circle-outline" size={18} color="#0F1111" style={{ marginRight: 8 }} />
+          <Text style={{ color: '#007185', fontSize: 13 }}>Contact seller via Messages to arrange delivery.</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          
+        <Text style={styles.sectionHeaderAmazon}>RECOMMENDED</Text>
+        <View style={styles.paymentCardGroup}>
           <TouchableOpacity 
-            style={[styles.paymentCard, paymentMethod === 'Cash' && styles.paymentCardActive]}
-            onPress={() => setPaymentMethod('Cash')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.paymentIcon}>
-              <Ionicons name="cash-outline" size={24} color={paymentMethod === 'Cash' ? '#0052CC' : '#697386'} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.paymentTitle, paymentMethod === 'Cash' && styles.paymentTitleActive]}>Pay when you receive the item</Text>
-              <Text style={styles.paymentSubtitle}>Pay the seller directly with cash or UPI after agreeing in Messages.</Text>
-            </View>
-            <View style={[styles.radioOuter, paymentMethod === 'Cash' && styles.radioOuterActive]}>
-              {paymentMethod === 'Cash' && <View style={styles.radioInner} />}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.paymentCard, paymentMethod === 'UPI' && styles.paymentCardActive]}
+            style={[styles.paymentCardRow, paymentMethod === 'UPI' && styles.paymentCardRowActive]}
             onPress={() => setPaymentMethod('UPI')}
             activeOpacity={0.8}
           >
-            <View style={styles.paymentIcon}>
-              <Ionicons name="phone-portrait-outline" size={24} color={paymentMethod === 'UPI' ? '#0052CC' : '#697386'} />
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.radioOuter, paymentMethod === 'UPI' && styles.radioOuterActive]}>
+                {paymentMethod === 'UPI' && <View style={styles.radioInner} />}
+              </View>
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <View style={styles.badge}><Text style={styles.badgeText}>Best choice</Text></View>
+                <Text style={[styles.paymentTitle, paymentMethod === 'UPI' && styles.paymentTitleActive]}>Pay now with UPI</Text>
+                <Text style={styles.paymentSubtitle}>Send payment securely before receiving.</Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.paymentTitle, paymentMethod === 'UPI' && styles.paymentTitleActive]}>Pay now with UPI</Text>
-              <Text style={styles.paymentSubtitle}>Send the UPI payment before the seller hands over the item.</Text>
-            </View>
-            <View style={[styles.radioOuter, paymentMethod === 'UPI' && styles.radioOuterActive]}>
-              {paymentMethod === 'UPI' && <View style={styles.radioInner} />}
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionHeaderAmazon}>PAY ON DELIVERY</Text>
+        <View style={[styles.paymentCardGroup, { marginBottom: 24 }]}>
+          <TouchableOpacity 
+            style={[styles.paymentCardRow, paymentMethod === 'Cash' && styles.paymentCardRowActive]}
+            onPress={() => setPaymentMethod('Cash')}
+            activeOpacity={0.8}
+          >
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.radioOuter, paymentMethod === 'Cash' && styles.radioOuterActive]}>
+                {paymentMethod === 'Cash' && <View style={styles.radioInner} />}
+              </View>
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <Text style={[styles.paymentTitle, paymentMethod === 'Cash' && styles.paymentTitleActive]}>Pay when you receive the item</Text>
+                <Text style={styles.paymentSubtitle}>Cash or UPI after agreeing in Messages.</Text>
+              </View>
             </View>
           </TouchableOpacity>
         </View>
 
         {errorMessage && (
-          <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 20 }}>
+          <View style={{ backgroundColor: '#FEE2E2', marginHorizontal: 16, padding: 12, borderRadius: 8, marginBottom: 20 }}>
             <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMessage}</Text>
           </View>
         )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>Total</Text>
-          <Text style={styles.footerTotalAmount}>₹{total}</Text>
-        </View>
         <TouchableOpacity 
           style={styles.confirmButton}
           onPress={handleConfirmOrder}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color="#111" />
           ) : (
-            <Text style={styles.confirmButtonText}>Confirm Order</Text>
+            <Text style={styles.confirmButtonText}>Continue</Text>
           )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

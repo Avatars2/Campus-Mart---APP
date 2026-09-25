@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Image, Platform } from 'react-native';
 import styles from './OrderSuccessScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,30 +138,34 @@ export default function OrderSuccessScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })} 
+          style={{ position: 'absolute', left: 16, bottom: 15, zIndex: 10, padding: 4 }}
+        >
+          <Ionicons name="arrow-back" size={26} color="#0F1111" />
+        </TouchableOpacity>
+        <Text style={styles.amazonLogoText}>
+          Con<Text style={{ color: '#007185' }}>firm</Text>
+        </Text>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        <View style={styles.successHeader}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="checkmark" size={48} color="#FFF" />
+        <View style={styles.topSection}>
+          <View style={styles.successRow}>
+            <Ionicons name="checkmark-circle" size={32} color="#067D62" />
+            <Text style={styles.successText}>Order placed, thank you!</Text>
           </View>
-          <Text style={styles.title}>Order Confirmed!</Text>
-          <Text style={styles.subtitle}>Your order has been placed successfully.</Text>
-        </View>
-
-        <View style={styles.orderMeta}>
-          <View>
-            <Text style={styles.orderMetaLabel}>Order placed</Text>
-            <Text style={styles.orderMetaValue}>{orderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
-          </View>
-          <View style={styles.orderMetaRight}>
-            <Text style={styles.orderMetaLabel}>Order number</Text>
-            <Text style={styles.orderMetaValue}>#{orderNumber}</Text>
+          
+          <View style={styles.shippingSection}>
+            <Text style={styles.shippingLabel}>Shipping to {displayValue(buyer?.full_name)},</Text>
+            <Text style={styles.shippingValue}>Discuss delivery with seller via Messages.</Text>
           </View>
         </View>
 
-        <View style={styles.invoiceCard}>
-          <Text style={styles.invoiceTitle}>Order details</Text>
+        <View style={styles.amazonCard}>
+          <Text style={styles.sectionTitle}>Order details</Text>
 
           {orders.map((order, index) => {
             const item = order.item_id && typeof order.item_id === 'object' ? order.item_id : {};
@@ -176,76 +180,69 @@ export default function OrderSuccessScreen({ route, navigation }) {
                 />
                 <View style={styles.itemDetails}>
                   <Text style={styles.itemName} numberOfLines={2}>{itemName}</Text>
-                  <Text style={styles.itemSeller}>Sold by {seller.full_name || 'CampusMart seller'}</Text>
+                  <Text style={styles.itemSeller}>Sold by: {seller.full_name || 'CampusMart seller'}</Text>
                   <Text style={styles.itemQuantity}>Quantity: {order.quantity || 1}</Text>
+                  <Text style={styles.itemAmount}>₹{order.total_price}</Text>
                 </View>
-                <Text style={styles.itemAmount}>₹{order.total_price}</Text>
               </View>
             );
           })}
-
-          <View style={styles.divider} />
           
-          <View style={styles.invoiceRow}>
-            <Text style={styles.invoiceLabel}>Items subtotal</Text>
-            <Text style={styles.invoiceValue}>₹{totalAmount}</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Items subtotal:</Text>
+            <Text style={styles.summaryValue}>₹{totalAmount}</Text>
           </View>
           
-          <View style={styles.invoiceRow}>
-            <Text style={styles.invoiceLabel}>Payment</Text>
-            <Text style={styles.invoiceValue}>{paymentLabel}</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Payment:</Text>
+            <Text style={styles.summaryValue}>{paymentMethod === 'Cash' ? 'Pay on delivery' : 'UPI'}</Text>
           </View>
 
-          <View style={styles.invoiceRow}>
-            <Text style={styles.invoiceLabel}>Delivery</Text>
-            <Text style={styles.invoiceValue}>{deliveryLabel}</Text>
-          </View>
-
-          <View style={styles.invoiceRow}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Price:</Text>
             <Text style={styles.totalValue}>₹{totalAmount}</Text>
           </View>
         </View>
 
-        <View style={styles.detailsCard}>
+        <View style={styles.amazonCard}>
           <Text style={styles.detailsTitle}>Buyer Details</Text>
           <Text style={styles.detailsValue}>{displayValue(buyer?.full_name)}</Text>
-          <Text style={styles.detailsMeta}>{displayValue(buyer?.email)} · {displayValue(buyer?.phone)}</Text>
+          <Text style={styles.detailsMeta}>Phone: {displayValue(buyer?.phone)}</Text>
           <Text style={styles.detailsMeta}>Student ID: {displayValue(buyer?.student_id)}</Text>
+          
           {sellers.map((seller, index) => (
-            <View key={seller.id || seller._id || index} style={styles.sellerDetails}>
+            <View key={seller.id || seller._id || index} style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F2F2F2' }}>
               <Text style={styles.detailsTitle}>Seller Details</Text>
               <Text style={styles.detailsValue}>{displayValue(seller.full_name)}</Text>
-              <Text style={styles.detailsMeta}>{displayValue(seller.email)} · {displayValue(seller.phone)}</Text>
+              <Text style={styles.detailsMeta}>Phone: {displayValue(seller.phone)}</Text>
               <Text style={styles.detailsMeta}>Student ID: {displayValue(seller.student_id)}</Text>
             </View>
           ))}
         </View>
-
       </ScrollView>
 
-      {!isPrinting && <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={() => {
-            navigation.navigate('MainTabs', { screen: 'Buy' });
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="receipt-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
-          <Text style={styles.primaryButtonText}>View order history</Text>
-        </TouchableOpacity>
+      {!isPrinting && (
+        <View style={styles.actionContainer}>
+          <TouchableOpacity 
+            style={styles.buttonAmazonYellow}
+            onPress={() => {
+              navigation.navigate('MainTabs', { screen: 'Buy' });
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonAmazonYellowText}>View Order</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.secondaryButton}
-          onPress={handleDownloadInvoice}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="document-text-outline" size={18} color="#4B5563" style={{ marginRight: 8 }} />
-          <Text style={styles.secondaryButtonText}>Download Invoice</Text>
-        </TouchableOpacity>
-      </View>}
-    </SafeAreaView>
+          <TouchableOpacity 
+            style={styles.buttonAmazonWhite}
+            onPress={handleDownloadInvoice}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonAmazonWhiteText}>Invoice</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 

@@ -40,8 +40,12 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'delivered', 'rental_active', 'return_requested', 'completed', 'cancelled'],
+    enum: ['pending', 'delivered', 'rental_active', 'return_requested', 'completed', 'cancelled', 'cancel_requested', 'returned'],
     default: 'pending',
+  },
+  completed_at: {
+    type: Date,
+    default: null,
   },
   rental_started_at: {
     type: Date,

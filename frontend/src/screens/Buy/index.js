@@ -270,12 +270,20 @@ export default function BuyScreen({ navigation }) {
 
   const orderSections = [
     {
-      title: 'Pending Orders',
-      data: orders.filter((order) => order.status !== 'completed'),
+      title: 'Active Orders',
+      data: orders.filter((order) => order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'returned'),
     },
     {
       title: 'Completed Orders',
       data: orders.filter((order) => order.status === 'completed'),
+    },
+    {
+      title: 'Returned Orders',
+      data: orders.filter((order) => order.status === 'returned'),
+    },
+    {
+      title: 'Cancelled Orders',
+      data: orders.filter((order) => order.status === 'cancelled'),
     },
   ].filter((section) => section.data.length > 0);
 
@@ -298,11 +306,19 @@ export default function BuyScreen({ navigation }) {
     const getStatusColor = (status) => {
       switch (status) {
         case 'completed': case 'delivered': case 'rental_active': return { bg: '#E8F5E9', text: '#2E7D32' };
-        case 'return_requested': case 'pending': return { bg: '#FFF8E1', text: '#F59E0B' };
+        case 'return_requested': case 'pending': case 'cancel_requested': return { bg: '#FFF8E1', text: '#F59E0B' };
+        case 'cancelled': case 'returned': return { bg: '#FEE2E2', text: '#DC2626' };
         default: return { bg: '#F3F4F6', text: '#565959' };
       }
     };
     const statusColors = getStatusColor(item.status);
+
+    const getStatusText = (status) => {
+      if (status === 'cancel_requested') return 'Cancel requested';
+      if (status === 'return_requested') return 'Return requested';
+      if (status === 'rental_active') return 'Rental active';
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    };
 
     return (
       <Modal visible={true} transparent animationType="slide" onRequestClose={() => setSelectedOrderDetails(null)}>
@@ -325,11 +341,14 @@ export default function BuyScreen({ navigation }) {
                   {item.status === 'delivered' && (
                     <Text style={{ fontSize: 13, color: '#059669', fontWeight: '500' }}>Delivered: {updatedDateString}</Text>
                   )}
+                  {item.status === 'cancelled' && (
+                    <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '500' }}>Cancelled: {updatedDateString}</Text>
+                  )}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={[styles.statusBadge, { backgroundColor: statusColors.bg, marginRight: 12 }]}>
                     <Text style={[styles.statusText, { color: statusColors.text }]}>
-                      {item.status === 'completed' ? 'Completed' : item.status === 'return_requested' ? 'Return requested' : item.status === 'rental_active' ? 'Rental active' : item.status === 'delivered' ? 'Delivered' : 'Pending'}
+                      {getStatusText(item.status)}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -372,6 +391,40 @@ export default function BuyScreen({ navigation }) {
                     <Text style={styles.completeButtonText}>Mark delivered</Text>
                   </TouchableOpacity>
                 )}
+                {activeTab === 'purchases' && item.status === 'pending' && (
+                  <TouchableOpacity style={[styles.completeButton, { backgroundColor: '#DC2626' }]} onPress={() => {
+                    const isMoreThanOneHour = (Date.now() - new Date(item.createdAt).getTime()) > 3600000;
+                    const nextStatus = 'cancel_requested';
+                    const title = isMoreThanOneHour ? 'Request Cancellation?' : 'Cancel Order?';
+                    const message = isMoreThanOneHour
+                      ? 'It has been more than 1 hour since you placed this order. This will send a cancellation request to the seller.'
+                      : 'Are you sure you want to cancel this order? It will be cancelled immediately.';
+                    setSelectedOrderDetails(null);
+                    updateOrderStatus(item, nextStatus, title, message);
+                  }}>
+                    <Ionicons name="close-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.completeButtonText}>Cancel Order</Text>
+                  </TouchableOpacity>
+                )}
+                {activeTab === 'purchases' && item.status === 'cancel_requested' && (
+                  <View style={{ backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FEF3C7' }}>
+                    <Text style={{ color: '#B45309', fontSize: 13, textAlign: 'center' }}>
+                      Waiting for the seller to approve your cancellation request.
+                    </Text>
+                  </View>
+                )}
+                {activeTab === 'sales' && item.status === 'cancel_requested' && (
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'pending', 'Reject Cancellation?', 'The order will remain pending and you should deliver the item.'); }}>
+                      <Ionicons name="close-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
+                      <Text style={[styles.completeButtonText, { color: '#DC2626' }]}>Reject</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'cancelled', 'Approve Cancellation?', 'The order will be permanently cancelled.'); }}>
+                      <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.completeButtonText}>Approve</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
                   <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item received?', 'Tap Yes to confirm that the item was successfully received.'); }}>
                     <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
@@ -392,8 +445,33 @@ export default function BuyScreen({ navigation }) {
                     </TouchableOpacity>
                   ) : null
                 )}
-                {activeTab === 'sales' && item.status === 'return_requested' && (
-                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item returned?', 'Confirm that you received the returned rental item from the buyer.'); }}>
+                {activeTab === 'purchases' && item.status === 'completed' && orderItem.listing_type !== 'rent' && (Date.now() - new Date(item.completed_at || item.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000) && (
+                  <TouchableOpacity style={[styles.confirmReceivedButton, { backgroundColor: '#F59E0B' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'return_requested', 'Return Item?', 'Are you sure you want to return this item? This will notify the seller to arrange the return.'); }}>
+                    <Ionicons name="return-down-back-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.confirmReceivedText}>Return Item</Text>
+                  </TouchableOpacity>
+                )}
+                {activeTab === 'purchases' && item.status === 'return_requested' && orderItem.listing_type !== 'rent' && (
+                  <View style={{ backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FEF3C7' }}>
+                    <Text style={{ color: '#B45309', fontSize: 13, textAlign: 'center' }}>
+                      Waiting for the seller to approve your return request.
+                    </Text>
+                  </View>
+                )}
+                {activeTab === 'sales' && item.status === 'return_requested' && orderItem.listing_type !== 'rent' && (
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Reject Return?', 'The return request will be rejected and the order will remain completed.'); }}>
+                      <Ionicons name="close-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
+                      <Text style={[styles.completeButtonText, { color: '#DC2626' }]}>Reject</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'returned', 'Approve Return?', 'Confirm that you accept the return and have received the item.'); }}>
+                      <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.completeButtonText}>Approve</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {activeTab === 'sales' && item.status === 'return_requested' && orderItem.listing_type === 'rent' && (
+                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item returned?', 'Confirm that you received the returned item from the buyer.'); }}>
                     <Ionicons name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.completeButtonText}>Confirm return</Text>
                   </TouchableOpacity>
@@ -429,11 +507,19 @@ export default function BuyScreen({ navigation }) {
     const getStatusColor = (status) => {
       switch (status) {
         case 'completed': case 'delivered': case 'rental_active': return { bg: '#E8F5E9', text: '#2E7D32' };
-        case 'return_requested': case 'pending': return { bg: '#FFF8E1', text: '#F59E0B' };
+        case 'return_requested': case 'pending': case 'cancel_requested': return { bg: '#FFF8E1', text: '#F59E0B' };
+        case 'cancelled': case 'returned': return { bg: '#FEE2E2', text: '#DC2626' };
         default: return { bg: '#F3F4F6', text: '#565959' };
       }
     };
     const statusColors = getStatusColor(item.status);
+
+    const getStatusText = (status) => {
+      if (status === 'cancel_requested') return 'Cancel requested';
+      if (status === 'return_requested') return 'Return requested';
+      if (status === 'rental_active') return 'Rental active';
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    };
 
     return (
       <TouchableOpacity style={styles.orderCard} onPress={() => setSelectedOrderDetails(item)} activeOpacity={0.7}>
@@ -442,7 +528,7 @@ export default function BuyScreen({ navigation }) {
           <View style={styles.orderHeaderActions}>
             <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
               <Text style={[styles.statusText, { color: statusColors.text }]}>
-                {item.status === 'completed' ? 'Completed' : item.status === 'return_requested' ? 'Return requested' : item.status === 'rental_active' ? 'Rental active' : item.status === 'delivered' ? 'Delivered' : 'Pending'}
+                {getStatusText(item.status)}
               </Text>
             </View>
           </View>

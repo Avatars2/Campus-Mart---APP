@@ -95,7 +95,7 @@ export async function PATCH(request) {
       return NextResponse.json({ message: 'Rating saved', order: ratedOrder }, { status: 200 });
     }
 
-    if (!order_id || !['delivered', 'completed', 'rental_active', 'return_requested'].includes(status)) {
+    if (!order_id || !['delivered', 'completed', 'rental_active', 'return_requested', 'cancelled', 'cancel_requested', 'pending', 'returned'].includes(status)) {
       return NextResponse.json({ error: 'A valid order and status are required' }, { status: 400 });
     }
 
@@ -127,8 +127,13 @@ export async function PATCH(request) {
           return NextResponse.json({ error: 'Only the seller can confirm a requested rental return' }, { status: 400 });
         }
         order.returned_at = now;
+      } else if (isSeller && order.status === 'return_requested') {
+        // Seller rejecting a purchase return request
+        // order remains completed, no timestamps updated
       } else if (!isBuyer || order.status !== 'delivered') {
         return NextResponse.json({ error: 'Only the buyer can confirm a delivered sale' }, { status: 400 });
+      } else {
+        order.completed_at = now;
       }
     } else if (status === 'rental_active') {
       if (!isBuyer || !isRental || order.status !== 'delivered') {
@@ -147,35 +152,100 @@ export async function PATCH(request) {
       order.rental_started_at = rentalStartedAt;
       order.rental_due_at = rentalDueAt;
     } else if (status === 'return_requested') {
-      if (!isBuyer || !isRental || order.status !== 'rental_active') {
-        return NextResponse.json({ error: 'The buyer can request a return only during an active rental' }, { status: 400 });
-      }
-      if (order.rental_due_at && now < order.rental_due_at) {
-        return NextResponse.json({ error: `The rental ends on ${order.rental_due_at.toLocaleString()}` }, { status: 400 });
+      if (isRental) {
+        if (!isBuyer || order.status !== 'rental_active') {
+          return NextResponse.json({ error: 'The buyer can request a return only during an active rental' }, { status: 400 });
+        }
+        if (order.rental_due_at && now < order.rental_due_at) {
+          return NextResponse.json({ error: `The rental ends on ${order.rental_due_at.toLocaleString()}` }, { status: 400 });
+        }
+      } else {
+        if (!isBuyer || order.status !== 'completed') {
+          return NextResponse.json({ error: 'Only completed purchases can be returned' }, { status: 400 });
+        }
+        const completedDate = order.completed_at || order.updatedAt;
+        if ((now.getTime() - new Date(completedDate).getTime()) > 7 * 24 * 60 * 60 * 1000) {
+          return NextResponse.json({ error: 'The 7-day return window has expired' }, { status: 400 });
+        }
       }
       order.return_requested_at = now;
+    } else if (status === 'returned') {
+      if (!isSeller || order.status !== 'return_requested') {
+        return NextResponse.json({ error: 'Only the seller can confirm a returned item' }, { status: 400 });
+      }
+      order.returned_at = now;
+    } else if (status === 'cancel_requested') {
+      if (!isBuyer || order.status !== 'pending') {
+        return NextResponse.json({ error: 'Only the buyer can request cancellation on a pending order' }, { status: 400 });
+      }
+      // If it's within 1 hour, auto-cancel instead of requesting
+      if ((now - new Date(order.createdAt).getTime()) <= 3600000) {
+        order.status = 'cancelled';
+        await order.save();
+        return NextResponse.json({ message: 'Order cancelled', order }, { status: 200 });
+      }
+    } else if (status === 'cancelled') {
+      // Buyer cancelling directly within 1 hour
+      if (isBuyer) {
+        if (order.status !== 'pending' && order.status !== 'cancel_requested') {
+          return NextResponse.json({ error: 'Cannot cancel this order' }, { status: 400 });
+        }
+        if ((now - new Date(order.createdAt).getTime()) > 3600000) {
+          return NextResponse.json({ error: 'Cancellation after 1 hour requires seller approval' }, { status: 400 });
+        }
+      } else if (isSeller) {
+        // Seller approving cancellation request
+        if (order.status !== 'cancel_requested' && order.status !== 'pending') {
+          return NextResponse.json({ error: 'Cannot cancel this order' }, { status: 400 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Unauthorized to cancel' }, { status: 403 });
+      }
+    } else if (status === 'pending') {
+      // Seller rejecting a cancellation request
+      if (!isSeller || order.status !== 'cancel_requested') {
+        return NextResponse.json({ error: 'Only the seller can reject a cancellation request' }, { status: 400 });
+      }
     }
 
     order.status = status;
     await order.save();
 
+    let notificationTitle = 'Order Update';
+    let notificationBody = 'Your order has been updated.';
+    
+    if (status === 'delivered') {
+      notificationTitle = 'Item delivered';
+      notificationBody = `${order.item_id.name} was marked delivered. Please confirm that you received it.`;
+    } else if (status === 'rental_active') {
+      notificationTitle = 'Rental started';
+      notificationBody = `${order.item_id.name} rental started. Please return it by ${order.rental_due_at.toLocaleString()}.`;
+    } else if (status === 'return_requested') {
+      notificationTitle = isRental ? 'Rental return requested' : 'Item return requested';
+      notificationBody = isRental ? `${order.item_id.name} is ready to be returned. Please discuss the handover in Messages.` : `The buyer wants to return ${order.item_id.name}. Please discuss in Messages and approve the return.`;
+    } else if (status === 'returned') {
+      notificationTitle = 'Item returned';
+      notificationBody = `The return for ${order.item_id.name} was confirmed by the seller.`;
+    } else if (status === 'completed') {
+      if (isSeller && !isRental) {
+        notificationTitle = 'Return request rejected';
+        notificationBody = `The seller declined your return request for ${order.item_id.name}.`;
+      } else {
+        notificationTitle = isRental ? 'Rental completed' : 'Transaction successful';
+        notificationBody = isRental ? `${order.item_id.name} was returned and the rental is complete.` : `${order.item_id.name} has been confirmed as received by the buyer.`;
+      }
+    } else if (status === 'cancel_requested') {
+      notificationTitle = 'Order cancellation requested';
+      notificationBody = `The buyer wants to cancel the order for ${order.item_id.name}. Please approve or reject.`;
+    } else if (status === 'cancelled') {
+      notificationTitle = 'Order cancelled';
+      notificationBody = `The order for ${order.item_id.name} has been cancelled.`;
+    } else if (status === 'pending') {
+      notificationTitle = 'Cancellation rejected';
+      notificationBody = `The seller declined to cancel the order for ${order.item_id.name}.`;
+    }
+
     const recipientId = isSeller ? buyerId : sellerId;
-    const notificationTitle = status === 'delivered'
-      ? 'Item delivered'
-      : status === 'rental_active'
-        ? 'Rental started'
-        : status === 'return_requested'
-          ? 'Rental return requested'
-          : isRental ? 'Rental completed' : 'Transaction successful';
-    const notificationBody = status === 'delivered'
-      ? `${order.item_id.name} was marked delivered. Please confirm that you received it.`
-      : status === 'rental_active'
-        ? `${order.item_id.name} rental started. Please return it by ${order.rental_due_at.toLocaleString()}.`
-        : status === 'return_requested'
-          ? `${order.item_id.name} is ready to be returned. Please discuss the handover in Messages.`
-          : isRental
-            ? `${order.item_id.name} was returned and the rental is complete.`
-            : `${order.item_id.name} has been confirmed as received by the buyer.`;
 
     await sendNotification({
       recipientId: recipientId.toString(),
@@ -189,6 +259,6 @@ export async function PATCH(request) {
     return NextResponse.json({ message: `Order marked as ${status}`, order }, { status: 200 });
   } catch (error) {
     console.error('Update order error:', error);
-    return NextResponse.json({ error: 'Unable to update order' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Unable to update order', stack: error.stack }, { status: 500 });
   }
 }

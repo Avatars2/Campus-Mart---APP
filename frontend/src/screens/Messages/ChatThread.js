@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Image, Linking, Alert, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Image, Linking, Alert, Modal, ScrollView, StyleSheet } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -370,6 +370,7 @@ const ChatThread = () => {
 
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [selectedMapRegion, setSelectedMapRegion] = useState(null);
 
   const shareLocation = async () => {
     setShowAttachMenu(false);
@@ -380,6 +381,8 @@ const ChatThread = () => {
     }
     
     setLocationPickerVisible(true);
+    setSelectedMapRegion(null);
+    setCurrentLocation(null);
     
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -617,6 +620,54 @@ const ChatThread = () => {
     
     if (item.isSystemMessage && item.offer) {
       return <OfferMessage item={item} isMyMessage={isMyMessage} handleAcceptOffer={handleAcceptOffer} />;
+    }
+
+    // Detect location messages
+    const locationMatch = item.content?.match(/📍\s*Location:\s*https:\/\/maps\.google\.com\/\?q=([-\d.]+),([-\d.]+)/);
+    if (locationMatch) {
+      const lat = parseFloat(locationMatch[1]);
+      const lng = parseFloat(locationMatch[2]);
+      return (
+        <TouchableOpacity
+          style={[styles.locationCard, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}
+          onPress={() => Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`)}
+          onLongPress={() => setSelectedMessage(item)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.locationMapPreview}>
+            {/* Grid lines for map-like background */}
+            <View style={styles.locationGridContainer}>
+              {[0, 1, 2, 3, 4].map(i => (
+                <View key={`h${i}`} style={[styles.locationGridLineH, { top: `${i * 25}%` }]} />
+              ))}
+              {[0, 1, 2, 3, 4].map(i => (
+                <View key={`v${i}`} style={[styles.locationGridLineV, { left: `${i * 25}%` }]} />
+              ))}
+            </View>
+            <Ionicons name="location" size={40} color="#DC2626" style={{ marginBottom: 8 }} />
+          </View>
+          <View style={styles.locationDetails}>
+            <Text style={styles.locationTitle}>📍 Shared Location</Text>
+            <Text style={styles.locationCoords}>{lat.toFixed(5)}, {lng.toFixed(5)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+              <Text style={styles.locationTapHint}>Tap to open in Maps →</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.messageTime, isMyMessage ? styles.myMessageTime : { color: '#8792A2' }, { marginTop: 0 }]}>
+                  {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                {isMyMessage && (
+                  <Ionicons
+                    name={item.sending ? "time-outline" : (item.delivered || item.read ? "checkmark-done" : "checkmark")}
+                    size={16}
+                    color={item.read ? "#34B7F1" : "#B0B7C3"}
+                    style={{ marginLeft: 4 }}
+                  />
+                )}
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
     }
 
     const messageAttachments = getMessageAttachments(item);
@@ -961,24 +1012,30 @@ const ChatThread = () => {
         <View style={styles.locModalContainer}>
           {/* Header */}
           <View style={styles.locModalHeader}>
-            <TouchableOpacity onPress={() => setLocationPickerVisible(false)}>
+            <TouchableOpacity onPress={() => { setLocationPickerVisible(false); setSelectedMapRegion(null); }}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
             <Text style={styles.locModalTitle}>Send location</Text>
-            <TouchableOpacity style={{ marginRight: 16 }}>
-              <Ionicons name="search" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={async () => {
+              try {
+                setCurrentLocation(null);
+                setSelectedMapRegion(null);
+                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                setCurrentLocation(location);
+              } catch (err) {
+                Alert.alert('Error', 'Could not refresh your location.');
+              }
+            }}>
               <Ionicons name="refresh" size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
           
-          {/* Top Half: Map */}
-          <View style={styles.locMapContainer}>
+          {/* Map Area - fills all available space */}
+          <View style={{ flex: 1, backgroundColor: '#E8E8E8' }}>
             {currentLocation && MapView ? (
-              <View style={styles.locMapWrapper}>
+              <View style={{ flex: 1 }}>
                 <MapView
-                  style={styles.locMapWrapper}
+                  style={StyleSheet.absoluteFillObject}
                   mapType={Platform.OS === 'android' ? 'none' : 'standard'}
                   initialRegion={{
                     latitude: currentLocation.coords.latitude,
@@ -987,93 +1044,81 @@ const ChatThread = () => {
                     longitudeDelta: 0.005,
                   }}
                   onRegionChangeComplete={(region) => {
-                    setCurrentLocation(prev => ({
-                      ...prev,
-                      coords: { ...prev.coords, latitude: region.latitude, longitude: region.longitude }
-                    }));
+                    setSelectedMapRegion(region);
                   }}
                 >
                   {Platform.OS === 'android' && UrlTile && (
                     <UrlTile
-                      urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                       maximumZ={19}
                       flipY={false}
                     />
                   )}
                 </MapView>
+                {/* Center pin overlay */}
                 <View style={[styles.locPinOverlay, { pointerEvents: 'none' }]}>
-                  <Ionicons name="location" size={36} color="#DC2626" />
+                  <Ionicons name="location" size={40} color="#DC2626" />
                 </View>
               </View>
             ) : currentLocation ? (
               <View style={styles.locFallbackContainer}>
-                <Ionicons name="map" size={100} color="#B0B7C3" />
+                <Ionicons name="map" size={80} color="#B0B7C3" />
                 <Text style={styles.locFallbackTitle}>Location acquired</Text>
-                <Text style={styles.locFallbackSubtitle}>Map tiles require Google API Key on Android</Text>
+                <Text style={styles.locFallbackSubtitle}>Map preview not available</Text>
               </View>
             ) : (
               <View style={styles.locFallbackContainer}>
-                <Ionicons name="map" size={100} color="#B0B7C3" />
+                <ActivityIndicator size="large" color="#00A884" style={{ marginBottom: 12 }} />
                 <Text style={styles.locFallbackTitle}>Fetching your location...</Text>
               </View>
             )}
           </View>
 
-          {/* Bottom Half: List */}
-          <View style={styles.locListContainer}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              
-              <TouchableOpacity style={styles.locListItem} onPress={() => Alert.alert('Coming Soon', 'Live location sharing is not fully implemented yet.')}>
-                <View style={styles.locListIconWrapper}>
-                  <Ionicons name="location" size={24} color="#128C7E" />
-                </View>
-                <Text style={styles.locListText}>Share live location</Text>
-              </TouchableOpacity>
+          {/* Send Selected Map Location Button (when map is dragged) */}
+          {selectedMapRegion && (
+            <TouchableOpacity
+              style={styles.locSendSelectedBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                const lat = selectedMapRegion.latitude;
+                const lng = selectedMapRegion.longitude;
+                const mapUrl = `📍 Location: https://maps.google.com/?q=${lat},${lng}`;
+                sendMessage(mapUrl);
+                setLocationPickerVisible(false);
+                setSelectedMapRegion(null);
+              }}
+            >
+              <Ionicons name="navigate" size={20} color="#FFF" />
+              <Text style={styles.locSendSelectedText}>Send this location</Text>
+            </TouchableOpacity>
+          )}
 
-              <Text style={styles.locSectionTitle}>Nearby places</Text>
-
-              <TouchableOpacity 
-                style={[styles.locCurrentItem, { opacity: currentLocation ? 1 : 0.5 }]}
-                disabled={!currentLocation}
-                onPress={() => {
-                    const mapUrl = `ðŸ“ Location: https://maps.google.com/?q=${currentLocation?.coords?.latitude},${currentLocation?.coords?.longitude}`;
-                    sendMessage(mapUrl);
-                    setLocationPickerVisible(false);
-                }}
-              >
-                <View style={styles.locCurrentIconWrapper}>
-                  <View style={styles.locCurrentIconInner} />
-                </View>
-                <View style={styles.locCurrentTextWrapper}>
-                  <Text style={styles.locListText}>Send your current location</Text>
-                  {currentLocation && (
-                    <Text style={styles.locCurrentAccuracy}>
-                      Accurate to {Math.round(currentLocation.coords.accuracy || 10)} meters
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-
-              {[
-                { name: 'University Main Gate', desc: 'University Road, Vallabh Vidyanagar' },
-                { name: 'Student Library', desc: 'Central Block, Near Engineering College' },
-                { name: 'Campus Cafeteria', desc: 'North Wing, Science Dept' },
-                { name: 'Sports Complex', desc: 'East Campus Ground' }
-              ].map((place, idx) => (
-                <TouchableOpacity key={idx} style={styles.locPlaceItem}>
-                  <View style={styles.locPlaceIconWrapper}>
-                    <Ionicons name="location-outline" size={24} color="#565959" />
-                  </View>
-                  <View style={styles.locCurrentTextWrapper}>
-                    <Text style={styles.locPlaceName} numberOfLines={1}>{place.name}</Text>
-                    <Text style={styles.locPlaceDesc} numberOfLines={1}>{place.desc}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              
-              <View style={{ height: 24 }} />
-            </ScrollView>
-          </View>
+          {/* Bottom: Send Current Location */}
+          <TouchableOpacity 
+            style={[styles.locBottomOption, { opacity: currentLocation ? 1 : 0.5 }]}
+            disabled={!currentLocation}
+            activeOpacity={0.7}
+            onPress={() => {
+              const lat = currentLocation?.coords?.latitude;
+              const lng = currentLocation?.coords?.longitude;
+              const mapUrl = `📍 Location: https://maps.google.com/?q=${lat},${lng}`;
+              sendMessage(mapUrl);
+              setLocationPickerVisible(false);
+              setSelectedMapRegion(null);
+            }}
+          >
+            <View style={styles.locCurrentIconWrapper}>
+              <Ionicons name="navigate" size={22} color="#FFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locListText}>Send your current location</Text>
+              {currentLocation && (
+                <Text style={styles.locCurrentAccuracy}>
+                  Accurate to {Math.round(currentLocation.coords.accuracy || 10)} meters
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
       </Modal>
 
