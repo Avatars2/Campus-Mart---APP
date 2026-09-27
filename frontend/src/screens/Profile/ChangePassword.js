@@ -3,6 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import styles from './ChangePassword.styles';
+import { validatePassword } from '../../utils/passwordValidation';
+
 
 export default function ChangePasswordScreen({ navigation }) {
   const [newPassword, setNewPassword] = useState('');
@@ -29,8 +31,9 @@ export default function ChangePasswordScreen({ navigation }) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setErrorMsg('New password must be at least 6 characters long.');
+    const pwdError = validatePassword(newPassword);
+    if (pwdError) {
+      setErrorMsg(pwdError);
       return;
     }
 
@@ -85,7 +88,7 @@ export default function ChangePasswordScreen({ navigation }) {
           </View>
 
           <Text style={styles.pageTitle}>Change Password</Text>
-          <Text style={styles.subText}>Your password must be at least 6 characters and should include numbers, letters, and special characters.</Text>
+          <Text style={styles.subText}>Your password must be at least 8 characters and must include letters, numbers, and a special character.</Text>
 
           <View style={styles.formCard}>
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}

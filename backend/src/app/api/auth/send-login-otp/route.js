@@ -24,6 +24,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Account is not verified yet.' }, { status: 400 });
     }
 
+    if (user.is_suspended) {
+      return NextResponse.json({ error: 'Your account has been suspended by the administrator.' }, { status: 403 });
+    }
+
     const otpResult = await createAndSendOtp(normalizedEmail, 'Login');
     if (otpResult.error) {
       return NextResponse.json({ error: otpResult.error }, { status: otpResult.status });

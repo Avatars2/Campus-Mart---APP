@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export default StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
@@ -8,13 +8,13 @@ export default StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    paddingTop: 50,
-    paddingBottom: 15,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: '#0F1111' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F1111' },
   
   // Cart Items
   itemCard: {

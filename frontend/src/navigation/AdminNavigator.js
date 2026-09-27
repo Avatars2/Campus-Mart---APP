@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import AdminDashboardNavigator from './AdminDashboardNavigator';
-import AdminCategoriesScreen from '../screens/Admin/Categories';
+
 import ProfileNavigator from './ProfileNavigator';
 
 const Tab = createBottomTabNavigator();
@@ -18,8 +18,6 @@ export default function AdminNavigator() {
 
           if (route.name === 'AdminDashboard') {
             iconName = focused ? 'speedometer' : 'speedometer-outline';
-          } else if (route.name === 'AdminCategories') {
-            iconName = focused ? 'pricetags' : 'pricetags-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -72,7 +70,6 @@ export default function AdminNavigator() {
       })}
     >
       <Tab.Screen name="AdminDashboard" component={AdminDashboardNavigator} options={{ title: 'Dashboard', headerShown: false }} />
-      <Tab.Screen name="AdminCategories" component={AdminCategoriesScreen} options={{ title: 'Categories', headerShown: false }} />
       <Tab.Screen name="Profile" component={ProfileNavigator} options={{ title: 'Profile', headerShown: false }} />
     </Tab.Navigator>
   );

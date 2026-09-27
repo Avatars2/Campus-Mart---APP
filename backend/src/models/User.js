@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'admin'],
     default: 'student',
   },
+  is_suspended: {
+    type: Boolean,
+    default: false,
+  },
   fcmToken: {
     type: String,
     default: null,

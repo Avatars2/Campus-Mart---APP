@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { Platform, DeviceEventEmitter } from 'react-native';
 
 // Your laptop's local Wi-Fi IP address (run `ipconfig` to get this if it changes)
 // ⚠️ Important: Change this if your Wi-Fi IP changes (e.g. different network)
@@ -32,6 +32,20 @@ client.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      const isSuspended = error.response.data?.isSuspended || error.response.data?.error?.toLowerCase().includes('suspended');
+      if (isSuspended || error.response.status === 401) {
+        DeviceEventEmitter.emit('AUTH_ERROR', { isSuspended });
+      }
+    }
     return Promise.reject(error);
   }
 );

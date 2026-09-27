@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Image, RefreshControl, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
+import { AuthContext } from '../../context/AuthContext';
+import { useContext } from 'react';
+import ReportModal from '../../components/ReportModal';
 import RatingStars from '../../components/commerce/RatingStars';
 import storeStyles from './SellerStore.styles';
 import homeStyles from './styles'; // Reuse itemCard styles from Home
 
 export default function SellerStore({ route, navigation }) {
   const { sellerId, sellerName, sellerImage } = route.params;
+  const { user } = useContext(AuthContext);
+  const isAdminView = user?.role === 'admin';
+  const isOwnStore = user?.id === sellerId || user?._id === sellerId;
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,6 +98,12 @@ export default function SellerStore({ route, navigation }) {
         />
         <Text style={storeStyles.sellerName}>{sellerName}</Text>
         <Text style={storeStyles.sellerSubtitle}>Verified Campus Seller</Text>
+        {!isAdminView && !isOwnStore && (
+          <TouchableOpacity onPress={() => setReportModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+            <Ionicons name="flag-outline" size={14} color="#DC2626" style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '500' }}>Report User</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Items List */}
@@ -113,6 +126,13 @@ export default function SellerStore({ route, navigation }) {
           }
         />
       )}
+      <ReportModal 
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        targetId={sellerId}
+        targetType="user"
+        targetName={sellerName}
+      />
     </View>
   );
 }

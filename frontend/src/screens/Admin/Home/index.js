@@ -70,29 +70,58 @@ export default function AdminHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />
         }
       >
-        <Text style={styles.sectionTitle}>Key Metrics</Text>
+        
+        <TouchableOpacity 
+          style={[styles.statCard, { width: '100%', alignSelf: 'center', backgroundColor: '#FEF2F2', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 20, marginBottom: 15, borderColor: '#FCA5A5', borderWidth: 1 }]}
+          onPress={() => navigation.navigate('AdminReports')}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2', marginBottom: 0, marginRight: 16, width: 52, height: 52, borderRadius: 16 }]}>
+              <Ionicons name="warning" size={26} color="#DC2626" />
+            </View>
+            <View>
+              <Text style={[styles.statLabel, { color: '#991B1B', fontWeight: '700' }]}>Pending User Reports</Text>
+              <Text style={[styles.statValue, { fontSize: 32, marginBottom: 0, color: '#7F1D1D' }]}>{dashboardData?.stats?.pendingReports || 0}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: '#DC2626', fontWeight: '600', marginRight: 4 }}>Review</Text>
+            <Ionicons name="chevron-forward" size={20} color="#DC2626" />
+          </View>
+        </TouchableOpacity>
+
         <View style={styles.statsGrid}>
           {/* Total Users */}
           <TouchableOpacity 
-            style={styles.statCard} 
+            style={[styles.statCard, { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 20 }]} 
             onPress={() => navigation.navigate('AdminUsers')}
             activeOpacity={0.7}
           >
-            <View style={[styles.statIconContainer, { backgroundColor: '#E0E7FF' }]}>
-              <Ionicons name="people" size={20} color="#4338CA" />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#E0E7FF', marginBottom: 0, marginRight: 16, width: 52, height: 52, borderRadius: 16 }]}>
+                <Ionicons name="people" size={26} color="#4338CA" />
+              </View>
+              <View>
+                <Text style={styles.statLabel}>Total Platform Users</Text>
+                <Text style={[styles.statValue, { fontSize: 32, marginBottom: 0 }]}>{dashboardData?.stats?.totalUsers || 0}</Text>
+              </View>
             </View>
-            <Text style={styles.statValue}>{dashboardData?.stats?.totalUsers || 0}</Text>
-            <Text style={styles.statLabel}>Total Users</Text>
+            <Ionicons name="chevron-forward" size={24} color="#C1C7D0" />
           </TouchableOpacity>
 
           {/* Active Items */}
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminItems')}
+            activeOpacity={0.7}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: '#DCFCE7' }]}>
               <Ionicons name="pricetags" size={20} color="#15803D" />
             </View>
             <Text style={styles.statValue}>{dashboardData?.stats?.activeItems || 0}</Text>
             <Text style={styles.statLabel}>Active Items</Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Sold Items */}
           <View style={styles.statCard}>
@@ -103,10 +132,23 @@ export default function AdminHomeScreen() {
             <Text style={styles.statLabel}>Sold Items</Text>
           </View>
 
+          {/* Categories */}
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminCategories')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconContainer, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="grid" size={20} color="#7E22CE" />
+            </View>
+            <Text style={styles.statValue}>{dashboardData?.stats?.totalCategories || 0}</Text>
+            <Text style={styles.statLabel}>Categories</Text>
+          </TouchableOpacity>
+
           {/* Total Orders */}
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="cart" size={20} color="#7E22CE" />
+            <View style={[styles.statIconContainer, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="cart" size={20} color="#0369A1" />
             </View>
             <Text style={styles.statValue}>{dashboardData?.stats?.totalOrders || 0}</Text>
             <Text style={styles.statLabel}>Total Orders</Text>
@@ -116,7 +158,7 @@ export default function AdminHomeScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={styles.sectionTitle}>Recently Joined Users</Text>
           <TouchableOpacity onPress={() => navigation.navigate('AdminUsers')} style={{ marginRight: 20 }}>
-            <Text style={{ color: '#0052CC', fontWeight: '600' }}>View All</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}><Text style={{ color: '#0052CC', fontWeight: '600', marginRight: 4 }}>View All</Text><Ionicons name="arrow-forward" size={16} color="#0052CC" /></View>
           </TouchableOpacity>
         </View>
         <View style={styles.recentCard}>

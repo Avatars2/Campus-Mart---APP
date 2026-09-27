@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Image, RefreshControl } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Image, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import styles from './styles';
@@ -22,36 +22,66 @@ export default function SellScreen({ navigation }) {
   }, []);
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadItems, saveItems);
 
+  const handleItemPress = (item) => {
+    if (item.is_suspended) {
+      Alert.alert(
+        'Item Suspended',
+        'This item has been suspended by the administrator due to a policy violation. It is no longer visible to other students.'
+      );
+    }
+  };
+
   const renderItem = ({ item }) => {
     const imageUrl = item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/100';
+    
+    let statusText = 'Sold';
+    let statusStyle = styles.statusSold;
+    let textStyle = styles.statusTextSold;
+    
+    if (item.is_suspended) {
+      statusText = 'Suspended';
+      statusStyle = { backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 };
+      textStyle = { color: '#DC2626', fontSize: 12, fontWeight: '600' };
+    } else if (item.is_currently_rented) {
+      statusText = 'Currently rented';
+    } else if (item.is_active) {
+      statusText = 'Active';
+      statusStyle = styles.statusActive;
+      textStyle = styles.statusTextActive;
+    }
+
     return (
-      <View style={styles.itemCard}>
+      <TouchableOpacity 
+        style={[styles.itemCard, item.is_suspended && { opacity: 0.7 }]}
+        onPress={() => handleItemPress(item)}
+        activeOpacity={0.8}
+      >
         <Image source={{ uri: imageUrl }} style={styles.itemImage} />
         <View style={styles.itemDetails}>
-          <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.itemName, item.is_suspended && { textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.itemCategory}>{item.category_name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={styles.itemPrice}>₹{item.price}{item.listing_type === 'rent' ? ` / ${item.rental_period || 'day'}` : ''}</Text>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => navigation.navigate('EditProduct', { item })}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="pencil" size={18} color="#007185" />
-            </TouchableOpacity>
+            {!item.is_suspended && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => navigation.navigate('EditProduct', { item })}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pencil" size={18} color="#007185" />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.itemFooter}>
             <Text style={styles.itemCondition}>
               {{ 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' }[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')}
             </Text>
-            <View style={[styles.statusBadge, item.is_currently_rented ? styles.statusSold : item.is_active ? styles.statusActive : styles.statusSold]}>
-              <Text style={[styles.statusText, item.is_currently_rented ? styles.statusTextSold : item.is_active ? styles.statusTextActive : styles.statusTextSold]}>
-                {item.is_currently_rented ? 'Currently rented' : item.is_active ? 'Active' : 'Sold'}
-              </Text>
+            <View style={statusStyle}>
+              <Text style={textStyle}>{statusText}</Text>
             </View>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -78,7 +108,7 @@ export default function SellScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>My<Text style={{ color: '#007185' }}>Listings</Text></Text>
+        <Text style={styles.screenTitle}>List<Text style={{ color: '#007185' }}>ings</Text></Text>
       </View>
 
       {items.length === 0 ? (

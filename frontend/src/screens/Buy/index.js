@@ -30,7 +30,9 @@ export default function BuyScreen({ navigation }) {
       const res = await client.get(`/orders?type=${activeTab}`);
       setOrders(res.data.orders);
     } catch (err) {
-      console.error('Fetch Orders Error:', err);
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        console.error('Fetch Orders Error:', err);
+      }
       setError(err.response?.data?.error || 'Failed to fetch orders');
     } finally {
       setLoading(false);
@@ -622,12 +624,38 @@ export default function BuyScreen({ navigation }) {
             <Text style={styles.confirmationTitle}>Rate this item</Text>
             <Text style={styles.confirmationMessage}>How would you rate your purchase of {ratingPrompt?.item_id?.name || 'this item'}?</Text>
             <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setSelectedRating(star)} activeOpacity={0.75}>
-                  <Ionicons name={star <= selectedRating ? 'star' : 'star-outline'} size={34} color="#F59E0B" style={styles.starIcon} />
-                </TouchableOpacity>
-              ))}
+              {[1, 2, 3, 4, 5].map((star) => {
+                const isFullFilled = selectedRating >= star;
+                const isHalfFilled = !isFullFilled && selectedRating >= star - 0.5;
+                const iconName = isFullFilled ? 'star' : isHalfFilled ? 'star-half' : 'star-outline';
+                return (
+                  // Single container — icon renders normally, two invisible zones overlay it
+                  <View key={star} style={{ width: 38, height: 38, marginHorizontal: 3, justifyContent: 'center', alignItems: 'center' }}>
+                    {/* Fully rendered, un-clipped star icon */}
+                    <Ionicons name={iconName} size={34} color="#F59E0B" />
+                    {/* Invisible left-half zone → half star (e.g. star=3 → 2.5) */}
+                    <TouchableOpacity
+                      onPress={() => setSelectedRating(star - 0.5)}
+                      activeOpacity={0}
+                      style={{ position: 'absolute', left: 0, top: 0, width: 19, height: 38 }}
+                    />
+                    {/* Invisible right-half zone → full star */}
+                    <TouchableOpacity
+                      onPress={() => setSelectedRating(star)}
+                      activeOpacity={0}
+                      style={{ position: 'absolute', right: 0, top: 0, width: 19, height: 38 }}
+                    />
+                  </View>
+                );
+              })}
             </View>
+            {/* Score label — only shown after user has tapped */}
+            <Text style={{ color: selectedRating > 0 ? '#F59E0B' : '#9CA3AF', fontWeight: '700', fontSize: 15, marginTop: 2, marginBottom: 18 }}>
+              {selectedRating > 0
+                ? `${selectedRating % 1 === 0 ? `${selectedRating}.0` : selectedRating} / 5`
+                : 'Tap to rate'}
+            </Text>
+
             <View style={styles.confirmationActions}>
               <TouchableOpacity style={styles.noButton} onPress={() => setRatingPrompt(null)} activeOpacity={0.8}>
                 <Text style={styles.noButtonText}>Skip</Text>
@@ -640,7 +668,7 @@ export default function BuyScreen({ navigation }) {
         </View>
       </Modal>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My<Text style={{ color: '#007185' }}>Orders</Text></Text>
+        <Text style={styles.headerTitle}>Or<Text style={{ color: '#007185' }}>ders</Text></Text>
       </View>
       
       <View style={styles.tabContainer}>

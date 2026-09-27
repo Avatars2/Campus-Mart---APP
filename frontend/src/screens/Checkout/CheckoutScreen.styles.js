@@ -17,7 +17,7 @@ export default StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   headerTitle: { 
-    fontSize: 22, 
+    fontSize: 24, 
     fontWeight: '900', 
     color: '#0F1111' 
   },

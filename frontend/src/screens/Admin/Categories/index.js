@@ -145,7 +145,7 @@ export default function AdminCategoriesScreen() {
             categories.map((cat) => (
               <View key={cat.id || cat._id} style={styles.categoryCard}>
                 <View style={styles.iconContainer}>
-                  <Ionicons name={cat.icon_url || 'grid'} size={24} color="#0052CC" />
+                  <Ionicons name="folder-open" size={24} color="#0052CC" />
                 </View>
                 <View style={styles.categoryInfo}>
                   <Text style={styles.categoryName}>{cat.name}</Text>
@@ -204,16 +204,7 @@ export default function AdminCategoriesScreen() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Icon Name (Ionicons)</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="e.g., basketball"
-                value={newCatIcon}
-                onChangeText={setNewCatIcon}
-                autoCapitalize="none"
-              />
-            </View>
+
 
             {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
 

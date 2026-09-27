@@ -1,25 +1,25 @@
-﻿=========================================
+=========================================
 CAMPUS MART - PROGRESS REPORT
-Date: September 16, 2026
+Date: September 26, 2026
 =========================================
 
 PROJECT STATUS:
 CampusMart is a working student marketplace prototype. The core marketplace,
 authentication, messaging, checkout, order confirmation, delivery confirmation,
-and basic rating flows are implemented. Advanced payment, delivery tracking,
-moderation, reporting, and review features remain planned.
+rating flows, and push notifications are implemented. Advanced payment, delivery
+tracking, moderation, reporting, and review features remain planned.
 
 IMPLEMENTATION SUMMARY:
-Fully implemented: 8 modules
-Partially implemented: 4 modules
+Fully implemented: 10 modules
+Partially implemented: 2 modules
 Not started: 1 module
-Estimated overall completion: approximately 82%
+Estimated overall completion: approximately 92%
 
 =========================================
 MODULE BREAKDOWN
 =========================================
 
-1. AUTHENTICATION SYSTEM [COMPLETED - 92%]
+1. AUTHENTICATION SYSTEM [COMPLETED - 95%]
    - Registration and login with JWT authentication.
    - Email/OTP-related authentication flows are present.
    - Forgot-password and password-change screens are available.
@@ -27,6 +27,9 @@ MODULE BREAKDOWN
    - OTPs expire after 10 minutes, have a resend cooldown, are limited to five attempts, and are single-use.
    - JWT authentication requires the configured JWT_SECRET without an insecure fallback.
    - Password reset now uses a verified college email, one-time OTP, expiry/cooldown/attempt rules, and a new strong password.
+   - Password validation is now unified via a shared utility (passwordValidation.js) used by both Register and ChangePassword screens.
+   - Password rules updated to minimum 8 characters including at least one letter, one number, and one special character.
+   - Register and Login page email placeholders cleaned up (domain hint removed from visible UI, domain restriction retained in backend).
    - Account lockout, general request rate limiting, OAuth, biometric login, and refresh tokens remain to be added or verified.
 
 2. STUDENT DASHBOARD [COMPLETED - 100%]
@@ -40,13 +43,14 @@ MODULE BREAKDOWN
    - Item cards show seller information, price, condition, quantity, and average rating.
    - Product details show images, description, seller information, and rating summary.
    - Rental cards show hourly, daily, or monthly rates and currently-rented availability.
+   - RatingStars component updated to support half-star display (e.g. 3.5 shows ★★★½☆).
    - Featured/trending sections, price filters, sorting, location filters, and announcements are not fully implemented.
 
 4. BUY PAGE AND CHECKOUT [COMPLETED - 95%]
    - Cart and wishlist management.
    - Checkout with order summary, payment selection, and delivery discussion text.
    - Buyer Purchases and seller Sales tabs.
-   - Order Details Modal: Tapping an order card opens a detailed modal with delivery/receipt actions, invoice generation, and detailed timestamps (Order Placed vs Confirmed dates).
+   - Order Details Modal: Tapping an order card opens a detailed modal with delivery/receipt actions, invoice generation, and detailed timestamps.
    - Ecommerce-style order confirmation screen with buyer, seller, item, payment, delivery, and total details.
    - Invoice generation/printing is implemented without app action buttons in the printed output.
    - Rental checkout supports hourly, daily, or monthly duration selection and calculates the total from rate x duration.
@@ -63,9 +67,9 @@ MODULE BREAKDOWN
    - Sellers can see current rental availability, buyer time remaining, and the return deadline.
    - View counts, interested-buyer analytics, delivery preferences, and payout tracking remain pending.
 
-6. PROFILE PAGE [PARTIALLY COMPLETED - 55%]
+6. PROFILE PAGE [PARTIALLY COMPLETED - 60%]
    - User profile information and profile navigation are available.
-   - Change-password and profile-related screens exist.
+   - Change-password screen enforces the same unified password validation rules as registration.
    - Advanced preferences, delivery preferences, reputation summary, report center, and complete profile editing remain to be finished.
 
 7. MESSAGING SYSTEM [COMPLETED - 100%]
@@ -82,11 +86,13 @@ MODULE BREAKDOWN
    - React Navigation state caching is handled to strictly isolate chat threads and prevent stale messages.
    - Advanced moderation remains pending.
 
-8. NOTIFICATION SYSTEM [COMPLETED - 90%]
+8. NOTIFICATION SYSTEM [COMPLETED - 95%]
    - In-app notification center with unread count.
    - Order, message, and delivery-related notifications.
    - Rental notifications cover delivery, rental start, return request, and rental completion.
-   - Firebase-related push notification integration is present.
+   - Firebase Admin SDK fully initialized and push notifications via FCM are active.
+   - Firebase credentials stored securely in backend .env and loaded via modular firebase-admin/app API.
+   - notificationHelper guards against missing Firebase config (push silently skipped if unconfigured).
    - Price-drop alerts, followed-category alerts, payment/refund alerts, and report updates remain to be completed.
 
 9. PAYMENT SYSTEM [PARTIALLY COMPLETED - 30%]
@@ -102,23 +108,33 @@ MODULE BREAKDOWN
     - Seller flow: Pending -> Mark item delivered.
     - Buyer flow: Delivered -> Confirm item received -> Completed.
     - Buyer receives an item-delivered notification and transaction-success status.
-   - Rental flow: Pending -> Delivered -> Rental Active -> Return Requested -> Completed.
-   - Buyer confirmation starts a live rental timer based on the selected hours, days, or months.
-   - Buyer can request return after the rental period ends; seller confirms receipt of the returned item.
-   - Sellers see the buyer's remaining rental time and return deadline.
-   - Meetup scheduling, maps, tracking, delivery partners, photo/signature proof, and automatic confirmation remain pending.
+    - Rental flow: Pending -> Delivered -> Rental Active -> Return Requested -> Completed.
+    - Buyer confirmation starts a live rental timer based on the selected hours, days, or months.
+    - Buyer can request return after the rental period ends; seller confirms receipt of the returned item.
+    - Sellers see the buyer's remaining rental time and return deadline.
+    - Meetup scheduling, maps, tracking, delivery partners, photo/signature proof, and automatic confirmation remain pending.
 
-11. ADMIN PANEL [PARTIALLY COMPLETED - 35%]
+11. ADMIN PANEL [COMPLETED - 90%]
     - Admin navigation and dashboard structure exist.
-    - User and category management screens are available or in progress.
-    - Item moderation, featured listings, analytics, system health, audit logs, bulk operations, and report management remain pending.
+    - Admin account is manually created directly in the database with is_verified: true and role: admin.
+    - EXPO_PUBLIC_ADMIN_EMAIL in .env whitelists the admin email from the college domain restriction.
+    - Dashboard stats (Total Users, Active Items, Sold Items, Orders) are wired up and live.
+    - User Management: Admins can view all users, search by name/email/ID, and Suspend/Reactivate students.
+    - Item Management: Admins can view all listings, search, Hide/Publish items, and permanently Delete listings.
+    - Backend is fully secured with a global `verifyAdminAuth` middleware.
+    - Suspended users are instantly forcefully logged out (DB checked on every request).
+    - Analytics, system health, audit logs, bulk operations, category editing, and report management remain pending.
 
-12. ITEM REVIEWS AND RATINGS [PARTIALLY COMPLETED - 55%]
-    - After the buyer confirms receipt, a 1-to-5 star rating prompt is shown.
+12. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
+    - After the buyer confirms receipt, a half-star rating prompt is shown (supports 0.5 increments from 0.5 to 5.0).
+    - Rating input uses invisible overlay touch zones (left half = X.5, right half = X.0) for accurate half-star selection.
+    - Live score label displays selected rating (e.g. "2.5 / 5") with "Tap to rate" hint before selection.
+    - RatingStars display component renders half-star icons using Ionicons star-half for fractional values.
     - Ratings are saved against the completed order.
-    - Item average rating and rating count are updated.
+    - Item average rating and rating count are updated after each submission.
     - Ratings appear on home listing cards and product details.
-    - Written reviews, half-star ratings, category ratings, photo reviews, helpful votes, seller responses, reporting, and rating analytics are pending.
+    - One rating per completed order; duplicate ratings are blocked by the backend.
+    - Written reviews, photo reviews, and rating analytics are out of scope for this project.
 
 13. REPORT SYSTEM [NOT STARTED - 0%]
     - Item, user, review, payment, evidence-upload, anonymous-reporting, case tracking, and appeals workflows are not implemented.
@@ -127,13 +143,14 @@ MODULE BREAKDOWN
 ACTUAL TECHNOLOGY STACK
 =========================================
 - Frontend: React Native with Expo SDK 57 and React Native Web.
-- Backend: Next.js API routes running on Node.js.
+- Backend: Next.js API routes running on Node.js (webpack mode; Turbopack disabled due to Windows AppLocker policy).
 - Database: MongoDB with Mongoose models.
 - Authentication: JWT-based authentication with AsyncStorage token persistence.
 - Real-time messaging: Pusher.
 - Image storage: Cloudinary.
-- Notifications: Firebase/FCM-related integration and in-app notifications.
+- Notifications: Firebase Admin SDK (modular API) with FCM push notifications fully active.
 - PDF/invoice output: Expo Print and Expo Sharing on supported platforms; browser print on web.
+- Password validation: Shared utility (src/utils/passwordValidation.js) used across Register and ChangePassword screens.
 
 =========================================
 CURRENTLY VERIFIED FLOWS
@@ -145,9 +162,10 @@ CURRENTLY VERIFIED FLOWS
 - Seller marks an item delivered with confirmation modal.
 - Buyer confirms receipt with confirmation modal.
 - Transaction completion notification and status.
-- Buyer submits a 1-to-5 item rating after completion.
-- Item ratings appear on home and product details.
+- Buyer submits a half-star rating (0.5 to 5.0) after completion.
+- Item ratings with half-star display appear on home and product details.
 - Buyer/seller messaging and order notifications.
+- Firebase push notifications dispatched on order and delivery events.
 - Create and edit rental listings with hourly, daily, or monthly rates.
 - Rental checkout with buyer-selected duration and calculated total.
 - Rental delivery confirmation, live timer, return request, seller return confirmation, and completion.
@@ -163,6 +181,6 @@ NEXT RECOMMENDED STEPS
 1. Integrate and verify a real UPI payment gateway before accepting online payments.
 2. Add written reviews, rating breakdowns, and review moderation.
 3. Build delivery scheduling, location selection, maps, tracking, and delivery proof.
-4. Complete admin moderation, reports, analytics, and audit logging.
-5. Add automated tests for rental checkout, delivery confirmation, timers, returns, ratings, authorization, and payment states.
-
+4. Complete reports system, analytics, and audit logging.
+5. Build and test a signed APK (eas build) so the Campus Mart icon appears properly on device home screens.
+6. Add automated tests for rental checkout, delivery confirmation, timers, returns, ratings, authorization, and payment states.

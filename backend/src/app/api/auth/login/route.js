@@ -24,6 +24,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Please verify your email before logging in.' }, { status: 400 });
     }
 
+    if (user.is_suspended) {
+      return NextResponse.json({ error: 'Your account has been suspended by the administrator.' }, { status: 403 });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {

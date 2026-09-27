@@ -8,17 +8,10 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 import RatingStars from '../../components/commerce/RatingStars';
 
-const CATEGORIES = [
-  { name: 'All', icon: 'apps' },
-  { name: 'Books', icon: 'book-open-variant' },
-  { name: 'Electronics', icon: 'laptop' },
-  { name: 'Furniture', icon: 'sofa' },
-  { name: 'Stationery', icon: 'pencil-ruler' },
-  { name: 'Clothing', icon: 'tshirt-crew' },
-  { name: 'Others', icon: 'cube-outline' }
-];
+
 
 export default function HomeScreen({ route, navigation }) {
+  const [categories, setCategories] = useState([{ name: 'All' }]);
   const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,6 +27,22 @@ export default function HomeScreen({ route, navigation }) {
   const { unreadCount } = useNotifications();
   const { cartCount, wishlistCount } = useCartWishlist();
   searchQueryRef.current = searchQuery;
+
+  const fetchCategoriesList = async () => {
+    try {
+      const response = await client.get('/categories');
+      const cats = response.data.map(c => ({ name: c.name }));
+      setCategories([{ name: 'All' }, ...cats]);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategoriesList();
+    }, [])
+  );
 
   const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory, minP = minPrice, maxP = maxPrice, conds = conditionFilter) => {
     try {
@@ -56,7 +65,9 @@ export default function HomeScreen({ route, navigation }) {
       const response = await client.get(url);
       setItems(response.data);
     } catch (error) {
-      console.error("Error fetching items:", error);
+      if (error.response?.status !== 401 && error.response?.status !== 403) {
+        console.error("Error fetching items:", error);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -324,7 +335,7 @@ export default function HomeScreen({ route, navigation }) {
                   <View>
                     <Text style={styles.filterSectionTitle}>Select Category</Text>
                     <View style={styles.filterOptionRow}>
-                      {CATEGORIES.map(cat => (
+                      {categories.map(cat => (
                         <TouchableOpacity
                           key={cat.name}
                           style={[styles.filterOptionBtn, activeCategory === cat.name && styles.filterOptionBtnActive]}
@@ -339,25 +350,25 @@ export default function HomeScreen({ route, navigation }) {
 
                 {activeFilterTab === 'Price' && (
                   <View>
-                    <Text style={styles.filterSectionTitle}>Price Range</Text>
-                    <View style={styles.filterOptionRow}>
-                      {[
-                        { label: 'Any Price', min: null, max: null },
-                        { label: 'Under ₹500', min: null, max: 500 },
-                        { label: '₹500 - ₹2000', min: 500, max: 2000 },
-                        { label: 'Over ₹2000', min: 2000, max: null },
-                      ].map(range => {
-                        const isActive = minPrice === range.min && maxPrice === range.max;
-                        return (
-                          <TouchableOpacity
-                            key={range.label}
-                            style={[styles.filterOptionBtn, isActive && styles.filterOptionBtnActive]}
-                            onPress={() => { setMinPrice(range.min); setMaxPrice(range.max); }}
-                          >
-                            <Text style={[styles.filterOptionText, isActive && styles.filterOptionTextActive]}>{range.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                    <Text style={styles.filterSectionTitle}>Custom Price Range</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingHorizontal: 5 }}>
+                      <TextInput
+                        style={{ flex: 1, backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, fontSize: 16, color: '#0F1111' }}
+                        placeholder="Min (₹)"
+                        keyboardType="numeric"
+                        value={minPrice !== null && minPrice !== undefined ? minPrice.toString() : ''}
+                        onChangeText={(val) => setMinPrice(val ? parseInt(val.replace(/[^0-9]/g, '')) : null)}
+                        placeholderTextColor="#94A3B8"
+                      />
+                      <Text style={{ marginHorizontal: 12, color: '#64748B', fontWeight: 'bold' }}>to</Text>
+                      <TextInput
+                        style={{ flex: 1, backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, fontSize: 16, color: '#0F1111' }}
+                        placeholder="Max (₹)"
+                        keyboardType="numeric"
+                        value={maxPrice !== null && maxPrice !== undefined ? maxPrice.toString() : ''}
+                        onChangeText={(val) => setMaxPrice(val ? parseInt(val.replace(/[^0-9]/g, '')) : null)}
+                        placeholderTextColor="#94A3B8"
+                      />
                     </View>
                   </View>
                 )}

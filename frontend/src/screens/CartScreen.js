@@ -190,7 +190,7 @@ export default function CartScreen({ navigation }) {
       </Modal>
       <View style={styles.header}>
         <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
-          My<Text style={{ color: '#007185' }}>Cart</Text>
+          Ca<Text style={{ color: '#007185' }}>rt</Text>
         </Animated.Text>
       </View>
 

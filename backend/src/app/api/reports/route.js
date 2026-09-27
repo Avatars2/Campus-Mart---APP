@@ -1,0 +1,70 @@
+import { NextResponse } from 'next/server';
+import connectDB from '@/lib/db';
+import Report from '@/models/Report';
+import { verifyAuth } from '@/lib/auth';
+import { cloudinary } from '@/lib/cloudinary';
+
+export async function POST(request) {
+  try {
+    const authResult = await verifyAuth(request);
+    if (authResult.error) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+
+    const contentType = request.headers.get('content-type') || '';
+    let target_type, target_id, reason, description, proof_url = '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      target_type = formData.get('target_type');
+      target_id = formData.get('target_id');
+      reason = formData.get('reason');
+      description = formData.get('description');
+      
+      const file = formData.get('proof_image');
+      if (file && typeof file !== 'string' && file.size > 0) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const dataURI = 'data:' + (file.type || 'image/jpeg') + ';base64,' + buffer.toString('base64');
+        
+        const uploadResult = await cloudinary.uploader.upload(dataURI, {
+          folder: 'campus_mart_reports',
+          transformation: [{ width: 800, crop: 'limit' }]
+        });
+        proof_url = uploadResult.secure_url;
+      }
+    } else {
+      const body = await request.json();
+      target_type = body.target_type;
+      target_id = body.target_id;
+      reason = body.reason;
+      description = body.description;
+    }
+
+    if (!target_type || !['item', 'user'].includes(target_type)) {
+      return NextResponse.json({ error: 'Invalid target type' }, { status: 400 });
+    }
+    if (!target_id || !reason) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const report = new Report({
+      reporter_id: authResult.user.id,
+      target_type,
+      target_id,
+      reason,
+      description: description || '',
+      proof_image: proof_url || null,
+      status: 'pending',
+    });
+
+    await report.save();
+
+    return NextResponse.json({ message: 'Report submitted successfully', report }, { status: 201 });
+  } catch (error) {
+    console.error('Error in POST /api/reports:', error);
+    return NextResponse.json({ error: 'Server error while submitting report.' }, { status: 500 });
+  }
+}

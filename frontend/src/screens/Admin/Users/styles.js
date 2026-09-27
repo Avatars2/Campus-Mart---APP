@@ -26,6 +26,21 @@ export default StyleSheet.create({
     fontWeight: '700',
     color: '#1A1F36',
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginTop: 15,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: '#1A1F36',
+  },
   listContainer: {
     padding: 20,
   },
@@ -85,6 +100,10 @@ export default StyleSheet.create({
   },
   roleTextAdmin: {
     color: '#92400E',
+  },
+  actionsContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   errorText: {
     color: '#E11D48',

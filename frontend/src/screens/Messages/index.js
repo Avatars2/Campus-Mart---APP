@@ -188,7 +188,7 @@ const MessageList = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
-          My<Text style={{ color: '#007185' }}>Messages</Text>
+          Mess<Text style={{ color: '#007185' }}>ages</Text>
         </Animated.Text>
       </View>
       

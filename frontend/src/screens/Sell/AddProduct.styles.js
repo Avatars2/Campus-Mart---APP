@@ -25,7 +25,7 @@ export default StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
     color: '#0F1111',
     letterSpacing: -0.5,

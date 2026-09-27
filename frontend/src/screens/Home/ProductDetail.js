@@ -5,6 +5,7 @@ import { useCartWishlist } from '../../context/CartWishlistContext';
 import { AuthContext } from '../../context/AuthContext';
 import styles from './ProductDetail.styles';
 import RatingStars from '../../components/commerce/RatingStars';
+import ReportModal from '../../components/ReportModal';
 
 const { width } = Dimensions.get('window');
 
@@ -12,9 +13,11 @@ export default function ProductDetailScreen({ route, navigation }) {
   const { item } = route.params;
   const { addToCart, toggleWishlist, wishlistItemIds } = useCartWishlist();
   const { user } = useContext(AuthContext);
+  const isAdminView = user?.role === 'admin';
   
   const [activeSlide, setActiveSlide] = useState(0);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const [wishlistUpdating, setWishlistUpdating] = useState(false);
 
   useLayoutEffect(() => {
@@ -45,6 +48,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));
   const currentUserId = user?.id || user?._id;
   const isOwnItem = sId && currentUserId && String(sId) === String(currentUserId);
+  const displaySellerName = item.seller_name || (typeof item.seller_id === 'object' ? item.seller_id.full_name : null) || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller');
 
   const handleToggleWishlistClick = async () => {
     if (wishlistUpdating) return;
@@ -81,8 +85,9 @@ export default function ProductDetailScreen({ route, navigation }) {
     ? item.images
     : ['https://via.placeholder.com/400'];
 
-  const sellerImage = item.seller_image
-    ? { uri: item.seller_image }
+  const dynamicSellerPhoto = item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null);
+  const sellerImage = dynamicSellerPhoto
+    ? { uri: dynamicSellerPhoto }
     : { uri: 'https://via.placeholder.com/100' };
 
   const handleScroll = (event) => {
@@ -106,20 +111,22 @@ export default function ProductDetailScreen({ route, navigation }) {
             <View>
               <View style={styles.storeNameRow}>
                 <Image source={sellerImage} style={styles.storeIcon} />
-                <Text style={styles.storeNameText}>{item.seller_name}</Text>
+                <Text style={styles.storeNameText}>{displaySellerName}</Text>
               </View>
-              <TouchableOpacity onPress={() => {
-                const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));
-                const sImage = item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null);
-                
-                navigation.navigate('SellerStore', {
-                  sellerId: sId,
-                  sellerName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
-                  sellerImage: sImage
-                });
-              }}>
-                <Text style={styles.visitStoreText}>Visit the store</Text>
-              </TouchableOpacity>
+              {!isAdminView && (
+                <TouchableOpacity onPress={() => {
+                  const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));
+                  const sImage = item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null);
+                  
+                  navigation.navigate('SellerStore', {
+                    sellerId: sId,
+                    sellerName: displaySellerName || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
+                    sellerImage: sImage
+                  });
+                }}>
+                  <Text style={styles.visitStoreText}>Visit the store</Text>
+                </TouchableOpacity>
+              )}
             </View>
             
             <View style={styles.ratingSummaryTop}>
@@ -155,15 +162,17 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
 
           {/* Wishlist Button over Image */}
-          <TouchableOpacity
-            style={[styles.wishlistButton, isOwnItem && { opacity: 0.5 }]}
-            onPress={isOwnItem ? null : handleToggleWishlistClick}
-            disabled={wishlistUpdating || isOwnItem}
-            accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            activeOpacity={0.8}
-          >
-            <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color={isOwnItem ? "#B0B7C3" : "#FF3B30"} />
-          </TouchableOpacity>
+          {!isAdminView && (
+            <TouchableOpacity
+              style={[styles.wishlistButton, isOwnItem && { opacity: 0.5 }]}
+              onPress={isOwnItem ? null : handleToggleWishlistClick}
+              disabled={wishlistUpdating || isOwnItem}
+              accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color={isOwnItem ? "#B0B7C3" : "#FF3B30"} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* PRICE & BUYING SECTION */}
@@ -176,23 +185,27 @@ export default function ProductDetailScreen({ route, navigation }) {
             )}
           </View>
 
-          <TouchableOpacity 
-            style={[styles.actionButtonYellow, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
-            activeOpacity={0.85}
-            onPress={handleAddToCartClick}
-            disabled={item.is_currently_rented || isOwnItem}
-          >
-            <Text style={styles.actionButtonYellowText}>{isOwnItem ? 'Your Item' : 'Add to Cart'}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButtonOrange, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
-            activeOpacity={0.85}
-            onPress={handleBuyNow}
-            disabled={item.is_currently_rented || isOwnItem}
-          >
-            <Text style={styles.actionButtonOrangeText}>{isOwnItem ? 'Your Item' : item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
-          </TouchableOpacity>
+          {!isAdminView && (
+            <>
+              <TouchableOpacity 
+                style={[styles.actionButtonYellow, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
+                activeOpacity={0.85}
+                onPress={handleAddToCartClick}
+                disabled={item.is_currently_rented || isOwnItem}
+              >
+                <Text style={styles.actionButtonYellowText}>{isOwnItem ? 'Your Item' : 'Add to Cart'}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.actionButtonOrange, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
+                activeOpacity={0.85}
+                onPress={handleBuyNow}
+                disabled={item.is_currently_rented || isOwnItem}
+              >
+                <Text style={styles.actionButtonOrangeText}>{isOwnItem ? 'Your Item' : item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -240,14 +253,14 @@ export default function ProductDetailScreen({ route, navigation }) {
                 const sImage = item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null);
                 navigation.navigate('SellerStore', {
                   sellerId: sId,
-                  sellerName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
+                  sellerName: displaySellerName || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
                   sellerImage: sImage
                 });
               }}
             >
               <Image source={sellerImage} style={styles.sellerAvatar} />
               <View style={styles.sellerInfo}>
-                <Text style={styles.sellerName}>{item.seller_name}</Text>
+                <Text style={styles.sellerName}>{displaySellerName}</Text>
                 {(() => {
                   const sellerPhone = typeof item.seller_id === 'object' ? item.seller_id.phone : (typeof item.seller === 'object' ? item.seller.phone : null);
                   return sellerPhone ? (
@@ -279,21 +292,23 @@ export default function ProductDetailScreen({ route, navigation }) {
                     return null;
                   })()}
                   
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('Messages', {
-                      screen: 'ChatThread',
-                      params: {
-                        itemId: item._id || item.id,
-                        otherUserId: typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller)),
-                        itemName: item.name,
-                        otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
-                        otherUserPhoto: item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null),
-                      }
-                    })}
-                    style={{ padding: 8, backgroundColor: '#E0E7FF', borderRadius: 20 }}
-                  >
-                    <Ionicons name="chatbubble" size={20} color="#0052CC" />
-                  </TouchableOpacity>
+                  {!isAdminView && (
+                    <TouchableOpacity 
+                      onPress={() => navigation.navigate('Messages', {
+                        screen: 'ChatThread',
+                        params: {
+                          itemId: item._id || item.id,
+                          otherUserId: typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller)),
+                          itemName: item.name,
+                          otherUserName: item.seller_name || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'),
+                          otherUserPhoto: item.seller_image || (typeof item.seller_id === 'object' ? item.seller_id.profile_photo_url : null) || (typeof item.seller === 'object' ? item.seller.profile_photo_url : null),
+                        }
+                      })}
+                      style={{ padding: 8, backgroundColor: '#E0E7FF', borderRadius: 20, marginLeft: 8 }}
+                    >
+                      <Ionicons name="chatbubble" size={20} color="#0052CC" />
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </View>

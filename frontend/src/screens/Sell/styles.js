@@ -16,7 +16,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
   screenTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     color: '#0F1111',
     letterSpacing: -0.5,

@@ -96,7 +96,7 @@ export default function LoginScreen({ navigation }) {
               <Ionicons name="mail-outline" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputField}
-                placeholder="College Email (@bvmengineering.ac.in)"
+                placeholder="Register Email"
                 placeholderTextColor="#94A3B8"
                 value={email}
                 onChangeText={setEmail}

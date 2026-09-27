@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Alert, Modal, FlatList } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { AuthContext } from '../../context/AuthContext';
 import client from '../../api/client';
 import styles from './EditProfile.styles';
 
 export default function EditProfileScreen({ route, navigation }) {
   const profile = route?.params?.profile || {};
   const onGoBack = route?.params?.onGoBack;
+  const { userRole } = React.useContext(AuthContext);
 
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [phone, setPhone] = useState(profile.phone || '');
@@ -188,43 +190,45 @@ export default function EditProfileScreen({ route, navigation }) {
               </View>
             </View>
 
-            <Text style={styles.sectionLabel}>Academic Info</Text>
+                        {(profile?.role !== 'admin') && (
+              <>
+                <Text style={styles.sectionLabel}>Academic Info</Text>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Department</Text>
-              <TouchableOpacity 
-                style={styles.selectorButton} 
-                onPress={() => setDepartmentModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.selectorContent}>
-                  <Ionicons name="business-outline" size={20} color="#8792A2" style={styles.inputIcon} />
-                  <Text style={[styles.selectorText, !department && styles.selectorTextPlaceholder]}>
-                    {department ? department : 'Select Department'}
-                  </Text>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Department</Text>
+                  <TouchableOpacity 
+                    style={styles.selectorButton} 
+                    onPress={() => setDepartmentModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.selectorContent}>
+                      <Ionicons name="business-outline" size={20} color="#8792A2" style={styles.inputIcon} />
+                      <Text style={[styles.selectorText, !department && styles.selectorTextPlaceholder]}>
+                        {department ? department : 'Select Department'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#8792A2" />
+                  </TouchableOpacity>
                 </View>
-                <Ionicons name="chevron-down" size={20} color="#8792A2" />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Year</Text>
-              <TouchableOpacity 
-                style={styles.selectorButton} 
-                onPress={() => setYearModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.selectorContent}>
-                  <Ionicons name="school-outline" size={20} color="#8792A2" style={styles.inputIcon} />
-                  <Text style={[styles.selectorText, !year && styles.selectorTextPlaceholder]}>
-                    {year ? year : 'Select Year'}
-                  </Text>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Year</Text>
+                  <TouchableOpacity 
+                    style={styles.selectorButton} 
+                    onPress={() => setYearModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.selectorContent}>
+                      <Ionicons name="school-outline" size={20} color="#8792A2" style={styles.inputIcon} />
+                      <Text style={[styles.selectorText, !year && styles.selectorTextPlaceholder]}>
+                        {year ? year : 'Select Year'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#8792A2" />
+                  </TouchableOpacity>
                 </View>
-                <Ionicons name="chevron-down" size={20} color="#8792A2" />
-              </TouchableOpacity>
-            </View>
-
-
+              </>
+            )}
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 

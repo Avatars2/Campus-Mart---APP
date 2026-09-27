@@ -123,7 +123,7 @@ export default function RegisterScreen({ navigation }) {
 
               <Animated.View style={[styles.inputRow, getAnimatedInputStyle('email')]}>
                 <Ionicons name="mail-outline" size={20} color={colors.muted} style={styles.inputIcon} />
-                <TextInput style={styles.inputField} placeholder="College Email (@bvmengineering.ac.in)" placeholderTextColor="#94A3B8"
+                <TextInput style={styles.inputField} placeholder="College Email" placeholderTextColor="#94A3B8"
                   value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
                   onFocus={() => focusField('email')} onBlur={() => blurField('email')} />
               </Animated.View>

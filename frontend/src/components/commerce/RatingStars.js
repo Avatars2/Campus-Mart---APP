@@ -2,8 +2,18 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+/**
+ * Displays a star rating with half-star support.
+ * e.g. value=3.5 shows ★★★½☆
+ */
 export default function RatingStars({ value = 0, count = 0, size = 14, showCount = true }) {
-  const roundedValue = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+  const clamped = Math.max(0, Math.min(5, Number(value) || 0));
+
+  const getStarType = (star) => {
+    if (clamped >= star) return 'star';           // full star
+    if (clamped >= star - 0.5) return 'star-half'; // half star
+    return 'star-outline';                          // empty star
+  };
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -11,7 +21,7 @@ export default function RatingStars({ value = 0, count = 0, size = 14, showCount
         {[1, 2, 3, 4, 5].map((star) => (
           <Ionicons
             key={star}
-            name={star <= roundedValue ? 'star' : 'star-outline'}
+            name={getStarType(star)}
             size={size}
             color="#F59E0B"
             style={{ marginRight: 2 }}

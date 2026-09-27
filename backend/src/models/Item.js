@@ -62,6 +62,10 @@ const itemSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  is_suspended: {
+    type: Boolean,
+    default: false,
+  },
   marked_sold_at: {
     type: Date,
     default: null,
@@ -78,6 +82,9 @@ itemSchema.set('toJSON', {
   }
 });
 
-const Item = mongoose.models.Item || mongoose.model('Item', itemSchema);
+if (mongoose.models.Item) {
+  delete mongoose.models.Item;
+}
+const Item = mongoose.model('Item', itemSchema);
 
 export default Item;

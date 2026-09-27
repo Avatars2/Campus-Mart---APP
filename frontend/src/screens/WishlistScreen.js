@@ -179,7 +179,7 @@ export default function WishlistScreen({ navigation }) {
       </Modal>
       <View style={styles.header}>
         <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
-          My<Text style={{ color: '#007185' }}>Wishlist</Text>
+          Wish<Text style={{ color: '#007185' }}>list</Text>
         </Animated.Text>
       </View>
 

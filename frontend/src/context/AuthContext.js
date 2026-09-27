@@ -29,6 +29,31 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkToken();
+
+    // Global listener for forced logouts (suspensions or invalid tokens)
+    const { DeviceEventEmitter, Alert } = require('react-native');
+    const authListener = DeviceEventEmitter.addListener('AUTH_ERROR', async (data) => {
+      if (data?.isSuspended) {
+        Alert.alert('Account Suspended', 'Your account has been suspended by the administrator.');
+      } else {
+        Alert.alert('Session Expired', 'Please log in again.');
+      }
+      
+      try {
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('userRole');
+        await AsyncStorage.removeItem('userInfo');
+        setIsAuthenticated(false);
+        setUserRole('student');
+        setUser(null);
+      } catch (e) {
+        console.error('Logout error', e);
+      }
+    });
+
+    return () => {
+      authListener.remove();
+    };
   }, []);
 
   const signIn = async (token, user) => {

@@ -1,5 +1,5 @@
-import React, { useCallback, useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl, Modal, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, RefreshControl, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
@@ -8,7 +8,7 @@ import styles from './styles';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 export default function ProfileScreen({ navigation }) {
-  const { signOut } = useContext(AuthContext);
+  const { signOut, userRole } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
   const loadProfile = useCallback(async () => {
@@ -43,15 +43,13 @@ export default function ProfileScreen({ navigation }) {
 
   const memberSince = profile.createdAt
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
-    : '—';
+    : 'N/A';
 
   return (
     <View style={styles.container}>
-      {/* Two-Tone Header */}
+      {/* Screen Header */}
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>
-          My<Text style={{ color: '#007185' }}>Profile</Text>
-        </Text>
+        <Text style={styles.screenTitle}>Pro<Text style={{ color: '#007185' }}>file</Text></Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#007185']} />}>
@@ -68,22 +66,24 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profile.department || '—'}</Text>
-            <Text style={styles.statLabel}>Department</Text>
+        {userRole !== 'admin' && (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{profile.department || 'N/A'}</Text>
+              <Text style={styles.statLabel}>Department</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{profile.year_semester || 'N/A'}</Text>
+              <Text style={styles.statLabel}>Year</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{memberSince}</Text>
+              <Text style={styles.statLabel}>Joined</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profile.year_semester || '—'}</Text>
-            <Text style={styles.statLabel}>Year</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{memberSince}</Text>
-            <Text style={styles.statLabel}>Joined</Text>
-          </View>
-        </View>
+        )}
 
         {/* Account Info */}
         <View style={styles.sectionContainer}>
@@ -101,10 +101,30 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons name="call" size={20} color="#007185" />
               </View>
               <Text style={styles.menuText}>Phone</Text>
-              <Text style={styles.menuValue}>{profile.phone || '—'}</Text>
+              <Text style={styles.menuValue}>{profile.phone || 'N/A'}</Text>
             </View>
           </View>
         </View>
+
+        {/* SUPPORT & SAFETY */}
+        {userRole !== 'admin' && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Support & Safety</Text>
+            <View style={styles.menuCard}>
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemLast]}
+                onPress={() => navigation.navigate('MyReports')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIconContainer}>
+                  <Ionicons name="shield-checkmark" size={20} color="#007185" />
+                </View>
+                <Text style={styles.menuText}>Reports</Text>
+                <Ionicons name="chevron-forward" size={18} color="#B0B7C3" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Security */}
         <View style={styles.sectionContainer}>
