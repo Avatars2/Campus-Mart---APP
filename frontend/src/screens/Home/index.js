@@ -23,6 +23,7 @@ export default function HomeScreen({ route, navigation }) {
   const [minPrice, setMinPrice] = useState(null);
   const [maxPrice, setMaxPrice] = useState(null);
   const [conditionFilter, setConditionFilter] = useState([]);
+  const [minRating, setMinRating] = useState(null);
   const searchQueryRef = useRef('');
   const { unreadCount } = useNotifications();
   const { cartCount, wishlistCount } = useCartWishlist();
@@ -44,7 +45,7 @@ export default function HomeScreen({ route, navigation }) {
     }, [])
   );
 
-  const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory, minP = minPrice, maxP = maxPrice, conds = conditionFilter) => {
+  const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory, minP = minPrice, maxP = maxPrice, conds = conditionFilter, minR = minRating) => {
     try {
       let url = `/items?listing_type=${type}`;
       if (query) {
@@ -62,6 +63,9 @@ export default function HomeScreen({ route, navigation }) {
       if (conds && conds.length > 0) {
         url += `&condition_rating=${conds.join(',')}`;
       }
+        if (minR !== null && minR !== undefined) {
+          url += `&min_rating=${minR}`;
+        }
       const response = await client.get(url);
       setItems(response.data);
     } catch (error) {
@@ -72,7 +76,7 @@ export default function HomeScreen({ route, navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeListingType, activeCategory, minPrice, maxPrice, conditionFilter]);
+  }, [activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating]);
 
   const handleSearch = useCallback((queryOverride) => {
     setLoading(true);
@@ -124,7 +128,7 @@ export default function HomeScreen({ route, navigation }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchItems(searchQuery, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter);
+    fetchItems(searchQuery, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating);
   };
 
   const handleCategoryPress = (categoryName) => {
@@ -318,7 +322,7 @@ export default function HomeScreen({ route, navigation }) {
             <View style={styles.modalBody}>
               {/* Sidebar */}
               <View style={styles.sidebar}>
-                {['Category', 'Price', 'Condition', 'Listing Type'].map(tab => (
+                {['Category', 'Price', 'Condition', 'Rating', 'Listing Type'].map(tab => (
                   <TouchableOpacity
                     key={tab}
                     style={[styles.sidebarItem, activeFilterTab === tab && styles.sidebarItemActive]}
@@ -402,6 +406,34 @@ export default function HomeScreen({ route, navigation }) {
                   </View>
                 )}
 
+                {activeFilterTab === 'Rating' && (
+                  <View>
+                    <Text style={styles.filterSectionTitle}>Customer Ratings</Text>
+                    <View style={{ marginTop: 10 }}>
+                      {[4, 3, 2, 1].map(star => {
+                        const isActive = minRating === star;
+                        return (
+                          <TouchableOpacity
+                            key={star}
+                            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
+                            onPress={() => setMinRating(isActive ? null : star)}
+                          >
+                            <View style={[styles.radioOuter, isActive && styles.radioOuterActive]}>
+                              {isActive && <View style={styles.radioInner} />}
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              {[...Array(5)].map((_, i) => (
+                                <Ionicons key={i} name={i < star ? "star" : "star-outline"} size={20} color={i < star ? "#F59E0B" : "#D1D5DB"} style={{ marginRight: 2 }} />
+                              ))}
+                              <Text style={{ fontSize: 16, color: '#4B5563', marginLeft: 8 }}>& Up</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
                 {activeFilterTab === 'Listing Type' && (
                   <View>
                     <Text style={styles.filterSectionTitle}>Listing Type</Text>
@@ -431,7 +463,7 @@ export default function HomeScreen({ route, navigation }) {
                 onPress={() => {
                   setIsFilterModalVisible(false);
                   setLoading(true);
-                  fetchItems(searchQuery, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter);
+                  fetchItems(searchQuery, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating);
                 }}
               >
                 <Text style={styles.showResultsText}>Show Results</Text>

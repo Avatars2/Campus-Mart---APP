@@ -115,6 +115,11 @@ export async function GET(request) {
       query.condition_rating = { $in: conditions };
     }
 
+    const min_rating = searchParams.get('min_rating');
+    if (min_rating) {
+      query.average_rating = { $gte: Number(min_rating) };
+    }
+
     const seller_id = searchParams.get('seller_id');
     if (seller_id) {
       query.seller_id = seller_id;

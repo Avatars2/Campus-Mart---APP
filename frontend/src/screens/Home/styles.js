@@ -456,4 +456,7 @@ export default StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  radioOuter: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  radioOuterActive: { borderColor: '#0052CC' },
+  radioInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#0052CC' },
 });
