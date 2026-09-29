@@ -61,7 +61,7 @@ export default function AdminReportDetails({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#0F1111" />
+          <Ionicons name="chevron-back" size={24} color="#0F1111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Review<Text style={{ color: '#007185' }}>Report</Text></Text>
       </View>

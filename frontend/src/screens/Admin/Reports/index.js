@@ -120,7 +120,7 @@ export default function AdminReportsScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+          <Ionicons name="chevron-back" size={24} color="#1A1F36" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Report Management</Text>
       </View>

@@ -123,10 +123,12 @@ export default function AdminUsersScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>All Users</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#1A1F36" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>All Users</Text>
+        </View>
         
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#94A3B8" />

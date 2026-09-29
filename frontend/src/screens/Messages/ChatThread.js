@@ -747,7 +747,7 @@ const ChatThread = () => {
         {isSearchMode ? (
           <>
             <TouchableOpacity onPress={() => { setIsSearchMode(false); setSearchQuery(''); }} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="arrow-back" size={24} color="#0F1111" />
+              <Ionicons name="chevron-back" size={24} color="#0F1111" />
             </TouchableOpacity>
             <TextInput
               style={[styles.searchHeaderInput, { flex: 1, backgroundColor: '#F0F2F2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, fontSize: 16 }]}
@@ -769,7 +769,7 @@ const ChatThread = () => {
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={24} color="#0F1111" />
+              <Ionicons name="chevron-back" size={24} color="#0F1111" />
             </TouchableOpacity>
 
             {otherUserPhoto ? (
@@ -1013,7 +1013,7 @@ const ChatThread = () => {
           {/* Header */}
           <View style={styles.locModalHeader}>
             <TouchableOpacity onPress={() => { setLocationPickerVisible(false); setSelectedMapRegion(null); }}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+              <Ionicons name="chevron-back" size={24} color="#FFF" />
             </TouchableOpacity>
             <Text style={styles.locModalTitle}>Send location</Text>
             <TouchableOpacity onPress={async () => {

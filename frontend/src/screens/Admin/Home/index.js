@@ -58,11 +58,15 @@ export default function AdminHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greetingText}>Admin Dashboard</Text>
-        <Text style={styles.headerTitle}>Overview 📊</Text>
+      <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+        <View>
+          <Text style={styles.greetingText}>Welcome back,</Text>
+          <Text style={styles.headerTitle}>System Overview</Text>
+        </View>
+        <TouchableOpacity style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#2A304D', justifyContent: 'center', alignItems: 'center' }} onPress={() => navigation.navigate('Profile')}>
+          <Ionicons name="person" size={20} color="#A0A8B8" />
+        </TouchableOpacity>
       </View>
-
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}

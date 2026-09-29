@@ -1,4 +1,6 @@
 import React from 'react';
+import { TouchableOpacity, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MessageList from '../screens/Messages';
 import ChatThread from '../screens/Messages/ChatThread';
@@ -19,6 +21,7 @@ export default function MessageNavigator() {
         },
         headerShadowVisible: false,
         headerBackTitleVisible: false,
+        headerLeft: (props) => ( <TouchableOpacity onPress={() => props.canGoBack && props.onPress ? props.onPress() : null} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0052CC" /> </TouchableOpacity> ),
         headerTintColor: '#0052CC',
       }}
     >

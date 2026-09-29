@@ -127,7 +127,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 
           {/* Back Button */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
+            <Ionicons name="chevron-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
             <Text style={styles.backButtonText}>Back to Login</Text>
           </TouchableOpacity>
         </ScrollView>

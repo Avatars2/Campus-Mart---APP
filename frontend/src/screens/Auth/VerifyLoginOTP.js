@@ -144,7 +144,7 @@ export default function VerifyLoginOTPScreen({ route, navigation }) {
 
           {/* Back */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
+            <Ionicons name="chevron-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
         </ScrollView>

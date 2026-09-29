@@ -15,6 +15,7 @@ export default StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F1111' },
+  backButton: { position: 'absolute', left: 20, bottom: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   
   // Flat list item
   itemCard: {

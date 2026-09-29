@@ -65,6 +65,9 @@ const NotificationScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={24} color="#0F1111" />
+        </TouchableOpacity>
         <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
           Notifi<Text style={{ color: '#007185' }}>cations</Text>
         </Animated.Text>

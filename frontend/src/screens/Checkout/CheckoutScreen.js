@@ -85,7 +85,7 @@ export default function CheckoutScreen({ route, navigation }) {
           onPress={() => navigation.goBack()} 
           style={{ position: 'absolute', left: 16, bottom: 15, zIndex: 10, padding: 4 }}
         >
-          <Ionicons name="arrow-back" size={26} color="#0F1111" />
+          <Ionicons name="chevron-back" size={26} color="#0F1111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           Pay<Text style={{ color: '#007185' }}>ment</Text>

@@ -18,9 +18,7 @@ export default StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  backButton: {
-    marginBottom: 10,
-  },
+  backButton: { marginRight: 15 },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',

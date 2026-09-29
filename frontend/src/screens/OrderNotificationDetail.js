@@ -76,7 +76,7 @@ export default function OrderNotificationDetail({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
-          <Ionicons name="arrow-back" size={24} color="#1A1F36" />
+          <Ionicons name="chevron-back" size={24} color="#1A1F36" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{notification?.title || 'Order Details'}</Text>
         <View style={{ width: 24 }} />

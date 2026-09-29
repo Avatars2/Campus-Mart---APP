@@ -189,6 +189,9 @@ export default function CartScreen({ navigation }) {
         </View>
       </Modal>
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={24} color="#0F1111" />
+        </TouchableOpacity>
         <Animated.Text style={[styles.headerTitle, { opacity: titleFadeAnim, transform: [{ translateY: titleSlideAnim }] }]}>
           Ca<Text style={{ color: '#007185' }}>rt</Text>
         </Animated.Text>

@@ -18,6 +18,7 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  backButton: { marginRight: 15 },
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 24,

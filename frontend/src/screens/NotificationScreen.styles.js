@@ -14,6 +14,7 @@ export default StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
+  backButton: { position: 'absolute', left: 20, top: 50, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   headerTitle: {
     fontSize: 24,
     fontWeight: '900',

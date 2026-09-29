@@ -53,12 +53,12 @@ export default StyleSheet.create({
     elevation: 2,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   statValue: {
     fontSize: 24,

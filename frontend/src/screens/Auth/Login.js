@@ -166,7 +166,7 @@ export default function LoginScreen({ navigation }) {
 
           {/* Back */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
+            <Ionicons name="chevron-back" size={18} color={colors.muted} style={{ marginRight: 6 }} />
             <Text style={styles.backButtonText}>Back to Home</Text>
           </TouchableOpacity>
         </ScrollView>

@@ -1,4 +1,6 @@
 import React from 'react';
+import { TouchableOpacity, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AdminHomeScreen from '../screens/Admin/Home';
@@ -25,8 +27,8 @@ export default function AdminDashboardNavigator() {
       <Stack.Screen name="AdminCategories" component={AdminCategoriesScreen} />
       <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
         <Stack.Screen name="AdminReportDetail" component={AdminReportDetails} options={{ headerShown: false }} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ headerShown: true, title: 'Item Details' }} />
-      <Stack.Screen name="SellerStore" component={SellerStoreScreen} options={{ headerShown: true }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={({ navigation }) => ({ headerShown: true, title: 'Item Details', headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0F1111" /> </TouchableOpacity> ) })} />
+      <Stack.Screen name="SellerStore" component={SellerStoreScreen} options={({ navigation }) => ({ headerShown: true, headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0F1111" /> </TouchableOpacity> ) })} />
     </Stack.Navigator>
   );
 }

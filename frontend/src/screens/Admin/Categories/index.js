@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
 import styles from './styles';
 
-export default function AdminCategoriesScreen() {
+export default function AdminCategoriesScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -125,7 +125,12 @@ export default function AdminCategoriesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Categories</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Categories</Text>
+        </View>
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Ionicons name="add" size={24} color="#FFF" />
         </TouchableOpacity>
