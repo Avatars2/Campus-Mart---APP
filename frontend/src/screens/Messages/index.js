@@ -139,14 +139,14 @@ const MessageList = () => {
         <View style={styles.conversationDetails}>
           <View style={styles.headerRow}>
             <Text style={[styles.participantName, isUnread && styles.unreadText]}>{otherParticipant?.full_name}</Text>
-            {item.lastMessage && (
+            {!!item.lastMessage && (
               <Text style={styles.time}>{new Date(item.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
             )}
           </View>
           <Text style={styles.itemName}>Item: {item.item?.name}</Text>
           
           <View style={styles.previewRow}>
-            {isMyMessage && lastMessage && (
+            {isMyMessage && !!lastMessage && (
               <Ionicons 
                 name={lastMessage.read ? "checkmark-done" : lastMessage.delivered ? "checkmark-done" : "checkmark"} 
                 size={16} 

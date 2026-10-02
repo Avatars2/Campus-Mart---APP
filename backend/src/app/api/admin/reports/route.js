@@ -24,7 +24,7 @@ export async function GET(request) {
     const populatedReports = await Promise.all(reports.map(async (report) => {
       let targetInfo = null;
       if (report.target_type === 'user') {
-        const user = await User.findById(report.target_id, 'full_name email role is_suspended').lean();
+        const user = await User.findById(report.target_id, 'full_name email role is_suspended profile_photo_url').lean();
         targetInfo = user ? { ...user, type: 'user' } : { error: 'User not found' };
       } else if (report.target_type === 'item') {
         const item = await Item.findById(report.target_id, 'name price is_active is_suspended').lean();

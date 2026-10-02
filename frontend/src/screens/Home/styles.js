@@ -141,15 +141,20 @@ export default StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' && Dimensions.get('window').width > 768 ? 'center' : 'flex-end',
+    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    height: '85%',
+    borderBottomLeftRadius: Platform.OS === 'web' && Dimensions.get('window').width > 768 ? 16 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' && Dimensions.get('window').width > 768 ? 16 : 0,
+    height: Platform.OS === 'web' && Dimensions.get('window').width > 768 ? '80%' : '85%',
     width: '100%',
+    maxWidth: 600,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -185,10 +190,11 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    borderLeftWidth: 4,
+    borderLeftColor: 'transparent',
   },
   sidebarItemActive: {
     backgroundColor: '#FFFFFF',
-    borderLeftWidth: 4,
     borderLeftColor: '#007185',
   },
   sidebarItemText: {
@@ -223,7 +229,6 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: '#FFFFFF',
-    marginBottom: 10,
   },
   filterOptionBtnActive: {
     borderColor: '#007185',

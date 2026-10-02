@@ -122,50 +122,95 @@ export default function AdminCategoriesScreen({ navigation }) {
     }
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('All');
+
+  const filteredCategories = categories.filter(cat => 
+    cat.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    cat.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Categories</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Categories</Text>
+            <Text style={styles.headerSubtitle}>Manage all product categories</Text>
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Ionicons name="add" size={24} color="#FFF" />
-        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#9CA3AF" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search categories..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#9CA3AF"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Pill Tabs */}
+      <View style={styles.tabsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContainer}>
+          <TouchableOpacity style={styles.tabBtnActive}>
+            <Ionicons name="folder-open" size={14} color="#FFFFFF" />
+            <Text style={styles.tabTextActive}>All ({categories.length})</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0052CC" />
+          <ActivityIndicator size="large" color="#1E3A8A" />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
           
-          {categories.length === 0 && !errorMsg ? (
+          {filteredCategories.length === 0 && !errorMsg ? (
             <Text style={styles.emptyState}>No categories found.</Text>
           ) : (
-            categories.map((cat) => (
-              <View key={cat.id || cat._id} style={styles.categoryCard}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="folder-open" size={24} color="#0052CC" />
+            filteredCategories.map((cat, index) => {
+              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+              const color = colors[index % colors.length];
+              return (
+                <View key={cat.id || cat._id} style={[styles.categoryCard, { borderLeftColor: color }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                    <Ionicons name="folder-open" size={24} color={color} />
+                  </View>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryName}>{cat.name}</Text>
+                    <Text style={styles.categoryDesc}>{cat.description}</Text>
+                  </View>
+                  <View style={styles.actionsContainer}>
+                    <TouchableOpacity onPress={() => openEditModal(cat)} style={[styles.actionBtn, { backgroundColor: '#F1F5F9' }]}>
+                      <Ionicons name="pencil" size={16} color="#475569" />
+                      <Text style={[styles.actionText, { color: '#475569' }]}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteCategory(cat)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]}>
+                      <Ionicons name="trash" size={16} color="#DC2626" />
+                      <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>{cat.name}</Text>
-                  <Text style={styles.categoryDesc}>{cat.description}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => openEditModal(cat)} style={{ padding: 8 }}>
-                    <Ionicons name="pencil" size={20} color="#697386" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteCategory(cat)} style={{ padding: 8 }}>
-                    <Ionicons name="trash" size={20} color="#DC2626" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       )}
@@ -236,7 +281,7 @@ export default function AdminCategoriesScreen({ navigation }) {
         onRequestClose={() => setDeleteModalVisible(false)}
       >
         <View style={[styles.modalOverlay, { justifyContent: 'center', alignItems: 'center' }]}>
-          <View style={[styles.modalContainer, { width: '85%', maxWidth: 400, borderRadius: 12, padding: 24 }]}>
+          <View style={[styles.modalContainer, { width: '85%', maxWidth: 400, borderRadius: 12, padding: 24, minHeight: 'auto' }]}>
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
               <Ionicons name="warning" size={48} color="#DC2626" />
             </View>

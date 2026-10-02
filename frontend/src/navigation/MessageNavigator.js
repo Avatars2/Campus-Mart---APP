@@ -21,7 +21,7 @@ export default function MessageNavigator() {
         },
         headerShadowVisible: false,
         headerBackTitleVisible: false,
-        headerLeft: (props) => ( <TouchableOpacity onPress={() => props.canGoBack && props.onPress ? props.onPress() : null} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0052CC" /> </TouchableOpacity> ),
+        headerLeft: (props) => ( <TouchableOpacity onPress={() => props.canGoBack && props.onPress ? props.onPress() : null} style={{ paddingRight: 16 }}><Ionicons name="chevron-back" size={26} color="#0052CC" /></TouchableOpacity> ),
         headerTintColor: '#0052CC',
       }}
     >

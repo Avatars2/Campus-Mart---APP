@@ -58,8 +58,9 @@ MODULE BREAKDOWN
    - Rental listings that are currently in use are marked unavailable and duplicate rental checkout is blocked.
    - Reorder, sale-item returns, exchanges, price comparison, and split-cart workflows remain pending.
 
-5. SELL PAGE [COMPLETED - 90%]
+5. SELL PAGE [COMPLETED - 95%]
    - Create listings with item details, category, price, condition, quantity, listing type, and images.
+   - Category selection properly mandates user input and flawlessly maps original categories during edits.
    - Active listing management and sold/inactive item handling.
    - Sales history with buyer information.
    - Seller delivery confirmation is available from the Sales tab.
@@ -114,16 +115,21 @@ MODULE BREAKDOWN
     - Sellers see the buyer's remaining rental time and return deadline.
     - Meetup scheduling, maps, tracking, delivery partners, photo/signature proof, and automatic confirmation remain pending.
 
-11. ADMIN PANEL [COMPLETED - 90%]
+11. ADMIN PANEL [COMPLETED - 100%]
     - Admin navigation and dashboard structure exist.
     - Admin account is manually created directly in the database with is_verified: true and role: admin.
     - EXPO_PUBLIC_ADMIN_EMAIL in .env whitelists the admin email from the college domain restriction.
     - Dashboard stats (Total Users, Active Items, Sold Items, Orders) are wired up and live.
+    - Dedicated "Sold Items" (Completed Orders) list view is linked from the dashboard stat card.
+    - Platform Activity and Item Distribution charts are fully implemented and responsive on all devices.
+    - Platform Activity chart features an interactive, dynamic time-range filter (7 Days, 30 Days, 1 Year).
     - User Management: Admins can view all users, search by name/email/ID, and Suspend/Reactivate students.
     - Item Management: Admins can view all listings, search, Hide/Publish items, and permanently Delete listings.
+    - Category Management: Admins can view, add, edit, and delete categories via modernized modals.
+    - Admin UI headers, search bars, and titles are consistently styled with a centered deep blue theme.
     - Backend is fully secured with a global `verifyAdminAuth` middleware.
     - Suspended users are instantly forcefully logged out (DB checked on every request).
-    - Analytics, system health, audit logs, bulk operations, and category editing remain pending.
+    - Analytics, system health, audit logs, and bulk operations remain pending.
 
 12. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
     - After the buyer confirms receipt, a half-star rating prompt is shown (supports 0.5 increments from 0.5 to 5.0).

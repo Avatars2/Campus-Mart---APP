@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Modal, FlatList, Switch } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Modal, FlatList, Switch, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -48,8 +48,11 @@ export default function EditProductScreen({ route, navigation }) {
       const response = await client.get('/categories');
       setCategories(response.data);
       if (response.data.length > 0) {
-        const currentCategory = response.data.find(c => c.id === item.category_id);
-        setCategory(currentCategory || response.data[0]);
+        const categoryIdStr = typeof item.category_id === 'object' 
+          ? (item.category_id._id || item.category_id.id) 
+          : item.category_id;
+        const currentCategory = response.data.find(c => c.id === categoryIdStr);
+        setCategory(currentCategory);
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -80,6 +83,50 @@ export default function EditProductScreen({ route, navigation }) {
     } catch (error) {
       console.error("Error picking image:", error);
     }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        alert("Permission Refused. You need to allow access to your camera.");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setImageUris(prev => [...prev, result.assets[0].uri].slice(0, 5));
+        setNewImageSelected(true);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+    }
+  };
+
+  const handleAddPhoto = () => {
+    if (Platform.OS === 'web') {
+      const useCamera = window.confirm("Would you like to take a photo with your Camera?\n\nClick 'OK' for Camera, or 'Cancel' to choose from your Gallery.");
+      if (useCamera) {
+        takePhoto();
+      } else {
+        pickImage();
+      }
+      return;
+    }
+    Alert.alert(
+      "Add Photo",
+      "Choose a photo source",
+      [
+        { text: "Camera", onPress: takePhoto },
+        { text: "Gallery", onPress: pickImage },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
   const removeImage = (index) => {
@@ -188,7 +235,7 @@ export default function EditProductScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Photos</Text>
           <View style={styles.imageSection}>
             {imageUris.length === 0 ? (
-              <TouchableOpacity style={styles.imageUploadBox} onPress={pickImage} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.imageUploadBox} onPress={handleAddPhoto} activeOpacity={0.7}>
                 <Ionicons name="images-outline" size={36} color="#007185" />
                 <Text style={styles.imageUploadText}>Upload Photos</Text>
                 <Text style={styles.imageUploadSubtext}>Add up to 5 photos of your item</Text>
@@ -206,7 +253,7 @@ export default function EditProductScreen({ route, navigation }) {
                 {imageUris.length < 5 && (
                   <TouchableOpacity 
                     style={[styles.imageUploadBox, { width: 100, height: 100, marginBottom: 0 }]} 
-                    onPress={pickImage} 
+                    onPress={handleAddPhoto} 
                     activeOpacity={0.7}
                   >
                     <Ionicons name="add" size={32} color="#007185" />

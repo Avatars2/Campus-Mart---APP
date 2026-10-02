@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Image, TextInput, Alert } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Image, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../../api/client';
@@ -9,6 +9,7 @@ export default function AdminItemsScreen() {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -18,7 +19,7 @@ export default function AdminItemsScreen() {
     try {
       const response = await client.get('/admin/items');
       setItems(response.data);
-      setFilteredItems(response.data);
+      applyFiltersAndSearch(response.data, searchQuery, activeTab);
       setErrorMsg('');
     } catch (error) {
       if (error.response?.status !== 401 && error.response?.status !== 403) {
@@ -40,26 +41,45 @@ export default function AdminItemsScreen() {
     fetchItems();
   };
 
-  const handleSearch = (text) => {
-    setSearchQuery(text);
-    if (!text) {
-      setFilteredItems(items);
-    } else {
-      const lowercasedQuery = text.toLowerCase();
-      const filtered = items.filter(item => 
+  const applyFiltersAndSearch = (allItems, query, tab) => {
+    let result = allItems;
+
+    // Apply Tab Filter
+    if (tab === 'Active') {
+      result = result.filter(i => i.is_active);
+    } else if (tab === 'Pending') {
+      result = result.filter(i => !i.is_active);
+    }
+
+    // Apply Search
+    if (query) {
+      const lowercasedQuery = query.toLowerCase();
+      result = result.filter(item => 
         item.name?.toLowerCase().includes(lowercasedQuery) ||
         item.seller_id?.full_name?.toLowerCase().includes(lowercasedQuery) ||
         item.category_id?.name?.toLowerCase().includes(lowercasedQuery)
       );
-      setFilteredItems(filtered);
     }
+
+    setFilteredItems(result);
+  };
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    applyFiltersAndSearch(items, text, activeTab);
+  };
+
+  const handleTabPress = (tab) => {
+    setActiveTab(tab);
+    applyFiltersAndSearch(items, searchQuery, tab);
   };
 
   const handleTogglePublish = async (itemId, currentStatus) => {
     try {
       // Optimistic update
-      setItems(items.map(i => i._id === itemId || i.id === itemId ? { ...i, is_active: !currentStatus } : i));
-      setFilteredItems(filteredItems.map(i => i._id === itemId || i.id === itemId ? { ...i, is_active: !currentStatus } : i));
+      const updatedItems = items.map(i => (i._id || i.id) === itemId ? { ...i, is_active: !currentStatus } : i);
+      setItems(updatedItems);
+      applyFiltersAndSearch(updatedItems, searchQuery, activeTab);
       
       await client.put(`/admin/items/${itemId}`, { is_active: !currentStatus });
     } catch (error) {
@@ -81,8 +101,9 @@ export default function AdminItemsScreen() {
           onPress: async () => {
             try {
               // Optimistic delete
-              setItems(items.filter(i => (i._id || i.id) !== itemId));
-              setFilteredItems(filteredItems.filter(i => (i._id || i.id) !== itemId));
+              const remainingItems = items.filter(i => (i._id || i.id) !== itemId);
+              setItems(remainingItems);
+              applyFiltersAndSearch(remainingItems, searchQuery, activeTab);
               
               await client.delete(`/admin/items/${itemId}`);
             } catch (error) {
@@ -96,18 +117,26 @@ export default function AdminItemsScreen() {
     );
   };
 
+  const getStatus = (item) => {
+    if (item.is_active) return { label: 'Active', color: '#10B981', bg: '#D1FAE5', dot: '#059669' };
+    return { label: 'Pending', color: '#F59E0B', bg: '#FEF3C7', dot: '#D97706' };
+  };
+
   const renderItem = ({ item }) => {
-    const isActive = item.is_active;
+    const status = getStatus(item);
     const itemId = item._id || item.id;
     const imageUrl = item.images && item.images.length > 0 ? item.images[0] : null;
+    const categoryName = item.category_id?.name || 'Unknown Category';
+    const sellerName = item.seller_id?.full_name || 'Unknown Seller';
 
     return (
-      <TouchableOpacity 
-        style={[styles.itemCard, !isActive && { opacity: 0.7 }]}
-        onPress={() => navigation.navigate('ProductDetail', { item })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.imageContainer}>
+      <View style={styles.itemCard}>
+        {/* Left Image */}
+        <TouchableOpacity 
+          style={styles.imageContainer}
+          onPress={() => navigation.navigate('ProductDetail', { item })}
+          activeOpacity={0.8}
+        >
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.itemImage} />
           ) : (
@@ -115,105 +144,145 @@ export default function AdminItemsScreen() {
               <Ionicons name="image-outline" size={24} color="#94A3B8" />
             </View>
           )}
-        </View>
+        </TouchableOpacity>
 
+        {/* Right Info */}
         <View style={styles.itemDetails}>
           <View style={styles.itemHeader}>
-            <Text style={[styles.itemName, !isActive && { textDecorationLine: 'line-through' }]} numberOfLines={1}>
-              {item.name}
-            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { item })} style={{ flex: 1 }}>
+              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+            </TouchableOpacity>
             <Text style={styles.itemPrice}>₹{item.price}</Text>
           </View>
           
-          <Text style={styles.sellerName} numberOfLines={1}>
-            Seller: {item.seller_id?.full_name || 'Unknown'}
-          </Text>
-
-          <View style={[styles.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#F1F5F9' }]}>
-            <Text style={[styles.statusText, { color: isActive ? '#166534' : '#64748B' }]}>
-              {isActive ? 'Active' : 'Hidden'}
-            </Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="pricetag-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.metaText} numberOfLines={1}>{categoryName}</Text>
           </View>
 
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity 
-              style={[styles.actionButton, isActive ? styles.unpublishButton : styles.publishButton]} 
-              onPress={() => handleTogglePublish(itemId, isActive)}
-            >
-              <Text style={isActive ? styles.unpublishText : styles.publishText}>
-                {isActive ? 'Hide' : 'Publish'}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.metaRow}>
+            <Ionicons name="person-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.metaText} numberOfLines={1}>Seller: {sellerName}</Text>
+          </View>
 
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.deleteButton]} 
-              onPress={() => handleDelete(itemId)}
-            >
-              <Text style={styles.deleteText}>Delete</Text>
-            </TouchableOpacity>
+          <View style={styles.footerRow}>
+            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+              <View style={[styles.statusDot, { backgroundColor: status.dot }]} />
+              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+            </View>
+
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.hideBtn]} 
+                onPress={() => handleTogglePublish(itemId, item.is_active)}
+              >
+                <Ionicons name={item.is_active ? "eye-off" : "eye"} size={14} color="#D97706" />
+                <Text style={styles.hideText}>{item.is_active ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0052CC" />
-      </View>
-    );
-  }
-
-  if (errorMsg && items.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{errorMsg}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchItems(); }}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const activeCount = items.filter(i => i.is_active).length;
+  const pendingCount = items.filter(i => !i.is_active).length;
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+      {/* Deep Blue Header Area */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="#1A1F36" />
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Item Moderation</Text>
-        </View>
-        
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search listings, categories, sellers..."
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholderTextColor="#94A3B8"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch('')}>
-              <Ionicons name="close-circle" size={20} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Item Moderation</Text>
+            <Text style={styles.headerSubtitle}>Review and manage all listed items</Text>
+          </View>
+          <View style={{ width: 52 }} />
         </View>
       </View>
 
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(item, index) => (item.id || item._id || index).toString()}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />
-        }
-        ListEmptyComponent={<Text style={styles.emptyText}>No items found.</Text>}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* Search Bar overlaps the header boundary slightly */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#9CA3AF" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by item name, category, seller..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholderTextColor="#9CA3AF"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Pill Tabs */}
+      <View style={styles.tabsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContainer}>
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'All' && styles.tabBtnActive]} 
+            onPress={() => handleTabPress('All')}
+          >
+            {activeTab === 'All' && <Ionicons name="grid" size={14} color="#FFFFFF" />}
+            <Text style={[styles.tabText, activeTab === 'All' && styles.tabTextActive]}>
+              All ({items.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'Active' && styles.tabBtnActive]} 
+            onPress={() => handleTabPress('Active')}
+          >
+            <View style={[styles.tabDot, { backgroundColor: activeTab === 'Active' ? '#FFFFFF' : '#10B981' }]} />
+            <Text style={[styles.tabText, activeTab === 'Active' && styles.tabTextActive]}>
+              Active ({activeCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'Pending' && styles.tabBtnActive]} 
+            onPress={() => handleTabPress('Pending')}
+          >
+            <View style={[styles.tabDot, { backgroundColor: activeTab === 'Pending' ? '#FFFFFF' : '#F59E0B' }]} />
+            <Text style={[styles.tabText, activeTab === 'Pending' && styles.tabTextActive]}>
+              Pending ({pendingCount})
+            </Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+
+      {/* Content */}
+      {loading && !refreshing ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#1E3A8A" />
+        </View>
+      ) : errorMsg && items.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchItems(); }}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredItems}
+          keyExtractor={(item, index) => (item.id || item._id || index).toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />
+          }
+          ListEmptyComponent={<Text style={styles.emptyText}>No items found.</Text>}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }

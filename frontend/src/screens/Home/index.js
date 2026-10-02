@@ -24,6 +24,7 @@ export default function HomeScreen({ route, navigation }) {
   const [maxPrice, setMaxPrice] = useState(null);
   const [conditionFilter, setConditionFilter] = useState([]);
   const [minRating, setMinRating] = useState(null);
+  const [sortOption, setSortOption] = useState('newest'); // 'newest' or 'trending'
   const searchQueryRef = useRef('');
   const { unreadCount } = useNotifications();
   const { cartCount, wishlistCount } = useCartWishlist();
@@ -45,9 +46,9 @@ export default function HomeScreen({ route, navigation }) {
     }, [])
   );
 
-  const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory, minP = minPrice, maxP = maxPrice, conds = conditionFilter, minR = minRating) => {
+  const fetchItems = useCallback(async (query = '', type = activeListingType, cat = activeCategory, minP = minPrice, maxP = maxPrice, conds = conditionFilter, minR = minRating, sort = sortOption) => {
     try {
-      let url = `/items?listing_type=${type}`;
+      let url = `/items?listing_type=${type}&sort=${sort}`;
       if (query) {
         url += `&search=${encodeURIComponent(query)}`;
       }
@@ -76,7 +77,7 @@ export default function HomeScreen({ route, navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating]);
+  }, [activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating, sortOption]);
 
   const handleSearch = useCallback((queryOverride) => {
     setLoading(true);
@@ -258,6 +259,9 @@ export default function HomeScreen({ route, navigation }) {
             <TouchableOpacity style={[styles.quickFilterChip, activeListingType === 'sell' && styles.quickFilterChipActive]} onPress={() => handleListingTypeChange(activeListingType === 'sell' ? 'all' : 'sell')}>
               <Text style={[styles.quickFilterText, activeListingType === 'sell' && styles.quickFilterTextActive]}>Sale</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.quickFilterChip, sortOption === 'trending' && styles.quickFilterChipActive]} onPress={() => { const newSort = sortOption === 'trending' ? 'newest' : 'trending'; setSortOption(newSort); setLoading(true); fetchItems(searchQuery, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating, newSort); }}>
+              <Text style={[styles.quickFilterText, sortOption === 'trending' && styles.quickFilterTextActive]}>🔥 Trending</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.quickFilterChip, maxPrice === 500 && styles.quickFilterChipActive]} onPress={() => { setMaxPrice(maxPrice === 500 ? null : 500); setMinPrice(null); setLoading(true); fetchItems(searchQuery, activeListingType, activeCategory, null, maxPrice === 500 ? null : 500, conditionFilter); }}>
               <Text style={[styles.quickFilterText, maxPrice === 500 && styles.quickFilterTextActive]}>Under ₹500</Text>
             </TouchableOpacity>
@@ -355,18 +359,18 @@ export default function HomeScreen({ route, navigation }) {
                 {activeFilterTab === 'Price' && (
                   <View>
                     <Text style={styles.filterSectionTitle}>Custom Price Range</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingHorizontal: 5 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
                       <TextInput
-                        style={{ flex: 1, backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, fontSize: 16, color: '#0F1111' }}
+                        style={{ flex: 1, minWidth: 0, backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8, fontSize: 14, color: '#0F1111' }}
                         placeholder="Min (₹)"
                         keyboardType="numeric"
                         value={minPrice !== null && minPrice !== undefined ? minPrice.toString() : ''}
                         onChangeText={(val) => setMinPrice(val ? parseInt(val.replace(/[^0-9]/g, '')) : null)}
                         placeholderTextColor="#94A3B8"
                       />
-                      <Text style={{ marginHorizontal: 12, color: '#64748B', fontWeight: 'bold' }}>to</Text>
+                      <Text style={{ color: '#64748B', fontWeight: 'bold' }}>to</Text>
                       <TextInput
-                        style={{ flex: 1, backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, fontSize: 16, color: '#0F1111' }}
+                        style={{ flex: 1, minWidth: 0, backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8, fontSize: 14, color: '#0F1111' }}
                         placeholder="Max (₹)"
                         keyboardType="numeric"
                         value={maxPrice !== null && maxPrice !== undefined ? maxPrice.toString() : ''}

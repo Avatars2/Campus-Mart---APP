@@ -12,8 +12,8 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Retrieve all items, latest first
-    const items = await Item.find()
+    // Retrieve all non-sold items, latest first
+    const items = await Item.find({ marked_sold_at: null })
       .populate('seller_id', 'full_name email student_id is_suspended phone profile_photo_url')
       .populate('category_id', 'name')
       .sort({ createdAt: -1 });

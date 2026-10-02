@@ -125,11 +125,16 @@ export async function GET(request) {
       query.seller_id = seller_id;
     }
 
+    const sort = searchParams.get('sort');
+    let sortOptions = { createdAt: -1 };
+    if (sort === 'trending') {
+      sortOptions = { average_rating: -1, ratings_count: -1, createdAt: -1 };
+    }
+
     const items = await Item.find(query)
       .populate('category_id', 'name')
-      .populate('seller_id', 'full_name profile_photo_url')
       .populate('seller_id', 'full_name profile_photo_url phone')
-      .sort({ createdAt: -1 });
+      .sort(sortOptions);
 
     const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
     const rentedItemIds = await Order.find({

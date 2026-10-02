@@ -3,73 +3,158 @@ import { StyleSheet, Platform } from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#F3F4F6',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    paddingHorizontal: 20,
+  
+  // Header Section
+  headerBackground: {
+    backgroundColor: '#1E3A8A', // Deep blue
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 20,
+    paddingBottom: 40, // Extra padding for search bar overlap
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  backButton: { marginRight: 15 },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1F36',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#93C5FD',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  filterBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginTop: 15,
-    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: -24, // Overlap the header
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 10px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
+    }),
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 10,
     fontSize: 15,
-    color: '#1A1F36',
+    color: '#1E293B',
+    padding: 0,
   },
+
+  // Tabs
+  tabsWrapper: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  tabsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  tabBtnActive: {
+    backgroundColor: '#2563EB',
+  },
+  tabDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // List Container
   listContainer: {
     padding: 16,
+    paddingBottom: 40,
   },
+  
+  // Item Card
   itemCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 12,
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    }),
   },
   imageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    overflow: 'hidden',
     marginRight: 12,
   },
   itemImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
   },
   placeholderImage: {
-    width: '100%',
-    height: '100%',
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -80,80 +165,107 @@ export default StyleSheet.create({
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   itemName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1F36',
+    fontWeight: '700',
+    color: '#1E293B',
     flex: 1,
     marginRight: 8,
   },
   itemPrice: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0052CC',
+    color: '#2563EB',
   },
-  sellerName: {
-    fontSize: 13,
+  moreOptions: {
+    paddingLeft: 8,
+  },
+  
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
+    flex: 1,
   },
+  
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 4,
+  },
+  
+  // Status Badge
   statusBadge: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
+
+  // Action Buttons
   actionsContainer: {
     flexDirection: 'row',
-    marginTop: 10,
-    justifyContent: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 10,
+    gap: 8,
   },
-  actionButton: {
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 8,
+    borderRadius: 8,
+    gap: 4,
   },
-  unpublishButton: {
+  hideBtn: {
     backgroundColor: '#FEF3C7',
   },
-  unpublishText: {
-    color: '#92400E',
+  hideText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#D97706',
   },
-  publishButton: {
-    backgroundColor: '#E0F2FE',
-  },
-  publishText: {
-    color: '#0369A1',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deleteButton: {
+  deleteBtn: {
     backgroundColor: '#FEE2E2',
   },
   deleteText: {
-    color: '#DC2626',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+
+  // Errors / Empty state
+  emptyText: {
+    textAlign: 'center',
+    color: '#94A3B8',
+    marginTop: 40,
+    fontSize: 16,
   },
   errorText: {
-    color: '#DC2626',
-    marginBottom: 12,
+    color: '#EF4444',
+    fontSize: 16,
+    marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#0052CC',
+    backgroundColor: '#1E3A8A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -161,10 +273,5 @@ export default StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#64748B',
-    marginTop: 40,
   },
 });

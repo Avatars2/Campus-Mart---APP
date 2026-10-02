@@ -3,7 +3,7 @@ import { StyleSheet, Platform } from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#F3F4F6',
   },
   centerContainer: {
     flex: 1,
@@ -11,91 +11,141 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#1A1F36',
+    backgroundColor: '#1E3A8A',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
+    paddingBottom: 40, // Increased to allow search bar overlap
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
+
+  // Search
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: -20, // Negative margin to overlap header
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    }),
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#1E293B',
+    padding: 0,
+  },
+
+  // Tabs
+  tabsWrapper: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  tabsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tabBtnActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  tabDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // List
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 40,
   },
+
+  // Card
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
+    borderLeftColor: '#E5E7EB',
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    }),
   },
-  cardResolved: {
-    borderLeftColor: '#10B981',
-    opacity: 0.85,
-  },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  typeBadge: {
+  cardTopLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    gap: 8,
+  },
+  reasonIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 4,
   },
-  badgeItem: {
-    backgroundColor: '#8B5CF6',
-  },
-  badgeUser: {
-    backgroundColor: '#EC4899',
-  },
-  badgeText: {
-    color: '#FFFFFF',
+  statusChipText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusPending: { backgroundColor: '#FEF3C7' },
-  statusResolved: { backgroundColor: '#D1FAE5' },
-  statusDismissed: { backgroundColor: '#F3F4F6' },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  statusTextPending: { color: '#D97706' },
-  statusTextResolved: { color: '#059669' },
-  statusTextDismissed: { color: '#6B7280' },
   dateText: {
     fontSize: 12,
     color: '#9CA3AF',
@@ -106,68 +156,24 @@ export default StyleSheet.create({
     color: '#111827',
     marginBottom: 6,
   },
-  targetText: {
-    fontSize: 14,
-    color: '#4B5563',
+  reporterText: {
+    fontSize: 13,
+    color: '#6B7280',
     marginBottom: 12,
   },
-  descriptionBox: {
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontStyle: 'italic',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  actionBtnInspect: {
+  viewReportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-end',
     gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#EFF6FF',
   },
-  actionTextInspect: {
-    color: '#0052CC',
-    fontWeight: '600',
+  viewReportText: {
     fontSize: 13,
-  },
-  actionBtnDismiss: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  actionTextDismiss: {
-    color: '#4B5563',
     fontWeight: '600',
-    fontSize: 13,
+    color: '#3B82F6',
   },
-  actionBtnResolve: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#10B981',
-  },
-  actionTextResolve: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 13,
-  },
+
+  // Empty
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -183,5 +189,5 @@ export default StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginTop: 8,
-  }
+  },
 });

@@ -18,6 +18,7 @@ export default function BuyScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('purchases'); // 'purchases' or 'sales'
   const [confirmation, setConfirmation] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [ratingPrompt, setRatingPrompt] = useState(null);
   const [selectedRating, setSelectedRating] = useState(0);
   const [invoiceLoading, setInvoiceLoading] = useState(null);
@@ -93,8 +94,9 @@ export default function BuyScreen({ navigation }) {
   };
 
   const confirmOrderStatus = async () => {
-    if (!confirmation) return;
+    if (!confirmation || isUpdating) return;
 
+    setIsUpdating(true);
     const { order, nextStatus } = confirmation;
     try {
       await client.patch('/orders', {
@@ -126,6 +128,8 @@ export default function BuyScreen({ navigation }) {
     } catch (error) {
       setConfirmation(null);
       Alert.alert('Unable to update order', error.response?.data?.error || 'Please try again.');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -593,18 +597,24 @@ export default function BuyScreen({ navigation }) {
             <Text style={styles.confirmationMessage}>{confirmation?.message}</Text>
             <View style={styles.confirmationActions}>
               <TouchableOpacity
-                style={styles.noButton}
+                style={[styles.noButton, isUpdating && { opacity: 0.5 }]}
                 onPress={() => setConfirmation(null)}
+                disabled={isUpdating}
                 activeOpacity={0.8}
               >
                 <Text style={styles.noButtonText}>No</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.yesButton}
+                style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
                 onPress={confirmOrderStatus}
+                disabled={isUpdating}
                 activeOpacity={0.8}
               >
-                <Text style={styles.yesButtonText}>Yes</Text>
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.yesButtonText}>Yes</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
