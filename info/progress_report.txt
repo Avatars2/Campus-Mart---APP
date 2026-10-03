@@ -1,6 +1,6 @@
 =========================================
 CAMPUS MART - PROGRESS REPORT
-Date: September 28, 2026
+Date: October 3, 2026
 =========================================
 
 PROJECT STATUS:
@@ -187,6 +187,11 @@ CURRENTLY VERIFIED FLOWS
 - Cloudinary attachment viewer for PDFs and other shared files.
 - Invoice generation with item, buyer, seller, payment, delivery, and total details.
 - Dynamic fallback for native Expo modules (Contacts, IntentLauncher, FileSystem) to fully support React Native Web.
+- Admin panel UI enhancements with client-side pagination across all moderation screens (Users, Items, Reports, Orders, Categories).
+- Redesigned Buy screen with a full-width dashboard showing order states (Active, Completed, Returned, Cancelled).
+- Full-screen modal list views for filtered orders featuring standardized layout, header buttons, and pagination matching the app UI.
+- Strict view filtering on Product Details preventing sellers from seeing action/wishlist buttons on their own items.
+- Fixed React Native Web JSX parsing errors ("Unexpected text node") in navigation headers for cleaner cross-platform rendering.
 
 =========================================
 NEXT RECOMMENDED STEPS

@@ -73,3 +73,41 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Server error updating item' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const authResult = await verifyAuth(request);
+    if (authResult.error) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    const seller_id = authResult.user.id;
+
+    await connectDB();
+    const item = await Item.findOne({ _id: id, seller_id });
+
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found or unauthorized' }, { status: 404 });
+    }
+
+    // Delete images from Cloudinary
+    if (item.images && item.images.length > 0) {
+      const deletePromises = item.images.map((url) => {
+        const parts = url.split('/');
+        const fileWithExt = parts[parts.length - 1];
+        const publicId = `campusmart/items/${fileWithExt.split('.')[0]}`;
+        return cloudinary.uploader.destroy(publicId).catch(() => {});
+      });
+      await Promise.all(deletePromises);
+    }
+
+    await Item.findByIdAndDelete(id);
+
+    return NextResponse.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    return NextResponse.json({ error: 'Server error deleting item' }, { status: 500 });
+  }
+}

@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
@@ -9,6 +9,10 @@ export default function AdminCategoriesScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -130,6 +134,68 @@ export default function AdminCategoriesScreen({ navigation }) {
     cat.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const pagedCategories = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredCategories.slice(start, start + PAGE_SIZE);
+  }, [filteredCategories, currentPage]);
+
+  const renderPagination = () => {
+    const totalPages = Math.ceil(filteredCategories.length / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+
+    return (
+      <View style={styles.pagination}>
+        <Text style={styles.pageInfo}>
+          Showing {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredCategories.length)} of {filteredCategories.length}
+        </Text>
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#CBD5E1' : '#3B82F6'} />
+          </TouchableOpacity>
+
+          {[...Array(totalPages)].map((_, i) => {
+            const pageNum = i + 1;
+            if (
+              pageNum === 1 || 
+              pageNum === totalPages || 
+              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+            ) {
+              return (
+                <TouchableOpacity
+                  key={pageNum}
+                  style={currentPage === pageNum ? styles.pageNumBtnActive : styles.pageNumBtn}
+                  onPress={() => setCurrentPage(pageNum)}
+                >
+                  <Text style={currentPage === pageNum ? styles.pageNumTextActive : styles.pageNumText}>
+                    {pageNum}
+                  </Text>
+                </TouchableOpacity>
+              );
+            } else if (
+              pageNum === currentPage - 2 || 
+              pageNum === currentPage + 2
+            ) {
+              return <Text key={pageNum} style={styles.pageDots}>...</Text>;
+            }
+            return null;
+          })}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#CBD5E1' : '#3B82F6'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -155,11 +221,14 @@ export default function AdminCategoriesScreen({ navigation }) {
           style={styles.searchInput}
           placeholder="Search categories..."
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            setCurrentPage(1);
+          }}
           placeholderTextColor="#9CA3AF"
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity onPress={() => { setSearchQuery(''); setCurrentPage(1); }}>
             <Ionicons name="close-circle" size={20} color="#9CA3AF" />
           </TouchableOpacity>
         )}
@@ -180,39 +249,40 @@ export default function AdminCategoriesScreen({ navigation }) {
           <ActivityIndicator size="large" color="#1E3A8A" />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-          
-          {filteredCategories.length === 0 && !errorMsg ? (
-            <Text style={styles.emptyState}>No categories found.</Text>
-          ) : (
-            filteredCategories.map((cat, index) => {
-              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-              const color = colors[index % colors.length];
-              return (
-                <View key={cat.id || cat._id} style={[styles.categoryCard, { borderLeftColor: color }]}>
-                  <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-                    <Ionicons name="folder-open" size={24} color={color} />
-                  </View>
-                  <View style={styles.categoryInfo}>
-                    <Text style={styles.categoryName}>{cat.name}</Text>
-                    <Text style={styles.categoryDesc}>{cat.description}</Text>
-                  </View>
-                  <View style={styles.actionsContainer}>
-                    <TouchableOpacity onPress={() => openEditModal(cat)} style={[styles.actionBtn, { backgroundColor: '#F1F5F9' }]}>
-                      <Ionicons name="pencil" size={16} color="#475569" />
-                      <Text style={[styles.actionText, { color: '#475569' }]}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteCategory(cat)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]}>
-                      <Ionicons name="trash" size={16} color="#DC2626" />
-                      <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
+        <FlatList
+          contentContainerStyle={styles.scrollContent}
+          data={pagedCategories}
+          keyExtractor={cat => (cat.id || cat._id).toString()}
+          ListHeaderComponent={errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+          ListEmptyComponent={(!errorMsg && filteredCategories.length === 0) ? <Text style={styles.emptyState}>No categories found.</Text> : null}
+          renderItem={({ item: cat, index }) => {
+            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+            const globalIndex = (currentPage - 1) * PAGE_SIZE + index;
+            const color = colors[globalIndex % colors.length];
+            return (
+              <View style={[styles.categoryCard, { borderLeftColor: color }]}>
+                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                  <Ionicons name="folder-open" size={24} color={color} />
                 </View>
-              );
-            })
-          )}
-        </ScrollView>
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryName}>{cat.name}</Text>
+                  <Text style={styles.categoryDesc}>{cat.description}</Text>
+                </View>
+                <View style={styles.actionsContainer}>
+                  <TouchableOpacity onPress={() => openEditModal(cat)} style={[styles.actionBtn, { backgroundColor: '#F1F5F9' }]}>
+                    <Ionicons name="pencil" size={16} color="#475569" />
+                    <Text style={[styles.actionText, { color: '#475569' }]}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteCategory(cat)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]}>
+                    <Ionicons name="trash" size={16} color="#DC2626" />
+                    <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+          ListFooterComponent={renderPagination}
+        />
       )}
 
       {/* Add/Edit Category Modal */}

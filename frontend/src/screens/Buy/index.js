@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+
+const PAGE_SIZE = 10;
 
 export default function BuyScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
@@ -274,24 +276,76 @@ export default function BuyScreen({ navigation }) {
     }
   };
 
-  const orderSections = [
-    {
-      title: 'Active Orders',
-      data: orders.filter((order) => order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'returned'),
-    },
-    {
-      title: 'Completed Orders',
-      data: orders.filter((order) => order.status === 'completed'),
-    },
-    {
-      title: 'Returned Orders',
-      data: orders.filter((order) => order.status === 'returned'),
-    },
-    {
-      title: 'Cancelled Orders',
-      data: orders.filter((order) => order.status === 'cancelled'),
-    },
-  ].filter((section) => section.data.length > 0);
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset filter when switching between Purchases and Sales
+  useEffect(() => {
+    setActiveFilter('All');
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter]);
+
+  const activeCount = orders.filter(o => !['completed', 'cancelled', 'returned'].includes(o.status)).length;
+  const completedCount = orders.filter(o => o.status === 'completed').length;
+  const returnedCount = orders.filter(o => o.status === 'returned').length;
+  const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      if (activeFilter === 'All') return true;
+      if (activeFilter === 'Active') return !['completed', 'cancelled', 'returned'].includes(order.status);
+      if (activeFilter === 'Completed') return order.status === 'completed';
+      if (activeFilter === 'Returned') return order.status === 'returned';
+      if (activeFilter === 'Cancelled') return order.status === 'cancelled';
+      return true;
+    });
+  }, [orders, activeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const pagedOrders = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [filteredOrders, currentPage]);
+
+  const renderDashboardCards = () => (
+    <View style={{ flex: 1, flexDirection: 'column', gap: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => setActiveFilter('Active')} 
+        style={{ flex: 1, backgroundColor: '#EFF6FF', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, color: '#1D4ED8', fontWeight: '600' }}>Active Orders</Text>
+        <Text style={{ fontSize: 32, color: '#1E3A8A', fontWeight: '800' }}>{activeCount}</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => setActiveFilter('Completed')} 
+        style={{ flex: 1, backgroundColor: '#F0FDF4', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, color: '#15803D', fontWeight: '600' }}>Completed Orders</Text>
+        <Text style={{ fontSize: 32, color: '#14532D', fontWeight: '800' }}>{completedCount}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => setActiveFilter('Returned')} 
+        style={{ flex: 1, backgroundColor: '#FDF4FF', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, color: '#A21CAF', fontWeight: '600' }}>Returned Orders</Text>
+        <Text style={{ fontSize: 32, color: '#701A75', fontWeight: '800' }}>{returnedCount}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => setActiveFilter('Cancelled')} 
+        style={{ flex: 1, backgroundColor: '#FEF2F2', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, color: '#B91C1C', fontWeight: '600' }}>Cancelled Orders</Text>
+        <Text style={{ fontSize: 32, color: '#7F1D1D', fontWeight: '800' }}>{cancelledCount}</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
     const renderOrderDetailsModal = () => {
     if (!selectedOrderDetails) return null;
@@ -579,6 +633,83 @@ export default function BuyScreen({ navigation }) {
     );
   }
 
+  const renderPagination = () => {
+    if (filteredOrders.length <= PAGE_SIZE) return null;
+
+    const pageButtons = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+      pageButtons.push(p);
+    }
+
+    const startEntry = (currentPage - 1) * PAGE_SIZE + 1;
+    const endEntry = Math.min(currentPage * PAGE_SIZE, filteredOrders.length);
+
+    return (
+      <View style={styles.pagination}>
+        <Text style={styles.pageInfo}>
+          {startEntry}–{endEntry} of {filteredOrders.length} orders
+        </Text>
+
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#CBD5E1' : '#007185'} />
+          </TouchableOpacity>
+
+          {startPage > 1 && (
+            <>
+              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(1)} activeOpacity={0.7}>
+                <Text style={styles.pageNumText}>1</Text>
+              </TouchableOpacity>
+              {startPage > 2 && <Text style={styles.pageDots}>…</Text>}
+            </>
+          )}
+
+          {pageButtons.map(p => (
+            <TouchableOpacity
+              key={p}
+              style={[styles.pageNumBtn, p === currentPage && styles.pageNumBtnActive]}
+              onPress={() => setCurrentPage(p)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pageNumText, p === currentPage && styles.pageNumTextActive]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <Text style={styles.pageDots}>…</Text>}
+              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(totalPages)} activeOpacity={0.7}>
+                <Text style={styles.pageNumText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#CBD5E1' : '#007185'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {renderOrderDetailsModal()}
@@ -698,40 +829,53 @@ export default function BuyScreen({ navigation }) {
         </TouchableOpacity>
       </View>
       
-      <SectionList
-        sections={orderSections}
-        keyExtractor={(item, index) => item._id || item.id || String(index)}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />
-        }
-        renderItem={renderOrderItem}
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.iconBg}>
-              <Ionicons name="bag-handle-outline" size={52} color="#0052CC" />
-            </View>
-            <Text style={styles.emptyTitle}>No {activeTab === 'purchases' ? 'Purchases' : 'Sales'} Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              {activeTab === 'purchases' 
-                ? 'Items you purchase will appear here.'
-                : 'Items you sell to others will appear here.'}
+      {/* Full-Screen List Modal */}
+      <Modal visible={activeFilter !== 'All'} animationType="slide" onRequestClose={() => setActiveFilter('All')}>
+        <View style={{ flex: 1, backgroundColor: '#F3F4F6' }}>
+          <View style={{
+            paddingTop: Platform.OS === 'ios' ? 50 : 20,
+            paddingBottom: 16,
+            paddingHorizontal: 20,
+            backgroundColor: '#FFF',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <TouchableOpacity 
+              style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 10, padding: 8 }} 
+              onPress={() => setActiveFilter('All')} 
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#0F1111" />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#0F1111', letterSpacing: -0.5 }}>
+              {activeFilter} <Text style={{ color: '#007185' }}>{activeTab === 'purchases' ? 'Purchases' : 'Sales'}</Text>
             </Text>
-            {activeTab === 'purchases' && (
-              <TouchableOpacity
-                style={styles.browseButton}
-                onPress={() => navigation.navigate('Home')}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.browseButtonText}>Browse Marketplace</Text>
-              </TouchableOpacity>
-            )}
           </View>
-        }
-      />
+          
+          <FlatList
+            data={pagedOrders}
+            keyExtractor={(item, index) => item._id || item.id || String(index)}
+            contentContainerStyle={styles.listContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />}
+            renderItem={renderOrderItem}
+            ListFooterComponent={renderPagination}
+            ListEmptyComponent={
+              <View style={[styles.emptyContainer, { marginTop: 40 }]}>
+                <View style={styles.iconBg}>
+                  <Ionicons name="bag-handle-outline" size={52} color="#0052CC" />
+                </View>
+                <Text style={styles.emptyTitle}>No {activeFilter} Orders</Text>
+                <Text style={styles.emptySubtitle}>You don't have any {activeFilter.toLowerCase()} {activeTab === 'purchases' ? 'purchases' : 'sales'}.</Text>
+              </View>
+            }
+          />
+        </View>
+      </Modal>
+
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />}>
+        {renderDashboardCards()}
+      </ScrollView>
     </SafeAreaView>
   );
 }

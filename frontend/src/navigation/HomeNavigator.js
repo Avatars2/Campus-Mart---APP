@@ -15,12 +15,27 @@ export default function HomeNavigator() {
       <Stack.Screen 
         name="ProductDetail" 
         component={ProductDetailScreen} 
-        options={({ navigation }) => ({ headerShown: true, title: 'Item Details', headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0F1111" /> </TouchableOpacity> ) })} 
+        options={({ navigation }) => ({
+          headerShown: true,
+          title: 'Item Details',
+          headerLeft: (props) => (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}>
+              <Ionicons name="chevron-back" size={26} color="#0F1111" />
+            </TouchableOpacity>
+          )
+        })} 
       />
       <Stack.Screen 
         name="SellerStore" 
         component={SellerStoreScreen} 
-        options={({ navigation }) => ({ headerShown: true, headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}> <Ionicons name="chevron-back" size={26} color="#0F1111" /> </TouchableOpacity> ) })} 
+        options={({ navigation }) => ({
+          headerShown: true,
+          headerLeft: (props) => (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}>
+              <Ionicons name="chevron-back" size={26} color="#0F1111" />
+            </TouchableOpacity>
+          )
+        })} 
       />
     </Stack.Navigator>
   );

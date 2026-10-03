@@ -48,7 +48,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));
   const currentUserId = user?.id || user?._id;
   const isOwnItem = sId && currentUserId && String(sId) === String(currentUserId);
-  const displaySellerName = item.seller_name || (typeof item.seller_id === 'object' ? item.seller_id.full_name : null) || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller');
+  const displaySellerName = isOwnItem ? 'You' : (item.seller_name || (typeof item.seller_id === 'object' ? item.seller_id.full_name : null) || (typeof item.seller === 'object' ? item.seller.full_name : 'Seller'));
 
   const handleToggleWishlistClick = async () => {
     if (wishlistUpdating) return;
@@ -162,15 +162,15 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
 
           {/* Wishlist Button over Image */}
-          {!isAdminView && (
+          {!isAdminView && !isOwnItem && (
             <TouchableOpacity
-              style={[styles.wishlistButton, isOwnItem && { opacity: 0.5 }]}
-              onPress={isOwnItem ? null : handleToggleWishlistClick}
-              disabled={wishlistUpdating || isOwnItem}
+              style={styles.wishlistButton}
+              onPress={handleToggleWishlistClick}
+              disabled={wishlistUpdating}
               accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               activeOpacity={0.8}
             >
-              <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color={isOwnItem ? "#B0B7C3" : "#FF3B30"} />
+              <Ionicons name={isWishlisted ? 'heart' : 'heart-outline'} size={24} color="#FF3B30" />
             </TouchableOpacity>
           )}
         </View>
@@ -185,24 +185,24 @@ export default function ProductDetailScreen({ route, navigation }) {
             )}
           </View>
 
-          {!isAdminView && (
+          {!isAdminView && !isOwnItem && (
             <>
               <TouchableOpacity 
-                style={[styles.actionButtonYellow, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
+                style={[styles.actionButtonYellow, item.is_currently_rented && styles.disabledButton]}
                 activeOpacity={0.85}
                 onPress={handleAddToCartClick}
-                disabled={item.is_currently_rented || isOwnItem}
+                disabled={item.is_currently_rented}
               >
-                <Text style={styles.actionButtonYellowText}>{isOwnItem ? 'Your Item' : 'Add to Cart'}</Text>
+                <Text style={styles.actionButtonYellowText}>Add to Cart</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.actionButtonOrange, (item.is_currently_rented || isOwnItem) && styles.disabledButton]}
+                style={[styles.actionButtonOrange, item.is_currently_rented && styles.disabledButton]}
                 activeOpacity={0.85}
                 onPress={handleBuyNow}
-                disabled={item.is_currently_rented || isOwnItem}
+                disabled={item.is_currently_rented}
               >
-                <Text style={styles.actionButtonOrangeText}>{isOwnItem ? 'Your Item' : item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
+                <Text style={styles.actionButtonOrangeText}>{item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
               </TouchableOpacity>
             </>
           )}

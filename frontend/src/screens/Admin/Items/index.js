@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Image, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +14,14 @@ export default function AdminItemsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const navigation = useNavigation();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const pagedItems = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, currentPage]);
 
   const fetchItems = async () => {
     try {
@@ -62,6 +70,7 @@ export default function AdminItemsScreen() {
     }
 
     setFilteredItems(result);
+    setCurrentPage(1);
   };
 
   const handleSearch = (text) => {
@@ -120,6 +129,77 @@ export default function AdminItemsScreen() {
   const getStatus = (item) => {
     if (item.is_active) return { label: 'Active', color: '#10B981', bg: '#D1FAE5', dot: '#059669' };
     return { label: 'Pending', color: '#F59E0B', bg: '#FEF3C7', dot: '#D97706' };
+  };
+
+  const renderPagination = () => {
+    const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = startPage + maxPagesToShow - 1;
+
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+
+    return (
+      <View style={styles.pagination}>
+        <Text style={styles.pageInfo}>
+          Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredItems.length)} of {filteredItems.length} items
+        </Text>
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          >
+            <Ionicons name="chevron-back" size={18} color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'} />
+          </TouchableOpacity>
+
+          {startPage > 1 && (
+            <>
+              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(1)}>
+                <Text style={styles.pageNumText}>1</Text>
+              </TouchableOpacity>
+              {startPage > 2 && <Text style={styles.pageDots}>...</Text>}
+            </>
+          )}
+
+          {pages.map(page => (
+            <TouchableOpacity
+              key={page}
+              style={[styles.pageNumBtn, currentPage === page && styles.pageNumBtnActive]}
+              onPress={() => setCurrentPage(page)}
+            >
+              <Text style={[styles.pageNumText, currentPage === page && styles.pageNumTextActive]}>
+                {page}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <Text style={styles.pageDots}>...</Text>}
+              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(totalPages)}>
+                <Text style={styles.pageNumText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          >
+            <Ionicons name="chevron-forward" size={18} color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const renderItem = ({ item }) => {
@@ -272,7 +352,7 @@ export default function AdminItemsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredItems}
+          data={pagedItems}
           keyExtractor={(item, index) => (item.id || item._id || index).toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
@@ -281,6 +361,7 @@ export default function AdminItemsScreen() {
           }
           ListEmptyComponent={<Text style={styles.emptyText}>No items found.</Text>}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={renderPagination}
         />
       )}
     </View>

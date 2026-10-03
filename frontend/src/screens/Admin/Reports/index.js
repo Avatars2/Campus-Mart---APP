@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
@@ -10,6 +10,7 @@ export default function AdminReportsScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchReports();
@@ -33,6 +34,10 @@ export default function AdminReportsScreen({ navigation }) {
     fetchReports();
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
+
   // Counts
   const pendingCount = reports.filter(r => r.status === 'pending').length;
   const resolvedCount = reports.filter(r => r.status === 'resolved').length;
@@ -54,6 +59,12 @@ export default function AdminReportsScreen({ navigation }) {
       r.reporter_id?.full_name?.toLowerCase().includes(lowerQuery)
     );
   }
+
+  const PAGE_SIZE = 10;
+  const pagedReports = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredReports.slice(start, start + PAGE_SIZE);
+  }, [filteredReports, currentPage]);
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -131,6 +142,67 @@ export default function AdminReportsScreen({ navigation }) {
           <Ionicons name="chevron-forward" size={14} color="#3B82F6" />
         </TouchableOpacity>
       </TouchableOpacity>
+    );
+  };
+
+  const renderPagination = () => {
+    const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE + 1;
+    const endIdx = Math.min(currentPage * PAGE_SIZE, filteredReports.length);
+
+    // Basic pagination pages to display
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
+    }
+
+    return (
+      <View style={styles.pagination}>
+        <Text style={styles.pageInfo}>
+          Showing {startIdx} to {endIdx} of {filteredReports.length} results
+        </Text>
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+          >
+            <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? '#94A3B8' : '#3B82F6'} />
+          </TouchableOpacity>
+
+          {pages.map((p, i) => (
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>...</Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[styles.pageNumBtn, currentPage === p && styles.pageNumBtnActive]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>{p}</Text>
+              </TouchableOpacity>
+            )
+          ))}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          >
+            <Ionicons name="chevron-forward" size={20} color={currentPage === totalPages ? '#94A3B8' : '#3B82F6'} />
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
@@ -218,7 +290,7 @@ export default function AdminReportsScreen({ navigation }) {
 
       {/* Reports List */}
       <FlatList
-        data={filteredReports}
+        data={pagedReports}
         renderItem={renderItem}
         keyExtractor={(item) => item._id || item.id}
         contentContainerStyle={styles.listContent}
@@ -230,6 +302,7 @@ export default function AdminReportsScreen({ navigation }) {
             <Text style={styles.emptySubText}>All clear!</Text>
           </View>
         }
+        ListFooterComponent={renderPagination}
       />
     </View>
   );
