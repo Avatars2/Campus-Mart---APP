@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import client from '../api/client';
+import styles from './ReportModal.styles';
 
 export default function ReportModal({ visible, onClose, targetId, targetType, targetName }) {
   const [reason, setReason] = useState('');
@@ -92,7 +93,7 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
               You are reporting: <Text style={styles.targetName}>{targetName}</Text>
             </Text>
 
-            <Text style={styles.label}>Select a Reason <Text style={{ color: '#DC2626' }}>*</Text></Text>
+            <Text style={styles.label}>Select a Reason <Text style={styles.requiredStar}>*</Text></Text>
             <View style={styles.reasonsContainer}>
               {reasons.map((r) => (
                 <TouchableOpacity
@@ -118,13 +119,13 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
               textAlignVertical="top"
             />
 
-            <View style={{ marginBottom: 16 }}>
+            <View style={styles.proofSection}>
               <Text style={styles.label}>Proof / Evidence (Optional)</Text>
               {proofImage ? (
-                <View style={{ position: 'relative', alignSelf: 'flex-start', marginTop: 8 }}>
-                  <Image source={{ uri: proofImage }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                <View style={styles.proofPreviewWrapper}>
+                  <Image source={{ uri: proofImage }} style={styles.proofImage} />
                   <TouchableOpacity 
-                    style={{ position: 'absolute', top: -8, right: -8, backgroundColor: 'white', borderRadius: 12 }}
+                    style={styles.removeProofButton}
                     onPress={() => setProofImage(null)}
                   >
                     <Ionicons name="close-circle" size={24} color="#DC2626" />
@@ -132,11 +133,11 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
                 </View>
               ) : (
                 <TouchableOpacity 
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, marginTop: 8 }}
+                  style={styles.attachButton}
                   onPress={pickImage}
                 >
-                  <Ionicons name="image-outline" size={20} color="#4B5563" style={{ marginRight: 8 }} />
-                  <Text style={{ color: '#4B5563', fontWeight: '500' }}>Attach Screenshot/Image</Text>
+                  <Ionicons name="image-outline" size={20} color="#4B5563" style={styles.attachIcon} />
+                  <Text style={styles.attachButtonText}>Attach Screenshot/Image</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -158,97 +159,3 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1F36',
-  },
-  targetText: {
-    fontSize: 15,
-    color: '#4F566B',
-    marginBottom: 24,
-  },
-  targetName: {
-    fontWeight: '700',
-    color: '#1A1F36',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1F36',
-    marginBottom: 12,
-  },
-  reasonsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24,
-  },
-  reasonChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 100,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  reasonChipActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#F87171',
-  },
-  reasonChipText: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  reasonChipTextActive: {
-    color: '#DC2626',
-    fontWeight: '600',
-  },
-  textInput: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: '#1A1F36',
-    minHeight: 120,
-    marginBottom: 24,
-  },
-  submitButton: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 20 : 0,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
