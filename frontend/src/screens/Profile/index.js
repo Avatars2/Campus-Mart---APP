@@ -106,6 +106,38 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
+        {userRole !== 'admin' && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Payments</Text>
+            <View style={styles.menuCard}>
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemLast]}
+                onPress={() => navigation.navigate('Payment', { profile })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIconContainer}>
+                  <Ionicons name="card-outline" size={20} color="#007185" />
+                </View>
+                <Text style={styles.menuText}>Payment</Text>
+                <Text style={styles.paymentStatus}>
+                  {profile.razorpay_account_status === 'activated'
+                    ? 'Ready'
+                    : ['pending', 'under_review'].includes(profile.razorpay_account_status)
+                      ? 'Pending'
+                      : profile.razorpay_account_status === 'needs_clarification'
+                        ? 'Action needed'
+                      : 'Set up payouts'}
+                </Text>
+                <Ionicons
+                  name={profile.razorpay_account_status === 'activated' ? 'checkmark-circle' : 'chevron-forward'}
+                  size={18}
+                  color={profile.razorpay_account_status === 'activated' ? '#10B981' : '#B0B7C3'}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* SUPPORT & SAFETY */}
         {userRole !== 'admin' && (
           <View style={styles.sectionContainer}>

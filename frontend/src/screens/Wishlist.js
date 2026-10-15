@@ -1,12 +1,12 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
-import styles from './WishlistScreen.styles';
+import styles from './Wishlist.styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
 import useScreenRefresh from '../hooks/useScreenRefresh';
 
-export default function WishlistScreen({ navigation }) {
+export default function Wishlist({ navigation }) {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [cartPromptItem, setCartPromptItem] = useState(null);
   const [removePromptItem, setRemovePromptItem] = useState(null);

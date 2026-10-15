@@ -28,6 +28,23 @@ const itemSchema = new mongoose.Schema({
     required: true,
     default: 1,
   },
+  reserved_quantity: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
+  reserved_payment_ids: {
+    type: [String],
+    default: [],
+  },
+  rental_reservation_payment: {
+    type: String,
+    default: null,
+  },
+  rental_reservation_expires_at: {
+    type: Date,
+    default: null,
+  },
   condition_rating: {
     type: Number,
     required: true,

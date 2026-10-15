@@ -11,14 +11,14 @@ import MessageNavigator from './MessageNavigator';
 import { useMessages } from '../context/MessageContext';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import NotificationScreen from '../screens/NotificationScreen';
+import Notification from '../screens/Notification';
 import { useNotifications } from '../context/NotificationContext';
 import { TouchableOpacity, Text } from 'react-native';
-import CartScreen from '../screens/CartScreen';
-import WishlistScreen from '../screens/WishlistScreen';
-import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
-import OrderSuccessScreen from '../screens/Checkout/OrderSuccessScreen';
-import OrderNotificationDetail from '../screens/OrderNotificationDetail';
+import Cart from '../screens/Cart';
+import Wishlist from '../screens/Wishlist';
+import Checkout from '../screens/Checkout/Checkout';
+import OrderSuccess from '../screens/Checkout/OrderSuccess';
+import NotificationDetail from '../screens/NotificationDetail';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -120,35 +120,35 @@ export default function AppNavigator() {
       />
       <Stack.Screen 
         name="Notifications" 
-        component={NotificationScreen} 
+        component={Notification} 
         options={{ 
           presentation: 'modal',
           headerShown: false 
         }} 
       />
       <Stack.Screen
-        name="OrderNotificationDetail"
-        component={OrderNotificationDetail}
+        name="NotificationDetail"
+        component={NotificationDetail}
         options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="Cart" 
-        component={CartScreen} 
+        component={Cart} 
         options={{ headerShown: false }} 
       />
       <Stack.Screen 
         name="Wishlist" 
-        component={WishlistScreen} 
+        component={Wishlist} 
         options={{ headerShown: false }} 
       />
       <Stack.Screen 
         name="Checkout" 
-        component={CheckoutScreen} 
+        component={Checkout} 
         options={{ headerShown: false }} 
       />
       <Stack.Screen 
         name="OrderSuccess" 
-        component={OrderSuccessScreen} 
+        component={OrderSuccess} 
         options={{ headerShown: false, gestureEnabled: false }} 
       />
     </Stack.Navigator>

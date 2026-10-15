@@ -17,10 +17,10 @@ export default function AuthNavigator() {
         headerShown: false, // Hide headers for auth flow for a cleaner look
       }}
     >
-      <Stack.Screen name="Landing" component={LandingScreen} />
+      <Stack.Screen name="Landing" component={LandingScreen} options={{ title: 'CampusMart' }} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'OTP Login' }} />
       <Stack.Screen name="VerifyLoginOTP" component={VerifyLoginOTPScreen} />
     </Stack.Navigator>
   );

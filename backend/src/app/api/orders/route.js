@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Order from '@/models/Order';
 import Item from '@/models/Item'; // required for population
+import Payment from '@/models/Payment';
 import User from '@/models/User'; // required for population
 import { verifyAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
+import { transferSellerFunds } from '@/lib/paymentLifecycle';
 
 export async function GET(request) {
   try {
@@ -21,7 +23,13 @@ export async function GET(request) {
 
     let query = {};
     if (type === 'sales') {
-      query = { seller_id: userId };
+      query = {
+        seller_id: userId,
+        $or: [
+          { payment_method: { $nin: ['UPI', 'Razorpay'] } },
+          { payment_status: 'paid' },
+        ],
+      };
     } else {
       query = { buyer_id: userId };
     }
@@ -53,7 +61,28 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ orders }, { status: 200 });
+    const responseOrders = orders.map((order) => order.toJSON());
+    if (type === 'sales') {
+      const paymentIds = orders.map((order) => order.payment_id).filter(Boolean);
+      const payments = await Payment.find({ _id: { $in: paymentIds } })
+        .select('settlements')
+        .lean();
+      const settlementByPaymentAndSeller = new Map();
+      for (const payment of payments) {
+        for (const settlement of payment.settlements) {
+          settlementByPaymentAndSeller.set(
+            `${payment._id.toString()}:${settlement.seller_id.toString()}`,
+            settlement.status
+          );
+        }
+      }
+      for (const order of responseOrders) {
+        order.seller_payout_status = ['UPI', 'Razorpay'].includes(order.payment_method)
+          ? settlementByPaymentAndSeller.get(`${order.payment_id}:${authResult.user.id}`) || 'not_configured'
+          : 'not_applicable';
+      }
+    }
+    return NextResponse.json({ orders: responseOrders }, { status: 200 });
   } catch (error) {
     console.error('Fetch Orders error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -67,32 +96,62 @@ export async function PATCH(request) {
       return NextResponse.json({ error: authResult.error }, { status: 401 });
     }
 
-    const { order_id, status, rating } = await request.json();
+    let { order_id, status, rating } = await request.json();
     if (rating !== undefined) {
-      if (!order_id || !Number.isInteger(Number(rating)) || Number(rating) < 1 || Number(rating) > 5) {
-        return NextResponse.json({ error: 'A rating from 1 to 5 is required' }, { status: 400 });
+      const numRating = Number(rating);
+      if (
+        !order_id ||
+        Number.isNaN(numRating) ||
+        numRating < 0.5 ||
+        numRating > 5 ||
+        Math.abs(numRating * 2 - Math.round(numRating * 2)) > 1e-6
+      ) {
+        return NextResponse.json({ error: 'A rating between 0.5 and 5 is required' }, { status: 400 });
       }
 
       await connectDB();
-      const ratedOrder = await Order.findOneAndUpdate(
-        { _id: order_id, buyer_id: authResult.user.id, status: 'completed', buyer_rating: null },
-        { buyer_rating: Number(rating), rated_at: new Date() },
-        { new: true }
-      );
-
-      if (!ratedOrder) {
-        return NextResponse.json({ error: 'Order is not eligible for rating' }, { status: 400 });
+      const existingOrder = await Order.findOne({ _id: order_id, buyer_id: authResult.user.id });
+      if (!existingOrder) {
+        return NextResponse.json({ error: 'Order not found or unauthorized' }, { status: 404 });
       }
 
-      const ratedItem = await Item.findById(ratedOrder.item_id);
+      if (existingOrder.status !== 'completed' && existingOrder.status !== 'delivered') {
+        return NextResponse.json({ error: 'Order must be delivered or completed to submit a rating' }, { status: 400 });
+      }
+
+      if (existingOrder.status === 'delivered') {
+        existingOrder.status = 'completed';
+        if (!existingOrder.completed_at) {
+          existingOrder.completed_at = new Date();
+        }
+      }
+
+      const oldRating = existingOrder.buyer_rating;
+      existingOrder.buyer_rating = numRating;
+      existingOrder.rated_at = new Date();
+      await existingOrder.save();
+
+      const ratedItem = await Item.findById(existingOrder.item_id);
       if (ratedItem) {
-        const nextRatingsCount = ratedItem.ratings_count + 1;
-        ratedItem.average_rating = ((ratedItem.average_rating * ratedItem.ratings_count) + Number(rating)) / nextRatingsCount;
+        const prevCount = Number(ratedItem.ratings_count) || 0;
+        const prevAvg = Number(ratedItem.average_rating) || 0;
+        let nextRatingsCount = prevCount;
+        let nextAverage;
+
+        if (oldRating != null && prevCount > 0) {
+          const totalScore = (prevAvg * prevCount) - Number(oldRating) + numRating;
+          nextAverage = totalScore / prevCount;
+        } else {
+          nextRatingsCount = prevCount + 1;
+          nextAverage = ((prevAvg * prevCount) + numRating) / nextRatingsCount;
+        }
+
+        ratedItem.average_rating = Math.min(5, Math.max(0, Math.round(nextAverage * 10) / 10));
         ratedItem.ratings_count = nextRatingsCount;
         await ratedItem.save();
       }
 
-      return NextResponse.json({ message: 'Rating saved', order: ratedOrder }, { status: 200 });
+      return NextResponse.json({ message: 'Rating saved', order: existingOrder }, { status: 200 });
     }
 
     if (!order_id || !['delivered', 'completed', 'rental_active', 'return_requested', 'cancelled', 'cancel_requested', 'pending', 'returned'].includes(status)) {
@@ -116,6 +175,21 @@ export async function PATCH(request) {
     const isBuyer = userId === buyerId;
     const isRental = order.item_id.listing_type === 'rent';
     const now = new Date();
+    const buyerConfirmedDelivery = isBuyer && (
+      (status === 'completed' && !isRental && order.status === 'delivered')
+      || (status === 'rental_active' && isRental && order.status === 'delivered')
+    );
+
+    if (['UPI', 'Razorpay'].includes(order.payment_method) && order.payment_status !== 'paid') {
+      return NextResponse.json({ error: 'Order actions are unavailable until online payment is confirmed' }, { status: 409 });
+    }
+
+    if (status === 'cancel_requested') {
+      if (!isBuyer || (order.status !== 'pending' && order.status !== 'cancel_requested')) {
+        return NextResponse.json({ error: 'Only the buyer can cancel a pending order' }, { status: 400 });
+      }
+      status = 'cancelled';
+    }
 
     if (status === 'delivered') {
       if (!isSeller || order.status !== 'pending') {
@@ -174,24 +248,24 @@ export async function PATCH(request) {
         return NextResponse.json({ error: 'Only the seller can confirm a returned item' }, { status: 400 });
       }
       order.returned_at = now;
-    } else if (status === 'cancel_requested') {
-      if (!isBuyer || order.status !== 'pending') {
-        return NextResponse.json({ error: 'Only the buyer can request cancellation on a pending order' }, { status: 400 });
+
+      // Process refund for online paid orders
+      if (['UPI', 'Razorpay'].includes(order.payment_method) && order.payment_status === 'paid' && order.payment_id) {
+        const payment = await Payment.findById(order.payment_id);
+        const { refundOrderPayment } = await import('@/lib/paymentLifecycle');
+        await refundOrderPayment(payment, order, 'Item return confirmed by seller');
       }
-      // If it's within 1 hour, auto-cancel instead of requesting
-      if ((now - new Date(order.createdAt).getTime()) <= 3600000) {
-        order.status = 'cancelled';
-        await order.save();
-        return NextResponse.json({ message: 'Order cancelled', order }, { status: 200 });
-      }
+
+      // Restock inventory for returned item
+      await Item.findByIdAndUpdate(order.item_id._id || order.item_id, {
+        $inc: { quantity: order.quantity },
+        $set: { is_active: true, marked_sold_at: null },
+      });
     } else if (status === 'cancelled') {
-      // Buyer cancelling directly within 1 hour
+      // Buyer cancelling directly or seller approving cancellation
       if (isBuyer) {
         if (order.status !== 'pending' && order.status !== 'cancel_requested') {
           return NextResponse.json({ error: 'Cannot cancel this order' }, { status: 400 });
-        }
-        if ((now - new Date(order.createdAt).getTime()) > 3600000) {
-          return NextResponse.json({ error: 'Cancellation after 1 hour requires seller approval' }, { status: 400 });
         }
       } else if (isSeller) {
         // Seller approving cancellation request
@@ -201,6 +275,19 @@ export async function PATCH(request) {
       } else {
         return NextResponse.json({ error: 'Unauthorized to cancel' }, { status: 403 });
       }
+
+      // Process refund for online paid orders
+      if (['UPI', 'Razorpay'].includes(order.payment_method) && order.payment_status === 'paid' && order.payment_id) {
+        const payment = await Payment.findById(order.payment_id);
+        const { refundOrderPayment } = await import('@/lib/paymentLifecycle');
+        await refundOrderPayment(payment, order, isBuyer ? 'Buyer cancelled order' : 'Seller approved cancellation');
+      }
+
+      // Restock inventory for cancelled order
+      await Item.findByIdAndUpdate(order.item_id._id || order.item_id, {
+        $inc: { quantity: order.quantity },
+        $set: { is_active: true, marked_sold_at: null },
+      });
     } else if (status === 'pending') {
       // Seller rejecting a cancellation request
       if (!isSeller || order.status !== 'cancel_requested') {
@@ -210,6 +297,20 @@ export async function PATCH(request) {
 
     order.status = status;
     await order.save();
+
+    let payoutMessage = null;
+    if (buyerConfirmedDelivery && order.payment_id) {
+      const payment = await Payment.findById(order.payment_id);
+      if (payment) {
+        try {
+          const result = await transferSellerFunds(payment);
+          payoutMessage = result.message;
+        } catch (error) {
+          console.error('Seller payout transfer failed after delivery confirmation:', error);
+          payoutMessage = 'Order completed; seller payout is delayed and will be retried.';
+        }
+      }
+    }
 
     let notificationTitle = 'Order Update';
     let notificationBody = 'Your order has been updated.';
@@ -224,8 +325,10 @@ export async function PATCH(request) {
       notificationTitle = isRental ? 'Rental return requested' : 'Item return requested';
       notificationBody = isRental ? `${order.item_id.name} is ready to be returned. Please discuss the handover in Messages.` : `The buyer wants to return ${order.item_id.name}. Please discuss in Messages and approve the return.`;
     } else if (status === 'returned') {
-      notificationTitle = 'Item returned';
-      notificationBody = `The return for ${order.item_id.name} was confirmed by the seller.`;
+      notificationTitle = 'Item returned & refund initiated';
+      notificationBody = ['UPI', 'Razorpay'].includes(order.payment_method)
+        ? `The return for ${order.item_id.name} was confirmed by the seller. A full refund has been initiated to your original payment method.`
+        : `The return for ${order.item_id.name} was confirmed by the seller.`;
     } else if (status === 'completed') {
       if (isSeller && !isRental) {
         notificationTitle = 'Return request rejected';
@@ -239,7 +342,9 @@ export async function PATCH(request) {
       notificationBody = `The buyer wants to cancel the order for ${order.item_id.name}. Please approve or reject.`;
     } else if (status === 'cancelled') {
       notificationTitle = 'Order cancelled';
-      notificationBody = `The order for ${order.item_id.name} has been cancelled.`;
+      notificationBody = isBuyer
+        ? `The order for ${order.item_id.name} was cancelled by the buyer.`
+        : `The order for ${order.item_id.name} has been cancelled.`;
     } else if (status === 'pending') {
       notificationTitle = 'Cancellation rejected';
       notificationBody = `The seller declined to cancel the order for ${order.item_id.name}.`;
@@ -256,7 +361,11 @@ export async function PATCH(request) {
       relatedId: order._id
     }).catch((error) => console.error('Completion notification failed:', error));
 
-    return NextResponse.json({ message: `Order marked as ${status}`, order }, { status: 200 });
+    return NextResponse.json({
+      message: `Order marked as ${status}`,
+      ...(payoutMessage ? { payout_message: payoutMessage } : {}),
+      order,
+    }, { status: 200 });
   } catch (error) {
     console.error('Update order error:', error);
     return NextResponse.json({ error: error.message || 'Unable to update order', stack: error.stack }, { status: 500 });

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Image, Platform } from 'react-native';
-import styles from './OrderSuccessScreen.styles';
+import styles from './OrderSuccess.styles';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 
-export default function OrderSuccessScreen({ route, navigation }) {
+export default function OrderSuccess({ route, navigation }) {
   const {
     orders = [],
     deliveryMethod = 'Discuss',
@@ -30,8 +30,8 @@ export default function OrderSuccessScreen({ route, navigation }) {
   const deliveryLabel = deliveryMethod === 'Discuss'
     ? 'Discuss with seller via Messages'
     : deliveryMethod === 'Delivery' ? 'Campus Delivery' : 'Campus Pickup';
-  const paymentLabel = paymentMethod === 'UPI'
-    ? 'Pay now with UPI'
+  const paymentLabel = ['UPI', 'Razorpay'].includes(paymentMethod)
+    ? 'Paid with Razorpay'
     : 'Pay when you receive the item';
 
   const totalAmount = orders.reduce((sum, order) => sum + order.total_price, 0);
@@ -107,7 +107,7 @@ export default function OrderSuccessScreen({ route, navigation }) {
           <div class="party"><h3>Buyer</h3><strong>${escapeHtml(buyer?.full_name || 'Buyer')}</strong><span>${escapeHtml(buyer?.email)}</span><span>${escapeHtml(buyer?.phone)}</span><span>Student ID: ${escapeHtml(buyer?.student_id)}</span></div>
           ${sellerHtml}
         </div>
-        <div class="summary"><span><strong>Delivery:</strong> ${escapeHtml(deliveryLabel)}</span><span><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</span><span><strong>Status:</strong> Pending seller confirmation</span></div>
+        <div class="summary"><span><strong>Delivery:</strong> ${escapeHtml(deliveryLabel)}</span><span><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</span><span><strong>Payment status:</strong> ${escapeHtml(orders[0]?.payment_status === 'paid' ? 'Paid' : 'Pay on delivery')}</span><span><strong>Order status:</strong> Pending seller confirmation</span></div>
         <table><thead><tr><th>#</th><th>Item</th><th>Seller</th><th>Qty</th><th style="text-align:right">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table>
         <div class="total">Total amount: ₹{totalAmount}</div>
       </body>
@@ -195,7 +195,14 @@ export default function OrderSuccessScreen({ route, navigation }) {
           
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Payment:</Text>
-            <Text style={styles.summaryValue}>{paymentMethod === 'Cash' ? 'Pay on delivery' : 'UPI'}</Text>
+            <Text style={styles.summaryValue}>{paymentMethod === 'Cash' ? 'Pay on delivery' : 'Paid with Razorpay'}</Text>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Payment status:</Text>
+            <Text style={styles.summaryValue}>
+              {orders[0]?.payment_status === 'paid' ? 'Paid' : 'Due on delivery'}
+            </Text>
           </View>
 
           <View style={styles.totalRow}>
@@ -245,6 +252,4 @@ export default function OrderSuccessScreen({ route, navigation }) {
     </View>
   );
 }
-
-
 

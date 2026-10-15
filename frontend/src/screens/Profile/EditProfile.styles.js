@@ -112,10 +112,6 @@ export default StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
   },
-  inputWrapperDisabled: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
-  },
   inputIcon: {
     marginRight: 10,
   },
@@ -124,9 +120,6 @@ export default StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: '#0F1111',
-  },
-  inputDisabled: {
-    color: '#9CA3AF',
   },
   lockIcon: {
     marginLeft: 10,

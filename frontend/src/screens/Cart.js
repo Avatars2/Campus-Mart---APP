@@ -1,12 +1,12 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import styles from './CartScreen.styles';
+import styles from './Cart.styles';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
 import useScreenRefresh from '../hooks/useScreenRefresh';
 
-export default function CartScreen({ navigation }) {
+export default function Cart({ navigation }) {
   const [cartItems, setCartItems] = useState([]);
   const [savedItems, setSavedItems] = useState([]);
   const [removePromptItem, setRemovePromptItem] = useState(null);
@@ -119,7 +119,8 @@ export default function CartScreen({ navigation }) {
       price: ci.item.price,
       quantity: ci.quantity,
       listing_type: ci.item.listing_type,
-      rental_period: ci.item.rental_period
+      rental_period: ci.item.rental_period,
+      seller_id: ci.item.seller_id?.id || ci.item.seller_id?._id || ci.item.seller_id,
     }));
 
     // Navigate to the Checkout screen

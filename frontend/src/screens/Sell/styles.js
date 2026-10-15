@@ -153,10 +153,18 @@ export default StyleSheet.create({
     borderRightColor: '#F1F5F9',
     backgroundColor: '#F0FEFF',
   },
+  editBtnDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderRightColor: '#E5E7EB',
+    opacity: 0.6,
+  },
   editBtnText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#007185',
+  },
+  editBtnDisabledText: {
+    color: '#9CA3AF',
   },
   deleteBtn: {
     flex: 1,
@@ -202,6 +210,15 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  paymentModalIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E6F7F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
@@ -232,6 +249,18 @@ export default StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#374151',
+  },
+  verifyPaymentBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#007185',
+    alignItems: 'center',
+  },
+  verifyPaymentBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   modalYesBtn: {
     flex: 1,

@@ -134,6 +134,11 @@ export default StyleSheet.create({
     maxWidth: '70%',
     textAlign: 'right',
   },
+  paymentStatus: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginRight: 8,
+  },
   logoutButton: {
     flexDirection: 'row',
     backgroundColor: '#FEF2F2',

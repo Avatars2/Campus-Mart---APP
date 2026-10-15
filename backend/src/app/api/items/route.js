@@ -6,6 +6,7 @@ import User from '@/models/User';
 import Order from '@/models/Order';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
+import { getRazorpayLinkedAccountStatus } from '@/lib/razorpay';
 
 export async function POST(request) {
   try {
@@ -33,6 +34,22 @@ export async function POST(request) {
     }
 
     const seller_id = authResult.user.id;
+
+    await connectDB();
+    const user = await User.findById(seller_id)
+      .select('+razorpay_account_id razorpay_account_status bank_account upi_id');
+    const isPayoutReady = Boolean(
+      (user?.bank_account?.account_number && user?.bank_account?.ifsc_code)
+      || user?.upi_id
+      || user?.razorpay_account_status === 'activated'
+      || user?.razorpay_account_id
+    );
+    if (!isPayoutReady) {
+      return NextResponse.json({ 
+        error: 'Please add your payout details (Bank Account or UPI ID) in Profile > Payment before listing items so you can receive payments.' 
+      }, { status: 403 });
+    }
+
     let images = [];
 
     const files = formData.getAll('images');

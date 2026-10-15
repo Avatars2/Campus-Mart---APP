@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../api/client';
-import styles from './OrderNotificationDetail.styles';
+import styles from './NotificationDetail.styles';
 
 const getId = (value) => value?.id || value?._id || value;
 
-export default function OrderNotificationDetail({ route, navigation }) {
+export default function NotificationDetail({ route, navigation }) {
   const { notification } = route.params || {};
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,9 @@ export default function OrderNotificationDetail({ route, navigation }) {
           ? 'Item Delivered'
           : 'Pending';
   const statusColor = order.status === 'completed' ? '#007600' : order.status === 'pending' ? '#007185' : '#E77600';
-  const paymentLabel = order.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item';
+  const paymentLabel = ['UPI', 'Razorpay'].includes(order.payment_method)
+    ? (order.payment_status === 'paid' ? 'Paid with Razorpay' : 'Razorpay payment pending')
+    : 'Pay when you receive the item';
 
   return (
     <View style={styles.container}>
@@ -129,6 +131,12 @@ export default function OrderNotificationDetail({ route, navigation }) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Payment and Delivery</Text>
           <Text style={styles.detailText}><Text style={styles.detailLabel}>Payment: </Text>{paymentLabel}</Text>
+          <Text style={styles.detailText}><Text style={styles.detailLabel}>Payment status: </Text>{order.payment_status || 'unpaid'}</Text>
+          {order.seller_payout_status && (
+            <Text style={styles.detailText}>
+              <Text style={styles.detailLabel}>Seller transfer: </Text>{order.seller_payout_status}
+            </Text>
+          )}
           <Text style={styles.detailText}><Text style={styles.detailLabel}>Delivery: </Text>{order.delivery_address || 'Campus Pickup'}</Text>
           <Text style={styles.detailText}><Text style={styles.detailLabel}>Order date: </Text>{new Date(order.createdAt).toLocaleDateString('en-IN')}</Text>
         </View>

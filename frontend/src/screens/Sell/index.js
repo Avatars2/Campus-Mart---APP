@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator,
-  TouchableOpacity, Image, RefreshControl, Modal, Pressable
+  TouchableOpacity, Image, RefreshControl, Modal, Pressable, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
@@ -15,6 +15,40 @@ export default function SellScreen({ navigation }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModal, setDeleteModal] = useState({ visible: false, itemId: null });
   const [deleting, setDeleting] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [paymentProfile, setPaymentProfile] = useState(null);
+
+  const handleAddItemPress = async () => {
+    if (checkingPayment) return;
+
+    setCheckingPayment(true);
+    try {
+      const response = await client.get('/users/profile');
+      const profile = response.data.user;
+
+      if (profile.razorpay_account_status === 'activated') {
+        navigation.navigate('AddProduct');
+      } else {
+        setPaymentProfile(profile);
+        setPaymentRequired(true);
+      }
+    } catch (error) {
+      console.error('Unable to check payment verification:', error);
+      const message = error.response?.data?.error || 'Could not check your payment account. Please try again.';
+      Alert.alert('Unable to check payment account', message);
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
+  const goToPaymentSettings = () => {
+    setPaymentRequired(false);
+    navigation.getParent()?.navigate('Profile', {
+      screen: 'Payment',
+      params: { profile: paymentProfile },
+    });
+  };
 
   const loadItems = useCallback(async () => {
     const response = await client.get('/items/my-items');
@@ -94,11 +128,17 @@ export default function SellScreen({ navigation }) {
       statusText = 'Rented';
       statusBg = '#FEF3C7';
       statusColor = '#D97706';
+    } else if (item.marked_sold_at || (item.listing_type !== 'rent' && item.quantity <= 0) || !item.is_active) {
+      statusText = 'Sold';
+      statusBg = '#FEF2F2';
+      statusColor = '#DC2626';
     } else if (item.is_active) {
       statusText = 'Active';
       statusBg = '#F0FDF4';
       statusColor = '#16A34A';
     }
+
+    const isSold = statusText === 'Sold';
 
     const conditionLabel =
       { 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' }[item.condition_rating] ||
@@ -129,11 +169,21 @@ export default function SellScreen({ navigation }) {
         <View style={styles.cardActions}>
           {!item.is_suspended && (
             <Pressable
-              style={styles.editBtn}
-              onPress={() => navigation.navigate('EditProduct', { item })}
+              style={[styles.editBtn, isSold && styles.editBtnDisabled]}
+              onPress={() => {
+                if (!isSold) {
+                  navigation.navigate('EditProduct', { item });
+                }
+              }}
+              disabled={isSold}
+              android_ripple={isSold ? null : { color: '#E0F2FE' }}
             >
-              <Ionicons name="pencil-outline" size={16} color="#007185" />
-              <Text style={styles.editBtnText}>Edit</Text>
+              <Ionicons
+                name="pencil-outline"
+                size={16}
+                color={isSold ? '#9CA3AF' : '#007185'}
+              />
+              <Text style={[styles.editBtnText, isSold && styles.editBtnDisabledText]}>Edit</Text>
             </Pressable>
           )}
           <Pressable
@@ -246,6 +296,39 @@ export default function SellScreen({ navigation }) {
 
       {/* ── Delete Confirmation Modal ── */}
       <Modal
+        visible={paymentRequired}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPaymentRequired(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.paymentModalIconWrap}>
+              <Ionicons name="card-outline" size={30} color="#007185" />
+            </View>
+            <Text style={styles.modalTitle}>Set up Razorpay payouts</Text>
+            <Text style={styles.modalMessage}>
+              Complete Razorpay seller payout setup before adding an item. You can start secure onboarding from Profile → Payment.
+            </Text>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.modalNoBtn}
+                onPress={() => setPaymentRequired(false)}
+              >
+                <Text style={styles.modalNoBtnText}>Not now</Text>
+              </Pressable>
+              <Pressable
+                style={styles.verifyPaymentBtn}
+                onPress={goToPaymentSettings}
+              >
+                <Text style={styles.verifyPaymentBtnText}>Set up payouts</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={deleteModal.visible}
         transparent
         animationType="fade"
@@ -293,10 +376,14 @@ export default function SellScreen({ navigation }) {
           </Text>
           <TouchableOpacity
             style={styles.emptyButton}
-            onPress={() => navigation.navigate('AddProduct')}
+            onPress={handleAddItemPress}
+            disabled={checkingPayment}
             activeOpacity={0.85}
           >
-            <Text style={styles.emptyButtonText}>Add Your First Item</Text>
+            {checkingPayment
+              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              : <Text style={styles.emptyButtonText}>Add Your First Item</Text>
+            }
           </TouchableOpacity>
         </View>
       ) : (
@@ -314,10 +401,14 @@ export default function SellScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('AddProduct')}
+        onPress={handleAddItemPress}
+        disabled={checkingPayment}
         activeOpacity={0.85}
       >
-        <Ionicons name="add" size={28} color="#FFF" />
+        {checkingPayment
+          ? <ActivityIndicator size="small" color="#FFFFFF" />
+          : <Ionicons name="add" size={28} color="#FFF" />
+        }
       </TouchableOpacity>
     </View>
   );

@@ -23,6 +23,7 @@ export default function BuyScreen({ navigation }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [ratingPrompt, setRatingPrompt] = useState(null);
   const [selectedRating, setSelectedRating] = useState(0);
+  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
   const [invoiceLoading, setInvoiceLoading] = useState(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -136,17 +137,22 @@ export default function BuyScreen({ navigation }) {
   };
 
   const submitRating = async () => {
-    if (!ratingPrompt || !selectedRating) return;
+    if (!ratingPrompt || !selectedRating || isRatingSubmitting) return;
 
+    setIsRatingSubmitting(true);
     try {
       await client.patch('/orders', {
         order_id: ratingPrompt._id || ratingPrompt.id,
         rating: selectedRating,
       });
       setRatingPrompt(null);
+      setSelectedRating(0);
       await fetchOrders();
+      Alert.alert('Rating Submitted', 'Thank you for your rating!');
     } catch (error) {
       Alert.alert('Unable to save rating', error.response?.data?.error || 'Please try again.');
+    } finally {
+      setIsRatingSubmitting(false);
     }
   };
 
@@ -172,7 +178,9 @@ export default function BuyScreen({ navigation }) {
             : 'Pending';
     const orderNumber = String(order._id || order.id || 'CAMPUSMART').slice(-10).toUpperCase();
     const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
-    const payment = order.payment_method === 'UPI' ? 'Pay now with UPI' : 'Pay when you receive the item';
+    const payment = ['UPI', 'Razorpay'].includes(order.payment_method)
+      ? 'Paid securely with Razorpay'
+      : 'Pay when you receive the item';
 
     return `
       <html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><style>
@@ -380,6 +388,12 @@ export default function BuyScreen({ navigation }) {
       return status.charAt(0).toUpperCase() + status.slice(1);
     };
 
+    const canCancel = activeTab === 'purchases' && (item.status === 'pending' || item.status === 'cancel_requested');
+    const canReturn = activeTab === 'purchases' && (
+      (item.status === 'completed' && orderItem.listing_type !== 'rent' && (Date.now() - new Date(item.completed_at || item.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000))
+      || (item.status === 'rental_active' && item.rental_due_at && new Date(item.rental_due_at) <= new Date())
+    );
+
     return (
       <Modal visible={true} transparent animationType="slide" onRequestClose={() => setSelectedOrderDetails(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
@@ -403,6 +417,9 @@ export default function BuyScreen({ navigation }) {
                   )}
                   {item.status === 'cancelled' && (
                     <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '500' }}>Cancelled: {updatedDateString}</Text>
+                  )}
+                  {item.status === 'returned' && (
+                    <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '500' }}>Returned: {updatedDateString}</Text>
                   )}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -432,6 +449,23 @@ export default function BuyScreen({ navigation }) {
                   <Text style={styles.itemName} numberOfLines={2}>{orderItem.name || 'Unknown Item'}</Text>
                   <Text style={styles.sellerName}>{activeTab === 'purchases' ? 'Seller' : 'Buyer'}: {otherUser?.full_name || 'Unknown'}</Text>
                   <Text style={styles.itemPrice}>₹{item.total_price}{orderItem.listing_type === 'rent' ? ` / ${orderItem.rental_period || 'day'}` : ''}</Text>
+                  {item.payment_status === 'refunded' && (
+                    <Text style={{ color: '#059669', fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                      Refunded to original payment method
+                    </Text>
+                  )}
+                  {item.payment_status === 'pending_approval' && (
+                    <Text style={{ color: '#B45309', fontSize: 12, marginTop: 4 }}>
+                      Payment received late; order is not confirmed. Contact Campus Mart support.
+                    </Text>
+                  )}
+                  {activeTab === 'sales'
+                    && ['UPI', 'Razorpay'].includes(item.payment_method)
+                    && item.seller_payout_status && (
+                      <Text style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
+                        Seller payout: {item.seller_payout_status.replace(/_/g, ' ')}
+                      </Text>
+                    )}
                   {orderItem.listing_type === 'rent' && item.rental_due_at && item.status === 'rental_active' && (
                     <View style={{ marginTop: 4 }}>
                       <Text style={styles.sellerName}>
@@ -451,35 +485,20 @@ export default function BuyScreen({ navigation }) {
                     <Text style={styles.completeButtonText}>Mark delivered</Text>
                   </TouchableOpacity>
                 )}
-                {activeTab === 'purchases' && item.status === 'pending' && (
-                  <TouchableOpacity style={[styles.completeButton, { backgroundColor: '#DC2626' }]} onPress={() => {
-                    const isMoreThanOneHour = (Date.now() - new Date(item.createdAt).getTime()) > 3600000;
-                    const nextStatus = 'cancel_requested';
-                    const title = isMoreThanOneHour ? 'Request Cancellation?' : 'Cancel Order?';
-                    const message = isMoreThanOneHour
-                      ? 'It has been more than 1 hour since you placed this order. This will send a cancellation request to the seller.'
-                      : 'Are you sure you want to cancel this order? It will be cancelled immediately.';
-                    setSelectedOrderDetails(null);
-                    updateOrderStatus(item, nextStatus, title, message);
-                  }}>
-                    <Ionicons name="close-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.completeButtonText}>Cancel Order</Text>
-                  </TouchableOpacity>
-                )}
-                {activeTab === 'purchases' && item.status === 'cancel_requested' && (
-                  <View style={{ backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FEF3C7' }}>
-                    <Text style={{ color: '#B45309', fontSize: 13, textAlign: 'center' }}>
-                      Waiting for the seller to approve your cancellation request.
-                    </Text>
-                  </View>
-                )}
                 {activeTab === 'sales' && item.status === 'cancel_requested' && (
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'pending', 'Reject Cancellation?', 'The order will remain pending and you should deliver the item.'); }}>
                       <Ionicons name="close-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
                       <Text style={[styles.completeButtonText, { color: '#DC2626' }]}>Reject</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'cancelled', 'Approve Cancellation?', 'The order will be permanently cancelled.'); }}>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => {
+                      const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
+                      const msg = isOnline
+                        ? 'The order will be cancelled and a refund will be initiated to the buyer.'
+                        : 'The order will be permanently cancelled.';
+                      setSelectedOrderDetails(null);
+                      updateOrderStatus(item, 'cancelled', 'Approve Cancellation?', msg);
+                    }}>
                       <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                       <Text style={styles.completeButtonText}>Approve</Text>
                     </TouchableOpacity>
@@ -497,20 +516,6 @@ export default function BuyScreen({ navigation }) {
                     <Text style={styles.confirmReceivedText}>Start Rental</Text>
                   </TouchableOpacity>
                 )}
-                {activeTab === 'purchases' && item.status === 'rental_active' && (
-                  item.rental_due_at && new Date(item.rental_due_at) <= new Date() ? (
-                    <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'return_requested', 'Request item return?', 'Confirm that you are returning the item to the seller.'); }}>
-                      <Ionicons name="return-down-back-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                      <Text style={styles.confirmReceivedText}>Return item</Text>
-                    </TouchableOpacity>
-                  ) : null
-                )}
-                {activeTab === 'purchases' && item.status === 'completed' && orderItem.listing_type !== 'rent' && (Date.now() - new Date(item.completed_at || item.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000) && (
-                  <TouchableOpacity style={[styles.confirmReceivedButton, { backgroundColor: '#F59E0B' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'return_requested', 'Return Item?', 'Are you sure you want to return this item? This will notify the seller to arrange the return.'); }}>
-                    <Ionicons name="return-down-back-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.confirmReceivedText}>Return Item</Text>
-                  </TouchableOpacity>
-                )}
                 {activeTab === 'purchases' && item.status === 'return_requested' && orderItem.listing_type !== 'rent' && (
                   <View style={{ backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FEF3C7' }}>
                     <Text style={{ color: '#B45309', fontSize: 13, textAlign: 'center' }}>
@@ -524,7 +529,14 @@ export default function BuyScreen({ navigation }) {
                       <Ionicons name="close-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
                       <Text style={[styles.completeButtonText, { color: '#DC2626' }]}>Reject</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'returned', 'Approve Return?', 'Confirm that you accept the return and have received the item.'); }}>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => {
+                      const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
+                      const msg = isOnline
+                        ? 'Confirm that you accept the return and have received the item? This will automatically initiate the refund to the buyer.'
+                        : 'Confirm that you accept the return and have received the item.';
+                      setSelectedOrderDetails(null);
+                      updateOrderStatus(item, 'returned', 'Approve Return?', msg);
+                    }}>
                       <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                       <Text style={styles.completeButtonText}>Approve</Text>
                     </TouchableOpacity>
@@ -537,19 +549,98 @@ export default function BuyScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
 
-                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                  <TouchableOpacity style={[styles.messageButton, { flex: 1, backgroundColor: '#F3F4F6' }]} onPress={() => {
-                    if (otherUser?.phone) { Linking.openURL(`tel:${otherUser.phone}`); } else { Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.'); }
-                  }}>
-                    <Ionicons name="call-outline" size={18} color="#0F1111" style={{ marginRight: 8 }} />
-                    <Text style={[styles.messageButtonText, { color: '#0F1111' }]}>Call</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity style={[styles.messageButton, { flex: 1 }]} onPress={() => { setSelectedOrderDetails(null); handleMessageUser(otherUser, orderItem); }}>
-                    <Ionicons name="chatbubble-outline" size={18} color="#007185" style={{ marginRight: 8 }} />
-                    <Text style={styles.messageButtonText}>Message</Text>
-                  </TouchableOpacity>
-                </View>
+                {canCancel ? (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA', paddingHorizontal: 6 }]}
+                      onPress={() => {
+                        const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
+                        const title = 'Cancel Order?';
+                        const message = isOnline
+                          ? 'Are you sure you want to cancel this order? It will be cancelled immediately and a full refund will be initiated to your original payment method.'
+                          : 'Are you sure you want to cancel this order? It will be cancelled immediately.';
+                        setSelectedOrderDetails(null);
+                        updateOrderStatus(item, 'cancelled', title, message);
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={17} color="#DC2626" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { color: '#DC2626', fontSize: 13 }]}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 6 }]}
+                      onPress={() => {
+                        if (otherUser?.phone) { Linking.openURL(`tel:${otherUser.phone}`); } else { Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.'); }
+                      }}
+                    >
+                      <Ionicons name="call-outline" size={17} color="#0F1111" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { color: '#0F1111', fontSize: 13 }]}>Call</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, borderWidth: 1, borderColor: '#BCE3EB', paddingHorizontal: 6 }]}
+                      onPress={() => { setSelectedOrderDetails(null); handleMessageUser(otherUser, orderItem); }}
+                    >
+                      <Ionicons name="chatbubble-outline" size={17} color="#007185" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { fontSize: 13 }]}>Message</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : canReturn ? (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 6 }]}
+                      onPress={() => {
+                        const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
+                        const message = isOnline
+                          ? 'Are you sure you want to return this item? Once the seller confirms receiving the returned item, a full refund will be automatically sent back to your payment account.'
+                          : 'Are you sure you want to return this item? This will notify the seller to arrange the return.';
+                        setSelectedOrderDetails(null);
+                        updateOrderStatus(item, 'return_requested', 'Return Item?', message);
+                      }}
+                    >
+                      <Ionicons name="return-down-back-outline" size={17} color="#D97706" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { color: '#D97706', fontSize: 13 }]}>Return</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 6 }]}
+                      onPress={() => {
+                        if (otherUser?.phone) { Linking.openURL(`tel:${otherUser.phone}`); } else { Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.'); }
+                      }}
+                    >
+                      <Ionicons name="call-outline" size={17} color="#0F1111" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { color: '#0F1111', fontSize: 13 }]}>Call</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, borderWidth: 1, borderColor: '#BCE3EB', paddingHorizontal: 6 }]}
+                      onPress={() => { setSelectedOrderDetails(null); handleMessageUser(otherUser, orderItem); }}
+                    >
+                      <Ionicons name="chatbubble-outline" size={17} color="#007185" style={{ marginRight: 4 }} />
+                      <Text style={[styles.messageButtonText, { fontSize: 13 }]}>Message</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]}
+                      onPress={() => {
+                        if (otherUser?.phone) { Linking.openURL(`tel:${otherUser.phone}`); } else { Alert.alert('Phone Number Unavailable', 'This user has not provided a phone number.'); }
+                      }}
+                    >
+                      <Ionicons name="call-outline" size={18} color="#0F1111" style={{ marginRight: 8 }} />
+                      <Text style={[styles.messageButtonText, { color: '#0F1111' }]}>Call</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.messageButton, { flex: 1, borderWidth: 1, borderColor: '#BCE3EB' }]}
+                      onPress={() => { setSelectedOrderDetails(null); handleMessageUser(otherUser, orderItem); }}
+                    >
+                      <Ionicons name="chatbubble-outline" size={18} color="#007185" style={{ marginRight: 8 }} />
+                      <Text style={styles.messageButtonText}>Message</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -604,6 +695,22 @@ export default function BuyScreen({ navigation }) {
               <View style={{ marginTop: 4 }}>
                 <Text style={styles.sellerName}>
                   {activeTab === 'sales' ? 'Buyer time remaining' : 'Time remaining'}: {formatRentalTimeRemaining(item.rental_due_at)}
+                </Text>
+              </View>
+            )}
+            {item.status === 'completed' && item.buyer_rating != null && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Ionicons name="star" size={13} color="#F59E0B" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#D97706' }}>
+                  Rated {item.buyer_rating} / 5
+                </Text>
+              </View>
+            )}
+            {item.payment_status === 'refunded' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Ionicons name="refresh-circle-outline" size={14} color="#059669" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>
+                  Refunded
                 </Text>
               </View>
             )}
@@ -713,101 +820,6 @@ export default function BuyScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       {renderOrderDetailsModal()}
-      <Modal
-        visible={Boolean(confirmation)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmation(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.confirmationModal}>
-            <View style={styles.confirmationIcon}>
-              <Ionicons name="cube-outline" size={28} color="#0052CC" />
-            </View>
-            <Text style={styles.confirmationTitle}>{confirmation?.title}</Text>
-            <Text style={styles.confirmationMessage}>{confirmation?.message}</Text>
-            <View style={styles.confirmationActions}>
-              <TouchableOpacity
-                style={[styles.noButton, isUpdating && { opacity: 0.5 }]}
-                onPress={() => setConfirmation(null)}
-                disabled={isUpdating}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.noButtonText}>No</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
-                onPress={confirmOrderStatus}
-                disabled={isUpdating}
-                activeOpacity={0.8}
-              >
-                {isUpdating ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.yesButtonText}>Yes</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      <Modal
-        visible={Boolean(ratingPrompt)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRatingPrompt(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.confirmationModal}>
-            <View style={styles.ratingIcon}>
-              <Ionicons name="star" size={28} color="#F59E0B" />
-            </View>
-            <Text style={styles.confirmationTitle}>Rate this item</Text>
-            <Text style={styles.confirmationMessage}>How would you rate your purchase of {ratingPrompt?.item_id?.name || 'this item'}?</Text>
-            <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => {
-                const isFullFilled = selectedRating >= star;
-                const isHalfFilled = !isFullFilled && selectedRating >= star - 0.5;
-                const iconName = isFullFilled ? 'star' : isHalfFilled ? 'star-half' : 'star-outline';
-                return (
-                  // Single container — icon renders normally, two invisible zones overlay it
-                  <View key={star} style={{ width: 38, height: 38, marginHorizontal: 3, justifyContent: 'center', alignItems: 'center' }}>
-                    {/* Fully rendered, un-clipped star icon */}
-                    <Ionicons name={iconName} size={34} color="#F59E0B" />
-                    {/* Invisible left-half zone → half star (e.g. star=3 → 2.5) */}
-                    <TouchableOpacity
-                      onPress={() => setSelectedRating(star - 0.5)}
-                      activeOpacity={0}
-                      style={{ position: 'absolute', left: 0, top: 0, width: 19, height: 38 }}
-                    />
-                    {/* Invisible right-half zone → full star */}
-                    <TouchableOpacity
-                      onPress={() => setSelectedRating(star)}
-                      activeOpacity={0}
-                      style={{ position: 'absolute', right: 0, top: 0, width: 19, height: 38 }}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-            {/* Score label — only shown after user has tapped */}
-            <Text style={{ color: selectedRating > 0 ? '#F59E0B' : '#9CA3AF', fontWeight: '700', fontSize: 15, marginTop: 2, marginBottom: 18 }}>
-              {selectedRating > 0
-                ? `${selectedRating % 1 === 0 ? `${selectedRating}.0` : selectedRating} / 5`
-                : 'Tap to rate'}
-            </Text>
-
-            <View style={styles.confirmationActions}>
-              <TouchableOpacity style={styles.noButton} onPress={() => setRatingPrompt(null)} activeOpacity={0.8}>
-                <Text style={styles.noButtonText}>Skip</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.yesButton, !selectedRating && styles.disabledButton]} onPress={submitRating} disabled={!selectedRating} activeOpacity={0.8}>
-                <Text style={styles.yesButtonText}>Submit rating</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Or<Text style={{ color: '#007185' }}>ders</Text></Text>
       </View>
@@ -873,14 +885,118 @@ export default function BuyScreen({ navigation }) {
         </View>
       </Modal>
 
+      {confirmation && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setConfirmation(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.confirmationModal}>
+              <View style={styles.confirmationIcon}>
+                <Ionicons name="cube-outline" size={28} color="#0052CC" />
+              </View>
+              <Text style={styles.confirmationTitle}>{confirmation.title}</Text>
+              <Text style={styles.confirmationMessage}>{confirmation.message}</Text>
+              <View style={styles.confirmationActions}>
+                <TouchableOpacity
+                  style={[styles.noButton, isUpdating && { opacity: 0.5 }]}
+                  onPress={() => setConfirmation(null)}
+                  disabled={isUpdating}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.noButtonText}>No</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
+                  onPress={confirmOrderStatus}
+                  disabled={isUpdating}
+                  activeOpacity={0.8}
+                >
+                  {isUpdating ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.yesButtonText}>Yes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {ratingPrompt && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRatingPrompt(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.confirmationModal}>
+              <View style={styles.ratingIcon}>
+                <Ionicons name="star" size={28} color="#F59E0B" />
+              </View>
+              <Text style={styles.confirmationTitle}>Rate this item</Text>
+              <Text style={styles.confirmationMessage}>How would you rate your purchase of {ratingPrompt.item_id?.name || 'this item'}?</Text>
+              <View style={styles.starRow}>
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isFullFilled = selectedRating >= star;
+                  const isHalfFilled = !isFullFilled && selectedRating >= star - 0.5;
+                  const iconName = isFullFilled ? 'star' : isHalfFilled ? 'star-half' : 'star-outline';
+                  return (
+                    // Single container — icon renders normally, two invisible zones overlay it
+                    <View key={star} style={{ width: 38, height: 38, marginHorizontal: 3, justifyContent: 'center', alignItems: 'center' }}>
+                      {/* Fully rendered, un-clipped star icon */}
+                      <Ionicons name={iconName} size={34} color="#F59E0B" />
+                      {/* Invisible left-half zone → half star (e.g. star=3 → 2.5) */}
+                      <TouchableOpacity
+                        onPress={() => setSelectedRating(star - 0.5)}
+                        activeOpacity={0}
+                        style={{ position: 'absolute', left: 0, top: 0, width: 19, height: 38 }}
+                      />
+                      {/* Invisible right-half zone → full star */}
+                      <TouchableOpacity
+                        onPress={() => setSelectedRating(star)}
+                        activeOpacity={0}
+                        style={{ position: 'absolute', right: 0, top: 0, width: 19, height: 38 }}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+              {/* Score label — only shown after user has tapped */}
+              <Text style={{ color: selectedRating > 0 ? '#F59E0B' : '#9CA3AF', fontWeight: '700', fontSize: 15, marginTop: 2, marginBottom: 18 }}>
+                {selectedRating > 0
+                  ? `${selectedRating % 1 === 0 ? `${selectedRating}.0` : selectedRating} / 5`
+                  : 'Tap to rate'}
+              </Text>
+
+              <View style={styles.confirmationActions}>
+                <TouchableOpacity style={styles.noButton} onPress={() => setRatingPrompt(null)} activeOpacity={0.8}>
+                  <Text style={styles.noButtonText}>Skip</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.yesButton, (!selectedRating || isRatingSubmitting) && styles.disabledButton]}
+                  onPress={submitRating}
+                  disabled={!selectedRating || isRatingSubmitting}
+                  activeOpacity={0.8}
+                >
+                  {isRatingSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.yesButtonText}>Rating</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />}>
         {renderDashboardCards()}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-
-
-
-

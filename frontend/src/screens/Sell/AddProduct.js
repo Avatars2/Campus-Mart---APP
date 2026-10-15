@@ -175,7 +175,11 @@ export default function AddProductScreen({ navigation }) {
       navigation.goBack();
     } catch (error) {
       console.error("Error adding item:", error);
-      setErrorMsg(error.response?.data?.error || 'Failed to add item. Please try again.');
+      if (error.response?.status === 403) {
+        Alert.alert('Payout Setup Required', error.response?.data?.error || 'Activate your Razorpay seller account in your profile before listing an item.');
+      } else {
+        setErrorMsg(error.response?.data?.error || 'Failed to add item. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

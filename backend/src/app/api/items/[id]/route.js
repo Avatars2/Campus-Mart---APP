@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
+import User from '@/models/User';
+import { getRazorpayLinkedAccountStatus } from '@/lib/razorpay';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 
@@ -22,6 +24,10 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Item not found or unauthorized' }, { status: 404 });
     }
 
+    if (item.marked_sold_at || (item.listing_type !== 'rent' && item.quantity <= 0 && !item.is_active)) {
+      return NextResponse.json({ error: 'Sold items cannot be edited' }, { status: 400 });
+    }
+
     const formData = await request.formData();
     const name = formData.get('name');
     const description = formData.get('description');
@@ -32,6 +38,20 @@ export async function PUT(request, { params }) {
     const rental_period = formData.get('rental_period');
     const quantity = formData.get('quantity');
     const is_active = formData.get('is_active');
+
+    if (is_active === 'true') {
+      const seller = await User.findById(seller_id)
+        .select('+razorpay_account_id razorpay_account_status bank_account upi_id');
+      const isPayoutReady = Boolean(
+        (seller?.bank_account?.account_number && seller?.bank_account?.ifsc_code)
+        || seller?.upi_id
+        || seller?.razorpay_account_status === 'activated'
+        || seller?.razorpay_account_id
+      );
+      if (!isPayoutReady) {
+        return NextResponse.json({ error: 'Add your payout details (Bank Account or UPI ID) in Profile > Payment before publishing a listing.' }, { status: 403 });
+      }
+    }
 
     if (listing_type === 'rent' && !['hour', 'day', 'month'].includes(rental_period)) {
       return NextResponse.json({ error: 'Please select a rental period' }, { status: 400 });

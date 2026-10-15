@@ -2,28 +2,25 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Alert, Modal, FlatList } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { AuthContext } from '../../context/AuthContext';
 import client from '../../api/client';
 import styles from './EditProfile.styles';
 
 export default function EditProfileScreen({ route, navigation }) {
   const profile = route?.params?.profile || {};
-  const onGoBack = route?.params?.onGoBack;
-  const { userRole } = React.useContext(AuthContext);
 
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [phone, setPhone] = useState(profile.phone || '');
   const [department, setDepartment] = useState(profile.department || '');
   const [year, setYear] = useState(profile.year_semester || '');
   const [photoUrl, setPhotoUrl] = useState(profile.profile_photo_url || null);
-  
+
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [yearModalVisible, setYearModalVisible] = useState(false);
-  
+
   const departmentsList = [
     'Computer', 'Civil', 'Structure', 'Electrical', 
     'Electronics', 'Mechanical', 'Production', 'Mathematics'
@@ -190,7 +187,7 @@ export default function EditProfileScreen({ route, navigation }) {
               </View>
             </View>
 
-                        {(profile?.role !== 'admin') && (
+            {(profile?.role !== 'admin') && (
               <>
                 <Text style={styles.sectionLabel}>Academic Info</Text>
 

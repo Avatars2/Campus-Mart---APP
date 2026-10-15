@@ -34,6 +34,16 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: 'Cash',
   },
+  payment_status: {
+    type: String,
+    enum: ['unpaid', 'pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'pending_verification', 'pending_approval'],
+    default: 'unpaid',
+  },
+  payment_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+    default: null,
+  },
   delivery_address: {
     type: String,
     default: 'Campus Pickup',
@@ -65,7 +75,7 @@ const orderSchema = new mongoose.Schema({
   },
   buyer_rating: {
     type: Number,
-    min: 1,
+    min: 0.5,
     max: 5,
     default: null,
   },

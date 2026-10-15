@@ -51,7 +51,51 @@ const userSchema = new mongoose.Schema({
   fcmToken: {
     type: String,
     default: null,
-  }
+  },
+  razorpay_account_id: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  razorpay_stakeholder_id: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  razorpay_product_id: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  razorpay_onboarding_lock_until: {
+    type: Date,
+    default: null,
+    select: false,
+  },
+  razorpay_account_status: {
+    type: String,
+    enum: ['not_started', 'pending', 'under_review', 'needs_clarification', 'activated', 'rejected', 'suspended', 'linked_account'],
+    default: 'not_started',
+  },
+  bank_account: {
+    account_number: { type: String, default: null },
+    ifsc_code: { type: String, default: null },
+    beneficiary_name: { type: String, default: null },
+    bank_name: { type: String, default: null },
+  },
+  upi_id: {
+    type: String,
+    default: null,
+  },
+  is_upi_verified: {
+    type: Boolean,
+    default: false,
+  },
+  payout_method: {
+    type: String,
+    enum: ['bank_account', 'upi', 'none'],
+    default: 'none',
+  },
 }, { timestamps: true });
 
 userSchema.set('toJSON', {

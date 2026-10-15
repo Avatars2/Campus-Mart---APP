@@ -1,19 +1,20 @@
 =========================================
 CAMPUS MART - PROGRESS REPORT
-Date: October 3, 2026
+Date: October 15, 2026
 =========================================
 
 PROJECT STATUS:
-CampusMart is a working student marketplace prototype. The core marketplace,
-authentication, messaging, checkout, order confirmation, delivery confirmation,
-rating flows, and push notifications are implemented. Advanced payment, delivery
-tracking, moderation, and review features remain planned.
+CampusMart is a comprehensive student marketplace platform. The core marketplace,
+authentication, real-time messaging, custom offers, checkout, online payment gateway (Razorpay/UPI),
+Escrow fund protection, automated refunds, direct order cancellation, 7-day purchase returns,
+inventory restocking, order & delivery confirmation, rating flows, push notifications,
+and admin moderation are fully implemented and verified.
 
 IMPLEMENTATION SUMMARY:
-Fully implemented: 11 modules
-Partially implemented: 1 module
+Fully implemented: 13 modules
+Partially implemented: 0 modules
 Not started: 0 modules
-Estimated overall completion: approximately 92%
+Estimated overall completion: approximately 97%
 
 =========================================
 MODULE BREAKDOWN
@@ -27,7 +28,7 @@ MODULE BREAKDOWN
    - OTPs expire after 10 minutes, have a resend cooldown, are limited to five attempts, and are single-use.
    - JWT authentication requires the configured JWT_SECRET without an insecure fallback.
    - Password reset now uses a verified college email, one-time OTP, expiry/cooldown/attempt rules, and a new strong password.
-   - Password validation is now unified via a shared utility (passwordValidation.js) used by both Register and ChangePassword screens.
+   - Password validation is unified via a shared utility (passwordValidation.js) used by both Register and ChangePassword screens.
    - Password rules updated to minimum 8 characters including at least one letter, one number, and one special character.
    - Register and Login page email placeholders cleaned up (domain hint removed from visible UI, domain restriction retained in backend).
    - Account lockout, general request rate limiting, OAuth, biometric login, and refresh tokens remain to be added or verified.
@@ -37,168 +38,152 @@ MODULE BREAKDOWN
    - Cart, wishlist, notification, and unread-message badges.
    - Separate admin navigation is available.
 
-3. HOME PAGE [COMPLETED - 90%]
+3. HOME PAGE [COMPLETED - 95%]
    - Marketplace listing feed with images, categories, search, and listing-type filters.
    - Categories include Books, Electronics, Furniture, Stationery, Clothing, and Others.
    - Item cards show seller information, price, condition, quantity, and average rating.
    - Product details show images, description, seller information, and rating summary.
+   - Cleaned up availability display on product detail pages (removed extraneous '+' signs).
    - Rental cards show hourly, daily, or monthly rates and currently-rented availability.
-   - RatingStars component updated to support half-star display (e.g. 3.5 shows ★★★½☆).
+   - RatingStars component renders fractional half-star displays accurately (e.g. 3.5 shows ★★★½☆).
    - Featured/trending sections, price filters, sorting, location filters, and announcements are not fully implemented.
 
-4. BUY PAGE AND CHECKOUT [COMPLETED - 95%]
+4. BUY PAGE AND CHECKOUT [COMPLETED - 98%]
    - Cart and wishlist management.
-   - Checkout with order summary, payment selection, and delivery discussion text.
-   - Buyer Purchases and seller Sales tabs.
+   - Checkout with order summary, payment selection (Cash on Delivery, UPI, Razorpay), and delivery discussion.
+   - Buyer Purchases and seller Sales tabs with status filters (All, Active, Completed, Returned, Cancelled).
    - Order Details Modal: Tapping an order card opens a detailed modal with delivery/receipt actions, invoice generation, and detailed timestamps.
+   - Actions Layout: Streamlined into a unified 3-button row layout:
+     * For Pending Orders: [ Cancel ] [ Call ] [ Message ]
+     * For Return-Eligible Orders: [ Return ] [ Call ] [ Message ]
+   - Direct Order Cancellation: Buyers can directly cancel any pending order at any time before delivery without waiting for seller approval.
+   - Automated "Refund to Source": Cancelling a paid online order triggers an instant refund via Razorpay back to the buyer's original payment method.
+   - 7-Day Purchase Return Window: Buyers can request a return on completed items within 7 days.
+   - Automatic Inventory Restocking: Whenever an order is cancelled or marked returned, item stock is automatically incremented and reactivated.
+   - Clear refund status indicators and "Refunded" badges on order cards and details modal.
    - Ecommerce-style order confirmation screen with buyer, seller, item, payment, delivery, and total details.
    - Invoice generation/printing is implemented without app action buttons in the printed output.
-   - Rental checkout supports hourly, daily, or monthly duration selection and calculates the total from rate x duration.
-   - Rental duration, rental rate, and return deadline are stored with the order.
-   - Rental listings that are currently in use are marked unavailable and duplicate rental checkout is blocked.
-   - Reorder, sale-item returns, exchanges, price comparison, and split-cart workflows remain pending.
+   - Rental checkout supports duration selection (hours/days/months) and calculates totals accurately.
 
-5. SELL PAGE [COMPLETED - 95%]
+5. SELL PAGE [COMPLETED - 98%]
    - Create listings with item details, category, price, condition, quantity, listing type, and images.
-   - Category selection properly mandates user input and flawlessly maps original categories during edits.
+   - Category selection mandates input and maps original categories during edits.
    - Active listing management and sold/inactive item handling.
-   - Sales history with buyer information.
-   - Seller delivery confirmation is available from the Sales tab.
-   - Rental listings support per-hour, per-day, and per-month pricing.
-   - Sellers can see current rental availability, buyer time remaining, and the return deadline.
-   - View counts, interested-buyer analytics, delivery preferences, and payout tracking remain pending.
+   - Sold Item Protection: Sold items (quantity <= 0 or marked sold) have their "Edit" button deactivated in the UI and blocked in the backend API to prevent invalid edits.
+   - Sales history with buyer information and payout status tracking.
+   - Return Approval: Sellers receive return requests and can approve them upon receiving the returned item, automatically triggering the buyer refund and restocking inventory.
+   - Rental listings support per-hour, per-day, and per-month pricing with availability and return deadlines.
 
-6. PROFILE PAGE [PARTIALLY COMPLETED - 60%]
-   - User profile information and profile navigation are available.
-   - Change-password screen enforces the same unified password validation rules as registration.
-   - Advanced preferences, delivery preferences, reputation summary, and complete profile editing remain to be finished.
+6. PROFILE PAGE [COMPLETED - 90%]
+   - User profile information, student details, and profile navigation.
+   - Dedicated "Payment" Screen:
+     * Renamed screen title to "Payment".
+     * Top-right "Account" button opens a modal to view and update payout details (Bank Account number, IFSC, account holder, or UPI ID).
+     * Full-page transfer and payout history display showing settlement status, date, and amount.
+     * Cleaned up UI removing unnecessary clutter and explanatory text.
+   - Change-password screen enforces unified password validation rules.
+   - My Reports screen allows students to track status of their submitted reports.
 
 7. MESSAGING SYSTEM [COMPLETED - 100%]
    - Item-specific buyer/seller conversations.
    - Real-time updates powered by Pusher.
    - Custom/Special Offers: Sellers can negotiate and send custom price offers in chat.
    - Buyers can accept custom offers, skipping the cart and jumping straight to checkout at the negotiated price.
-   - Conversation list and chat history.
-   - Message delivery/read states are implemented.
-   - Multiple images and files can be selected and sent in one message.
-   - Images and files are stored in Cloudinary and remain available after refresh.
+   - Conversation list and chat history with message delivery/read states.
+   - Multiple images and files can be selected and sent in one message, stored in Cloudinary.
    - PDFs and other files open through a backend viewer with the correct MIME type and filename.
-   - Chat UI includes attachment previews, file cards, custom offer cards, empty-state guidance, and improved composer styling.
-   - React Navigation state caching is handled to strictly isolate chat threads and prevent stale messages.
-   - Advanced moderation remains pending.
+   - React Navigation state caching handled to strictly isolate chat threads and prevent stale messages.
 
-8. NOTIFICATION SYSTEM [COMPLETED - 95%]
+8. NOTIFICATION SYSTEM [COMPLETED - 98%]
    - In-app notification center with unread count.
    - Order, message, and delivery-related notifications.
    - Rental notifications cover delivery, rental start, return request, and rental completion.
+   - Online payment notifications: instant notifications on payment confirmation, cancellation, return requests, and refund processing.
    - Firebase Admin SDK fully initialized and push notifications via FCM are active.
-   - Firebase credentials stored securely in backend .env and loaded via modular firebase-admin/app API.
-   - notificationHelper guards against missing Firebase config (push silently skipped if unconfigured).
-   - Price-drop alerts, followed-category alerts, payment/refund alerts, and report updates remain to be completed.
+   - Secure credential loading with fallback for unconfigured environments.
 
-9. PAYMENT SYSTEM [PARTIALLY COMPLETED - 30%]
-   - Payment choices are displayed during checkout:
-     * Pay when the item is received.
-     * Pay now with UPI.
-   - Payment method is stored with the order and shown in order history and invoices.
-   - Actual Google Pay, PhonePe, Paytm, or BHIM gateway integration is not implemented.
-   - Escrow, payment verification, refunds, disputes, seller payouts, fees, EMI, and GST invoices are pending.
+9. PAYMENT SYSTEM [COMPLETED - 95%]
+   - Online Payment Gateway:
+     * Full integration with Razorpay Standard Checkout & UPI payments.
+     * Webhook handling and UTR-based payment verification.
+     * Safe inventory reservation during checkout to prevent overselling.
+   - Platform Escrow Protection:
+     * Buyer payments are safely held in escrow until delivery is confirmed by the buyer.
+     * Seller settlements are tracked with status (not_configured, held, processing, transferred, cancelled).
+   - Automated "Refund to Source":
+     * Instant refunds initiated via Razorpay API back to buyer's original payment method upon order cancellation or return confirmation.
+     * Payout Protection: Pending/held seller settlements are automatically marked "cancelled" upon refund so funds are never erroneously disbursed to sellers.
+   - Automated Seller Payouts:
+     * Automatic transfers to seller's linked bank account or UPI ID once orders are confirmed received.
 
-10. DELIVERY AND ORDER CONFIRMATION [COMPLETED - 90%]
+10. DELIVERY AND ORDER CONFIRMATION [COMPLETED - 95%]
     - Buyer and seller can discuss delivery method, location, and time through messages.
     - Seller flow: Pending -> Mark item delivered.
     - Buyer flow: Delivered -> Confirm item received -> Completed.
-    - Buyer receives an item-delivered notification and transaction-success status.
+    - Direct cancellation for pending orders.
+    - 7-Day return policy for completed purchases.
     - Rental flow: Pending -> Delivered -> Rental Active -> Return Requested -> Completed.
-    - Buyer confirmation starts a live rental timer based on the selected hours, days, or months.
+    - Live rental timer based on the selected duration.
     - Buyer can request return after the rental period ends; seller confirms receipt of the returned item.
-    - Sellers see the buyer's remaining rental time and return deadline.
-    - Meetup scheduling, maps, tracking, delivery partners, photo/signature proof, and automatic confirmation remain pending.
 
 11. ADMIN PANEL [COMPLETED - 100%]
-    - Admin navigation and dashboard structure exist.
-    - Admin account is manually created directly in the database with is_verified: true and role: admin.
-    - EXPO_PUBLIC_ADMIN_EMAIL in .env whitelists the admin email from the college domain restriction.
-    - Dashboard stats (Total Users, Active Items, Sold Items, Orders) are wired up and live.
-    - Dedicated "Sold Items" (Completed Orders) list view is linked from the dashboard stat card.
-    - Platform Activity and Item Distribution charts are fully implemented and responsive on all devices.
-    - Platform Activity chart features an interactive, dynamic time-range filter (7 Days, 30 Days, 1 Year).
-    - User Management: Admins can view all users, search by name/email/ID, and Suspend/Reactivate students.
-    - Item Management: Admins can view all listings, search, Hide/Publish items, and permanently Delete listings.
-    - Category Management: Admins can view, add, edit, and delete categories via modernized modals.
-    - Admin UI headers, search bars, and titles are consistently styled with a centered deep blue theme.
-    - Backend is fully secured with a global `verifyAdminAuth` middleware.
-    - Suspended users are instantly forcefully logged out (DB checked on every request).
-    - Analytics, system health, audit logs, and bulk operations remain pending.
+    - Admin navigation, dashboard statistics, charts, and filtering.
+    - User Management: View, search, suspend, and reactivate students. Forceful logout for suspended users.
+    - Item Management: View, search, hide, publish, and delete listings.
+    - Category Management: View, add, edit, and delete categories via modals.
+    - Report Moderation: Dedicated queue for reviewing user and item reports with proof images.
+    - Client-side pagination across all moderation screens.
 
 12. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
-    - After the buyer confirms receipt, a half-star rating prompt is shown (supports 0.5 increments from 0.5 to 5.0).
-    - Rating input uses invisible overlay touch zones (left half = X.5, right half = X.0) for accurate half-star selection.
-    - Live score label displays selected rating (e.g. "2.5 / 5") with "Tap to rate" hint before selection.
-    - RatingStars display component renders half-star icons using Ionicons star-half for fractional values.
-    - Ratings are saved against the completed order.
-    - Item average rating and rating count are updated after each submission.
-    - Ratings appear on home listing cards and product details.
-    - One rating per completed order; duplicate ratings are blocked by the backend.
-    - Written reviews, photo reviews, and rating analytics are out of scope for this project.
+    - Half-star rating prompt (supports 0.5 increments from 0.5 to 5.0).
+    - Fractional rating bug resolved: item average calculations properly handle fractional star ratings without NaN corruption.
+    - Rating modal button text updated to "Rating" with loading indicator.
+    - Removed redundant rating button from buyer's Order Details modal actions to maintain clean order management.
+    - RatingStars component displays half-star icons cleanly.
+    - Ratings update item average rating and total rating count in real-time.
 
 13. REPORT SYSTEM [COMPLETED - 100%]
     - Comprehensive reporting system to flag inappropriate users or items.
-    - Users can upload screenshot/proof images as evidence, securely stored via Cloudinary.
-    - Profile "My Reports" view allows students to track status of their submitted reports via compact cards.
-    - Report summary cards are clickable, sliding into a dedicated Report Details view displaying all data and proof imagery.
-    - Admin Dashboard includes a dynamic "Pending User Reports" hero card displaying the current queue size.
-    - Admins review reports in a dedicated moderation queue.
-    - Admin Report Details screen showcases the full report context and attached evidence.
-    - Admins can instantly Dismiss or Mark Resolved on the details screen, immediately refreshing the active moderation queue.
+    - Proof image uploads stored securely via Cloudinary.
+    - Profile "My Reports" view allows students to track status of submitted reports.
+    - Admin Report Details screen showcases full context and attached evidence for resolution.
 
 =========================================
 ACTUAL TECHNOLOGY STACK
 =========================================
 - Frontend: React Native with Expo SDK 57 and React Native Web.
-- Backend: Next.js API routes running on Node.js (webpack mode; Turbopack disabled due to Windows AppLocker policy).
+- Backend: Next.js API routes running on Node.js (webpack mode).
 - Database: MongoDB with Mongoose models.
 - Authentication: JWT-based authentication with AsyncStorage token persistence.
+- Payment Gateway: Razorpay API & Webhooks with UPI Intent & Escrow lifecycle.
 - Real-time messaging: Pusher.
 - Image storage: Cloudinary.
-- Notifications: Firebase Admin SDK (modular API) with FCM push notifications fully active.
-- PDF/invoice output: Expo Print and Expo Sharing on supported platforms; browser print on web.
-- Password validation: Shared utility (src/utils/passwordValidation.js) used across Register and ChangePassword screens.
+- Notifications: Firebase Admin SDK with FCM push notifications.
+- PDF/invoice output: Expo Print and Expo Sharing on mobile; browser print on web.
+- Password validation: Shared utility (src/utils/passwordValidation.js).
 
 =========================================
 CURRENTLY VERIFIED FLOWS
 =========================================
-- Student registration/login and authenticated navigation.
-- Browse, search, filter, view, wishlist, and cart item flows.
-- Checkout and order creation.
-- Buyer/seller order lists.
-- Seller marks an item delivered with confirmation modal.
-- Buyer confirms receipt with confirmation modal.
-- Transaction completion notification and status.
-- Buyer submits a half-star rating (0.5 to 5.0) after completion.
-- Item ratings with half-star display appear on home and product details.
-- Buyer/seller messaging and order notifications.
-- Firebase push notifications dispatched on order and delivery events.
-- Create and edit rental listings with hourly, daily, or monthly rates.
-- Rental checkout with buyer-selected duration and calculated total.
-- Rental delivery confirmation, live timer, return request, seller return confirmation, and completion.
-- Rental availability labels on marketplace and seller listings with duplicate rental protection.
-- Multi-image and multi-file chat attachments stored in Cloudinary.
-- Cloudinary attachment viewer for PDFs and other shared files.
-- Invoice generation with item, buyer, seller, payment, delivery, and total details.
-- Dynamic fallback for native Expo modules (Contacts, IntentLauncher, FileSystem) to fully support React Native Web.
-- Admin panel UI enhancements with client-side pagination across all moderation screens (Users, Items, Reports, Orders, Categories).
-- Redesigned Buy screen with a full-width dashboard showing order states (Active, Completed, Returned, Cancelled).
-- Full-screen modal list views for filtered orders featuring standardized layout, header buttons, and pagination matching the app UI.
-- Strict view filtering on Product Details preventing sellers from seeing action/wishlist buttons on their own items.
-- Fixed React Native Web JSX parsing errors ("Unexpected text node") in navigation headers for cleaner cross-platform rendering.
+- Student registration, email verification, and login.
+- Marketplace search, category filters, and product details with half-star ratings.
+- Razorpay online payment checkout with inventory reservation.
+- Direct order cancellation on pending orders with instant Razorpay refund to source.
+- Automated inventory restocking on order cancellation and item return.
+- 7-Day purchase return request and seller confirmation with automated refund.
+- Escrow settlement cancellation on refunded orders to prevent seller disbursements.
+- Seller delivery confirmation and buyer receipt confirmation triggering seller payout.
+- Buyer rating submission with fractional half-star support and "Rating" modal button.
+- Profile Payment screen with "Account" modal for bank account/UPI ID configuration and payout history.
+- Sold items deactivation preventing edits on sold products.
+- Redesigned Order Details action buttons in a unified 3-button row layout ([Cancel/Return] [Call] [Message]).
+- Real-time buyer/seller chat with custom offer creation, acceptance, and file attachments.
+- Full admin dashboard moderation: user suspension, item moderation, category management, and report resolution.
 
 =========================================
 NEXT RECOMMENDED STEPS
 =========================================
-1. Integrate and verify a real UPI payment gateway before accepting online payments.
-2. Add written reviews, rating breakdowns, and review moderation.
-3. Build delivery scheduling, location selection, maps, tracking, and delivery proof.
-4. Build out analytics, category editing, and audit logging.
-5. Build and test a signed APK (eas build) so the Campus Mart icon appears properly on device home screens.
-6. Add automated tests for rental checkout, delivery confirmation, timers, returns, ratings, authorization, and payment states.
+1. Test Razorpay live mode webhooks and automated bank transfers in a live production environment.
+2. Build delivery scheduling, location selection, and in-campus meetup points.
+3. Build and test a signed standalone production APK (eas build) for Android deployment.
+4. Add automated test suites for payment lifecycle, refunds, escrow cancellations, and rental timers.

@@ -138,7 +138,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
           
           <Text style={styles.productTitle}>{item.name}</Text>
-          <Text style={styles.statsText}>{item.quantity > 0 ? `${item.quantity}+ available` : 'Out of stock'}</Text>
+          <Text style={styles.statsText}>{item.quantity > 0 ? `${item.quantity} available` : 'Out of stock'}</Text>
         </View>
 
         {/* IMAGE SECTION */}

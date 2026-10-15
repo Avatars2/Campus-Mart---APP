@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
-import styles from './CheckoutScreen.styles';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
+import styles from './Checkout.styles';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { useCartWishlist } from '../../context/CartWishlistContext';
+import openRazorpayCheckout from '../../payments/razorpayCheckout';
 
-export default function CheckoutScreen({ route, navigation }) {
+
+const createCheckoutRequestKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+
+export default function Checkout({ route, navigation }) {
   const { checkoutItems = [], fromCart = false, offerPayload = null } = route.params || {};
   const { refreshCounts } = useCartWishlist();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [errorMessage, setErrorMessage] = useState(null);
+  const [checkoutRequestKey, setCheckoutRequestKey] = useState(createCheckoutRequestKey);
   const [rentalDurations, setRentalDurations] = useState(() => (
     checkoutItems.reduce((durations, item, index) => {
       if (item.listing_type === 'rent') durations[item.id || item._id || index] = 1;
@@ -34,31 +40,98 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const handleConfirmOrder = async () => {
     if (checkoutItems.length === 0) return;
-    
-    console.log("Confirming order with items:", checkoutItems);
+    const useHostedCheckout = paymentMethod === 'Razorpay'
+      && Platform.OS !== 'web'
+      && isRunningInExpoGo();
     setLoading(true);
+    setErrorMessage(null);
+    let currentPaymentId = null;
     try {
       const res = await client.post('/orders/checkout', {
         items: checkoutItems.map((item, index) => ({
-          ...item,
+          id: item.id || item._id,
+          quantity: item.quantity || 1,
           ...(item.listing_type === 'rent' ? { rental_duration: getRentalDuration(item, index) } : {}),
         })),
         payment_method: paymentMethod,
         delivery_address: deliveryMessage,
-        from_cart: fromCart
+        from_cart: fromCart,
+        ...(paymentMethod === 'Razorpay' ? { checkout_mode: useHostedCheckout ? 'hosted' : 'standard' } : {}),
+        ...(paymentMethod === 'Razorpay' ? { idempotency_key: checkoutRequestKey } : {}),
       });
 
       if (res.status === 201 || res.status === 200) {
-        if (fromCart) {
-          refreshCounts();
+        let orders = res.data.orders;
+        if (paymentMethod === 'Razorpay') {
+          const payment = res.data.payment;
+          if (!payment?.id) throw new Error('Payment session was not created. Please try again.');
+          currentPaymentId = payment.id;
+          const checkoutResponse = await openRazorpayCheckout({
+            key: payment.key_id,
+            order_id: payment.razorpay_order_id,
+            amount: payment.amount,
+            currency: payment.currency,
+            name: 'Campus Mart',
+            description: 'Campus Mart order',
+            hosted_checkout_url: payment.hosted_checkout_url,
+            theme: { color: '#007185' },
+            modal: { confirm_close: true },
+          });
+
+          if (checkoutResponse?.hosted) {
+            let statusResponse;
+            // Poll immediately upon browser close
+            for (let attempt = 0; attempt < 15; attempt += 1) {
+              try {
+                statusResponse = await client.get(`/payments/status/${payment.id}`);
+                if (statusResponse?.data?.payment?.status === 'captured') break;
+                if (['failed', 'expired', 'needs_review'].includes(statusResponse?.data?.payment?.status)) break;
+              } catch (e) {
+                // Keep polling
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+            }
+            if (statusResponse?.data?.payment?.status !== 'captured') {
+              Alert.alert(
+                'Payment Status',
+                statusResponse?.data?.payment?.status === 'needs_review'
+                  ? 'Your payment was received and is under review. Please check your Orders tab.'
+                  : 'If you already paid, your order is confirming and will appear in your Orders tab in a few moments.'
+              );
+              setCheckoutRequestKey(createCheckoutRequestKey());
+              navigation.navigate('Orders', { type: 'purchases' });
+              return;
+            }
+            orders = statusResponse.data.orders;
+          } else {
+            const verification = await client.post('/payments/verify', {
+              payment_id: payment.id,
+              razorpay_order_id: checkoutResponse.razorpay_order_id,
+              razorpay_payment_id: checkoutResponse.razorpay_payment_id,
+              razorpay_signature: checkoutResponse.razorpay_signature,
+            });
+            if (verification.data.payment.status !== 'captured') {
+              Alert.alert(
+                'Payment processing',
+                'Razorpay is still confirming your payment. Check Orders shortly; the order is not confirmed until capture succeeds.'
+              );
+              setCheckoutRequestKey(createCheckoutRequestKey());
+              return;
+            }
+            orders = verification.data.orders;
+          }
         }
+
+        if (fromCart) refreshCounts();
         if (offerPayload) {
           try {
             await client.post('/messages', { action: 'accept_offer', ...offerPayload });
-          } catch (e) { console.log('Failed to accept offer status', e); }
+          } catch (offerError) {
+            console.error('Failed to update accepted offer status:', offerError);
+          }
         }
         navigation.replace('OrderSuccess', {
-          orders: res.data.orders,
+          orders,
           deliveryMethod: 'Discuss',
           paymentMethod,
         });
@@ -66,7 +139,20 @@ export default function CheckoutScreen({ route, navigation }) {
         setErrorMessage(`Unexpected response status: ${res.status}`);
       }
     } catch (error) {
-      console.error("Checkout Error: ", error);
+      console.error('Checkout error:', error.response?.data || error);
+      if (paymentMethod === 'Razorpay') {
+        if (currentPaymentId) {
+          try {
+            await client.post('/payments/cancel', { payment_id: currentPaymentId });
+          } catch (cancelError) {
+            console.error('Could not reconcile cancelled Razorpay checkout:', cancelError.response?.data || cancelError);
+          }
+        }
+        setCheckoutRequestKey(createCheckoutRequestKey());
+      }
+      if (error.response?.data?.code === 'IDEMPOTENCY_KEY_USED') {
+        setCheckoutRequestKey(createCheckoutRequestKey());
+      }
       let msg = error.response?.data?.error || error.message || 'Failed to place order';
       if (msg === 'Network Error') {
         msg = `Network Error while connecting to ${client.defaults.baseURL}/orders/checkout. Please check your backend terminal.`;
@@ -144,18 +230,18 @@ export default function CheckoutScreen({ route, navigation }) {
         <Text style={styles.sectionHeaderAmazon}>RECOMMENDED</Text>
         <View style={styles.paymentCardGroup}>
           <TouchableOpacity 
-            style={[styles.paymentCardRow, paymentMethod === 'UPI' && styles.paymentCardRowActive]}
-            onPress={() => setPaymentMethod('UPI')}
+            style={[styles.paymentCardRow, paymentMethod === 'Razorpay' && styles.paymentCardRowActive]}
+            onPress={() => setPaymentMethod('Razorpay')}
             activeOpacity={0.8}
           >
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={[styles.radioOuter, paymentMethod === 'UPI' && styles.radioOuterActive]}>
-                {paymentMethod === 'UPI' && <View style={styles.radioInner} />}
+              <View style={[styles.radioOuter, paymentMethod === 'Razorpay' && styles.radioOuterActive]}>
+                {paymentMethod === 'Razorpay' && <View style={styles.radioInner} />}
               </View>
               <View style={{ marginLeft: 16, flex: 1 }}>
                 <View style={styles.badge}><Text style={styles.badgeText}>Best choice</Text></View>
-                <Text style={[styles.paymentTitle, paymentMethod === 'UPI' && styles.paymentTitleActive]}>Pay now with UPI</Text>
-                <Text style={styles.paymentSubtitle}>Send payment securely before receiving.</Text>
+                <Text style={[styles.paymentTitle, paymentMethod === 'Razorpay' && styles.paymentTitleActive]}>Pay securely with Razorpay</Text>
+                <Text style={styles.paymentSubtitle}>UPI, cards, net banking, and other available methods. Complete payment within 5 minutes.</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -174,7 +260,7 @@ export default function CheckoutScreen({ route, navigation }) {
               </View>
               <View style={{ marginLeft: 16, flex: 1 }}>
                 <Text style={[styles.paymentTitle, paymentMethod === 'Cash' && styles.paymentTitleActive]}>Pay when you receive the item</Text>
-                <Text style={styles.paymentSubtitle}>Cash or UPI after agreeing in Messages.</Text>
+                <Text style={styles.paymentSubtitle}>Pay on delivery; coordinate with the seller in Messages.</Text>
               </View>
             </View>
           </TouchableOpacity>

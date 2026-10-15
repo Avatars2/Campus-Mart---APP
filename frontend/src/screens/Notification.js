@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
-import styles from './NotificationScreen.styles';
+import styles from './Notification.styles';
 import { useNotifications } from '../context/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const NotificationScreen = () => {
+const Notification = () => {
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const navigation = useNavigation();
 
@@ -37,7 +37,7 @@ const NotificationScreen = () => {
     if (notification.type === 'MESSAGE' && notification.relatedId) {
       navigation.navigate('Chat', { conversationId: notification.relatedId });
     } else if (notification.type === 'ORDER' && notification.relatedId) {
-      navigation.navigate('OrderNotificationDetail', { notification });
+      navigation.navigate('NotificationDetail', { notification });
     }
   };
 
@@ -95,4 +95,4 @@ const NotificationScreen = () => {
 
 
 
-export default NotificationScreen;
+export default Notification;

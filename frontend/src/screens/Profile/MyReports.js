@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 
 
-export default function MyReportsScreen({ navigation }) {
+export default function MyReports({ navigation }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

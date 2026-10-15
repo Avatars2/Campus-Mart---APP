@@ -35,13 +35,25 @@ export default function EditProductScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const isSold = Boolean(
+    item.marked_sold_at ||
+    (!item.is_active && !item.is_suspended && !item.is_currently_rented) ||
+    (item.listing_type !== 'rent' && item.quantity <= 0)
+  );
+
   // Modals state
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [conditionModalVisible, setConditionModalVisible] = useState(false);
 
   useEffect(() => {
+    if (isSold) {
+      Alert.alert('Item Sold', 'This item has already been sold and cannot be edited.', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+      return;
+    }
     fetchCategories();
-  }, []);
+  }, [isSold]);
 
   const fetchCategories = async () => {
     try {
@@ -137,6 +149,12 @@ export default function EditProductScreen({ route, navigation }) {
   const handleUpdateItem = async () => {
     setErrorMsg('');
     
+    if (isSold) {
+      setErrorMsg('Sold items cannot be edited.');
+      Alert.alert('Item Sold', 'Sold items cannot be edited.');
+      return;
+    }
+
     if (!name.trim()) return setErrorMsg('Item Name cannot be empty.');
     if (!description.trim()) return setErrorMsg('Description cannot be empty.');
     if (!price || isNaN(price)) return setErrorMsg('Please enter a valid price.');
