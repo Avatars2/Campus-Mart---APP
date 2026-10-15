@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import client from '../../api/client';
 import { colors } from '../../theme/colors';
+import { validatePassword } from '../../utils/passwordValidation';
 import styles from './Register.styles';
 
 export default function RegisterScreen({ navigation }) {
@@ -54,10 +55,8 @@ export default function RegisterScreen({ navigation }) {
     if (!name.trim()) return setErrorMsg('Full Name cannot be empty.');
     if (!email.toLowerCase().endsWith('@bvmengineering.ac.in'))
       return setErrorMsg('Only @bvmengineering.ac.in emails are allowed.');
-    if (password.length < 6) return setErrorMsg('Password must be at least 6 characters long.');
-    const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
-    if (!specialCharRegex.test(password))
-      return setErrorMsg('Password must contain at least one special character.');
+    const pwdError = validatePassword(password);
+    if (pwdError) return setErrorMsg(pwdError);
     if (phone.length < 10) return setErrorMsg('Please enter a valid phone number.');
     if (!studentId.trim()) return setErrorMsg('Student ID cannot be empty.');
     setLoading(true);
