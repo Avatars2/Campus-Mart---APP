@@ -31,6 +31,12 @@ const notificationSchema = new mongoose.Schema({
   relatedId: {
     type: mongoose.Schema.Types.ObjectId,
     default: null,
+  },
+  attachment: {
+    url: { type: String, default: null },
+    name: { type: String, default: null },
+    mimeType: { type: String, default: null },
+    size: { type: Number, default: null },
   }
 }, { timestamps: true });
 

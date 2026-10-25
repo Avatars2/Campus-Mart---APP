@@ -23,3 +23,22 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const authResult = await verifyAuth(request);
+    if (authResult.error) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    }
+
+    await connectDB();
+    const userId = authResult.user.id;
+
+    await Notification.deleteMany({ recipient: userId });
+
+    return NextResponse.json({ message: 'All notifications cleared successfully' });
+  } catch (error) {
+    console.error('Clear All Notifications Error:', error);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
+  }
+}

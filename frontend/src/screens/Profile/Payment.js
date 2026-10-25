@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -308,29 +309,95 @@ export default function Payment({ navigation }) {
                   key={`${transfer.payment_id}-${transfer.transfer_id || transfer.payout_status}-${index}`}
                   style={[styles.transferItem, isLast && styles.transferItemLast]}
                 >
-                  <View style={[styles.transferIconWrap, { backgroundColor: statusCfg.bg }]}>
-                    <Ionicons name={statusCfg.icon} size={20} color={statusCfg.color} />
-                  </View>
+                  {/* Top Row: Icon, Amount, Date & Payout Status Badge */}
+                  <View style={styles.transferTopRow}>
+                    <View style={styles.transferTopLeft}>
+                      <View style={[styles.transferIconWrap, { backgroundColor: statusCfg.bg }]}>
+                        <Ionicons name={statusCfg.icon} size={20} color={statusCfg.color} />
+                      </View>
+                      <View style={styles.transferDetails}>
+                        <Text style={styles.transferAmount}>
+                          ₹{(transfer.amount / 100).toFixed(2)}
+                        </Text>
+                        <Text style={styles.transferDate}>
+                          {formatDate(transfer.created_at)}
+                        </Text>
+                      </View>
+                    </View>
 
-                  <View style={styles.transferDetails}>
-                    <Text style={styles.transferAmount}>
-                      ₹{(transfer.amount / 100).toFixed(2)}
-                    </Text>
-                    <Text style={styles.transferDate}>
-                      {formatDate(transfer.created_at)}
-                    </Text>
-                    {transfer.transfer_id ? (
-                      <Text style={styles.transferRef} numberOfLines={1}>
-                        Ref: {transfer.transfer_id}
+                    <View style={[styles.payoutBadge, { backgroundColor: statusCfg.bg }]}>
+                      <Text style={[styles.payoutBadgeText, { color: statusCfg.color }]}>
+                        {statusCfg.label}
                       </Text>
-                    ) : null}
+                    </View>
                   </View>
 
-                  <View style={[styles.payoutBadge, { backgroundColor: statusCfg.bg }]}>
-                    <Text style={[styles.payoutBadgeText, { color: statusCfg.color }]}>
-                      {statusCfg.label}
-                    </Text>
-                  </View>
+                  {/* Items Details Section */}
+                  {transfer.items && transfer.items.length > 0 ? (
+                    <View style={styles.transferItemsContainer}>
+                      {transfer.items.map((item, itemIdx) => (
+                        <View key={item.order_id || itemIdx} style={styles.transferItemRow}>
+                          {item.image ? (
+                            <Image source={{ uri: item.image }} style={styles.transferItemImage} />
+                          ) : (
+                            <View style={styles.transferItemImagePlaceholder}>
+                              <Ionicons name="cube-outline" size={20} color="#64748B" />
+                            </View>
+                          )}
+
+                          <View style={{ flex: 1, marginRight: 8 }}>
+                            <Text style={styles.transferItemName} numberOfLines={1}>
+                              {item.name}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <View style={styles.transferTypeBadge}>
+                                <Text style={styles.transferTypeBadgeText}>
+                                  {item.listing_type === 'rent' ? 'Rental' : 'Sale'} • Qty: {item.quantity || 1}
+                                </Text>
+                              </View>
+                              {item.order_status ? (
+                                <Text style={styles.transferOrderStatusText}>
+                                  {item.order_status.replace(/_/g, ' ')}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </View>
+
+                          {item.price ? (
+                            <Text style={styles.transferItemPrice}>
+                              ₹{item.price}
+                            </Text>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {/* Buyer Details Section */}
+                  {transfer.buyer && transfer.buyer.name ? (
+                    <View style={styles.transferBuyerCard}>
+                      <View style={styles.transferBuyerAvatar}>
+                        <Text style={styles.transferBuyerAvatarText}>
+                          {transfer.buyer.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.transferBuyerName} numberOfLines={1}>
+                          Buyer: {transfer.buyer.name}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* Transfer Reference & Delivery Info Footer */}
+                  {transfer.transfer_id ? (
+                    <View style={styles.transferFooter}>
+                      <Ionicons name="receipt-outline" size={12} color="#94A3B8" />
+                      <Text style={styles.transferRef} numberOfLines={1}>
+                        Payout Ref: {transfer.transfer_id}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               );
             })

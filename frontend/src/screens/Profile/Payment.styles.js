@@ -255,28 +255,49 @@ export default StyleSheet.create({
     color: '#64748B',
   },
 
-  // History Item Row
+  // History Item Card
   transferItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Platform.select({
+      web: { boxShadow: '0px 1px 4px rgba(0,0,0,0.03)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
+      },
+    }),
   },
   transferItemLast: {
-    borderBottomWidth: 0,
+    marginBottom: 0,
+  },
+  transferTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  transferTopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
   transferIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   transferDetails: {
     flex: 1,
-    marginRight: 10,
   },
   transferAmount: {
     fontSize: 16,
@@ -285,13 +306,12 @@ export default StyleSheet.create({
     marginBottom: 2,
   },
   transferDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
   },
   transferRef: {
     fontSize: 11,
     color: '#94A3B8',
-    marginTop: 2,
   },
   payoutBadge: {
     paddingHorizontal: 10,
@@ -302,6 +322,106 @@ export default StyleSheet.create({
   payoutBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+
+  // Item Details Box
+  transferItemsContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    gap: 8,
+  },
+  transferItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transferItemImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
+    marginRight: 10,
+  },
+  transferItemImagePlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  transferItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  transferTypeBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  transferTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  transferOrderStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#007185',
+    textTransform: 'capitalize',
+  },
+  transferItemPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  // Buyer Details Box
+  transferBuyerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  transferBuyerAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#007185',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  transferBuyerAvatarText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  transferBuyerName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  transferFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
 
   // Empty State

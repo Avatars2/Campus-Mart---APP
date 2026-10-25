@@ -3,8 +3,16 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import Order from '@/models/Order';
 import Payment from '@/models/Payment';
+import User from '@/models/User';
+import Item from '@/models/Item';
 import { verifyAuth } from '@/lib/auth';
 import { expirePaymentIfNeeded, reconcilePayment } from '@/lib/paymentLifecycle';
+
+const orderPopulate = [
+  { path: 'item_id', select: 'name price images listing_type rental_period' },
+  { path: 'seller_id', select: 'full_name email phone student_id department year_semester' },
+  { path: 'buyer_id', select: 'full_name email phone student_id department year_semester' },
+];
 
 export async function GET(request, { params }) {
   try {
@@ -22,14 +30,14 @@ export async function GET(request, { params }) {
 
     payment = await reconcilePayment(payment);
     payment = await expirePaymentIfNeeded(payment);
-    const orders = await Order.find({ payment_id: payment._id });
+    const orders = await Order.find({ payment_id: payment._id }).populate(orderPopulate);
     return NextResponse.json({
       payment: {
         id: payment._id,
         status: payment.status,
         amount: payment.amount,
         currency: payment.currency,
-        settlements: payment.settlements.map((entry) => ({
+        settlements: (payment.settlements || []).map((entry) => ({
           status: entry.status,
           amount: entry.amount,
         })),

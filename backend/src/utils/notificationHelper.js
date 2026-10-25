@@ -12,8 +12,9 @@ import { messaging } from '../lib/firebase.js';
  * @param {String} params.title - Notification title
  * @param {String} params.body - Notification body
  * @param {String} [params.relatedId] - ID of related item/order/conversation
+ * @param {Object} [params.attachment] - Optional attachment { url, name, mimeType, size }
  */
-export const sendNotification = async ({ recipientId, senderId, type, title, body, relatedId }) => {
+export const sendNotification = async ({ recipientId, senderId, type, title, body, relatedId, attachment }) => {
   try {
     // 1. Save to Database
     const newNotification = new Notification({
@@ -23,6 +24,7 @@ export const sendNotification = async ({ recipientId, senderId, type, title, bod
       title,
       body,
       relatedId: relatedId || null,
+      attachment: attachment || null,
     });
     const savedNotification = await newNotification.save();
     
@@ -44,6 +46,7 @@ export const sendNotification = async ({ recipientId, senderId, type, title, bod
           type,
           relatedId: relatedId ? relatedId.toString() : '',
           notificationId: savedNotification._id.toString(),
+          attachmentUrl: attachment?.url || '',
         },
         token: recipientUser.fcmToken,
       };

@@ -34,7 +34,6 @@ export default async function openRazorpayCheckout(options) {
       presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
       showTitle: true,
       enableBarCollapsing: false,
-      showInRecents: false,
     });
     return { hosted: true, type: browserResult.type };
   }

@@ -193,8 +193,35 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  const deleteNotification = async (id) => {
+    try {
+      await client.delete(`/notifications/${id}`);
+      setNotifications(prev => {
+        const deleted = prev.find(n => (n.id || n._id) === id);
+        if (deleted && !deleted.read) {
+          setUnreadCount(count => Math.max(0, count - 1));
+        }
+        return prev.filter(n => (n.id || n._id) !== id);
+      });
+    } catch (e) {
+      console.error('Failed to delete notification', e);
+      throw e;
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await client.delete('/notifications');
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (e) {
+      console.error('Failed to clear notifications', e);
+      throw e;
+    }
+  };
+
   return (
-    <NotificationContext.Provider value={{ unreadCount, notifications, fetchNotifications, markAsRead, markAllAsRead }}>
+    <NotificationContext.Provider value={{ unreadCount, notifications, fetchNotifications, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications }}>
       {children}
     </NotificationContext.Provider>
   );

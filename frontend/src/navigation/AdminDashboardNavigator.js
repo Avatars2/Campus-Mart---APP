@@ -10,6 +10,9 @@ import AdminCategoriesScreen from '../screens/Admin/Categories';
 import AdminReportsScreen from '../screens/Admin/Reports';
 import AdminReportDetails from '../screens/Admin/Reports/AdminReportDetails';
 import AdminOrdersScreen from '../screens/Admin/Orders';
+import AdminNotificationsScreen from '../screens/Admin/Notifications';
+import AdminCreateNotificationScreen from '../screens/Admin/Notifications/AdminCreateNotification';
+import AdminAnalyticsScreen from '../screens/Admin/Analytics';
 import ProductDetailScreen from '../screens/Home/ProductDetail';
 import SellerStoreScreen from '../screens/Home/SellerStore';
 
@@ -28,6 +31,9 @@ export default function AdminDashboardNavigator() {
       <Stack.Screen name="AdminCategories" component={AdminCategoriesScreen} />
       <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
       <Stack.Screen name="AdminOrders" component={AdminOrdersScreen} />
+      <Stack.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
+      <Stack.Screen name="AdminCreateNotification" component={AdminCreateNotificationScreen} />
+      <Stack.Screen name="AdminAnalytics" component={AdminAnalyticsScreen} />
       <Stack.Screen name="AdminReportDetail" component={AdminReportDetails} options={{ headerShown: false }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={({ navigation }) => ({ headerShown: true, title: 'Item Details', headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}><Ionicons name="chevron-back" size={26} color="#0F1111" /></TouchableOpacity> ) })} />
       <Stack.Screen name="SellerStore" component={SellerStoreScreen} options={({ navigation }) => ({ headerShown: true, headerLeft: (props) => ( <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}><Ionicons name="chevron-back" size={26} color="#0F1111" /></TouchableOpacity> ) })} />

@@ -4,7 +4,7 @@ import { Platform, DeviceEventEmitter } from 'react-native';
 
 // Your laptop's local Wi-Fi IP address (run `ipconfig` to get this if it changes)
 // ⚠️ Important: Change this if your Wi-Fi IP changes (e.g. different network)
-const LOCAL_IP = '10.251.183.91';
+const LOCAL_IP = '10.115.13.91';
 
 // Backend runs on Next.js at port 3000
 const getBaseUrl = () => {

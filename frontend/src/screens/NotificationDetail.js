@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../api/client';
+import { openAttachment } from '../utils/attachmentHelper';
 import styles from './NotificationDetail.styles';
 
 const getId = (value) => value?.id || value?._id || value;
 
 export default function NotificationDetail({ route, navigation }) {
   const { notification } = route.params || {};
+  const isSystemNotification = notification?.type === 'SYSTEM';
+
   const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isSystemNotification);
   const [error, setError] = useState(null);
+  const [openingPdf, setOpeningPdf] = useState(false);
 
   useEffect(() => {
+    if (isSystemNotification) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     const loadOrder = async () => {
@@ -39,8 +48,139 @@ export default function NotificationDetail({ route, navigation }) {
 
     loadOrder();
     return () => { active = false; };
-  }, [notification?.relatedId]);
+  }, [notification?.relatedId, isSystemNotification]);
 
+  const handleOpenPdf = async () => {
+    if (!notification?.attachment?.url) return;
+    setOpeningPdf(true);
+    try {
+      await openAttachment({
+        url: notification.attachment.url,
+        fileName: notification.attachment.name,
+        name: notification.attachment.name,
+        mimeType: notification.attachment.mimeType || 'application/pdf',
+      });
+    } finally {
+      setOpeningPdf(false);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // If System Notification (Admin Announcement)
+  if (isSystemNotification) {
+    const hasPdf = Boolean(notification?.attachment?.url);
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={24} color="#1A1F36" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            Campus Announcement
+          </Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.notificationBanner}>
+            <Ionicons name="megaphone-outline" size={24} color="#2563EB" />
+            <View style={styles.bannerText}>
+              <Text style={styles.notificationTitle}>{notification?.title || 'Notice'}</Text>
+              <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                {notification?.createdAt
+                  ? new Date(notification.createdAt).toLocaleString('en-US', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })
+                  : 'Recent'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={[styles.cardTitle, { fontSize: 16, marginBottom: 8 }]}>Announcement Details</Text>
+            <Text style={{ fontSize: 15, color: '#334155', lineHeight: 24 }}>
+              {notification?.body}
+            </Text>
+          </View>
+
+          {hasPdf && (
+            <View style={styles.card}>
+              <Text style={[styles.cardTitle, { fontSize: 16, marginBottom: 12 }]}>Attached Document</Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#EFF6FF',
+                  borderWidth: 1,
+                  borderColor: '#BFDBFE',
+                  borderRadius: 12,
+                  padding: 14,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 10 }}>
+                  <Ionicons name="document-text" size={32} color="#2563EB" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E3A8A' }} numberOfLines={1}>
+                      {decodeURIComponent(notification.attachment.name || 'Notice_Attachment.pdf')}
+                    </Text>
+                    {Boolean(notification.attachment.size) && (
+                      <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                        PDF Document • {formatFileSize(notification.attachment.size)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#2563EB',
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    opacity: openingPdf ? 0.7 : 1,
+                  }}
+                  onPress={handleOpenPdf}
+                  disabled={openingPdf}
+                  activeOpacity={0.8}
+                >
+                  {openingPdf ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="eye-outline" size={16} color="#FFFFFF" />
+                  )}
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                    {openingPdf ? 'Opening...' : 'View PDF'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
+            <TouchableOpacity
+              style={[styles.backButton, { backgroundColor: '#2563EB', borderColor: '#2563EB', alignItems: 'center' }]}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={[styles.backButtonText, { color: '#FFFFFF', fontWeight: '600' }]}>Close Notice</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Order Notifications handling (Original flow)
   if (loading) {
     return <View style={styles.centerContainer}><ActivityIndicator size="large" color="#0052CC" /></View>;
   }

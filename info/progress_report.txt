@@ -1,6 +1,6 @@
 =========================================
 CAMPUS MART - PROGRESS REPORT
-Date: October 15, 2026
+Date: October 25, 2026
 =========================================
 
 PROJECT STATUS:
@@ -8,13 +8,15 @@ CampusMart is a comprehensive student marketplace platform. The core marketplace
 authentication, real-time messaging, custom offers, checkout, online payment gateway (Razorpay/UPI),
 Escrow fund protection, automated refunds, direct order cancellation, 7-day purchase returns,
 inventory restocking, order & delivery confirmation, rating flows, push notifications,
-and admin moderation are fully implemented and verified.
+admin moderation, admin notification management with PDF attachments, enhanced seller payment history,
+and admin daily activity analytics with date-range PDF report generation
+are fully implemented and verified.
 
 IMPLEMENTATION SUMMARY:
-Fully implemented: 13 modules
+Fully implemented: 15 modules
 Partially implemented: 0 modules
 Not started: 0 modules
-Estimated overall completion: approximately 97%
+Estimated overall completion: approximately 99.5%
 
 =========================================
 MODULE BREAKDOWN
@@ -74,13 +76,17 @@ MODULE BREAKDOWN
    - Return Approval: Sellers receive return requests and can approve them upon receiving the returned item, automatically triggering the buyer refund and restocking inventory.
    - Rental listings support per-hour, per-day, and per-month pricing with availability and return deadlines.
 
-6. PROFILE PAGE [COMPLETED - 90%]
+6. PROFILE PAGE & SELLER PAYOUTS [COMPLETED - 95%]
    - User profile information, student details, and profile navigation.
    - Dedicated "Payment" Screen:
-     * Renamed screen title to "Payment".
      * Top-right "Account" button opens a modal to view and update payout details (Bank Account number, IFSC, account holder, or UPI ID).
-     * Full-page transfer and payout history display showing settlement status, date, and amount.
-     * Cleaned up UI removing unnecessary clutter and explanatory text.
+     * Active payout destination card (shows active UPI ID or masked bank account number with live active indicator).
+     * Overview stats: Total Received and In Escrow / Pending earnings.
+     * Enriched Payment History:
+       - Displays detailed transfer cards with amount, date, time, and settlement status badge.
+       - Complete Item Details: Item thumbnail, item name, sale/rental listing badge with quantity, and fulfillment status.
+       - Buyer Details: Buyer avatar with initial and full name ("Buyer: <Name>"), while keeping phone and student ID numbers private.
+       - Payout reference ID display.
    - Change-password screen enforces unified password validation rules.
    - My Reports screen allows students to track status of their submitted reports.
 
@@ -91,16 +97,21 @@ MODULE BREAKDOWN
    - Buyers can accept custom offers, skipping the cart and jumping straight to checkout at the negotiated price.
    - Conversation list and chat history with message delivery/read states.
    - Multiple images and files can be selected and sent in one message, stored in Cloudinary.
-   - PDFs and other files open through a backend viewer with the correct MIME type and filename.
+   - PDFs and other files open through native intent launcher/sharing with the correct MIME type and filename.
    - React Navigation state caching handled to strictly isolate chat threads and prevent stale messages.
 
-8. NOTIFICATION SYSTEM [COMPLETED - 98%]
+8. NOTIFICATION SYSTEM [COMPLETED - 100%]
    - In-app notification center with unread count.
    - Order, message, and delivery-related notifications.
    - Rental notifications cover delivery, rental start, return request, and rental completion.
    - Online payment notifications: instant notifications on payment confirmation, cancellation, return requests, and refund processing.
+   - PDF Attachment indicators: Items with attached PDF documents show a theme-blue document badge and automatically decode filenames.
+   - Native PDF Viewer: Tapping "View PDF" opens documents locally using Android IntentLauncher or iOS Sharing with a loading indicator, matching chat attachments.
+   - Notification Deletion:
+     * Individual deletion: Trash can icon on each notification card with in-app confirmation modal.
+     * Clear all: Header action button to wipe all notifications with confirmation dialog.
+     * Backend routes: DELETE /api/notifications/:id and DELETE /api/notifications implemented.
    - Firebase Admin SDK fully initialized and push notifications via FCM are active.
-   - Secure credential loading with fallback for unconfigured environments.
 
 9. PAYMENT SYSTEM [COMPLETED - 95%]
    - Online Payment Gateway:
@@ -115,6 +126,7 @@ MODULE BREAKDOWN
      * Payout Protection: Pending/held seller settlements are automatically marked "cancelled" upon refund so funds are never erroneously disbursed to sellers.
    - Automated Seller Payouts:
      * Automatic transfers to seller's linked bank account or UPI ID once orders are confirmed received.
+     * Enhanced /api/payments/seller-transfers route populating related orders, items, and buyers.
 
 10. DELIVERY AND ORDER CONFIRMATION [COMPLETED - 95%]
     - Buyer and seller can discuss delivery method, location, and time through messages.
@@ -133,8 +145,25 @@ MODULE BREAKDOWN
     - Category Management: View, add, edit, and delete categories via modals.
     - Report Moderation: Dedicated queue for reviewing user and item reports with proof images.
     - Client-side pagination across all moderation screens.
+    - Notifications Stat Card in Dashboard Grid provides quick access to the Notifications Hub.
 
-12. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
+12. ADMIN NOTIFICATION & ANNOUNCEMENT MODULE [COMPLETED - 100%]
+    - Dedicated Admin Notifications Hub:
+      * View sent announcements with search and filter tabs (All, Broadcasts, Specific Students).
+      * View attached PDF documents directly with native viewer.
+      * Delete notification with in-app confirmation modal (cascades and removes copies from student inboxes).
+    - Compose Notification Screen:
+      * Target Audience selection: "All Students" (broadcast) vs "Specific Student".
+      * Student Picker Modal: Interactive search to find and pick any student by name or email.
+      * Title and multi-line body inputs.
+      * PDF Attachment support: File picker using expo-document-picker (validates up to 10MB).
+      * Direct file upload to Cloudinary (raw resource type).
+      * Real-time delivery to students via Pusher and Firebase Cloud Messaging (FCM).
+      * Seamless redirect directly to Notifications Hub upon dispatch without popup alert dialogs.
+    - AdminNotification Database Model:
+      * Tracks broadcast logs, recipient type, target student reference, recipient counts, and attachment metadata.
+
+13. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
     - Half-star rating prompt (supports 0.5 increments from 0.5 to 5.0).
     - Fractional rating bug resolved: item average calculations properly handle fractional star ratings without NaN corruption.
     - Rating modal button text updated to "Rating" with loading indicator.
@@ -142,11 +171,33 @@ MODULE BREAKDOWN
     - RatingStars component displays half-star icons cleanly.
     - Ratings update item average rating and total rating count in real-time.
 
-13. REPORT SYSTEM [COMPLETED - 100%]
+14. REPORT SYSTEM [COMPLETED - 100%]
     - Comprehensive reporting system to flag inappropriate users or items.
     - Proof image uploads stored securely via Cloudinary.
     - Profile "My Reports" view allows students to track status of submitted reports.
     - Admin Report Details screen showcases full context and attached evidence for resolution.
+
+15. ADMIN DAILY ACTIVITY ANALYTICS & PDF REPORT GENERATION [COMPLETED - 100%]
+    - Top-Right Logo Action:
+      * Branded CampusMart logo button placed in the top-right corner of the Admin Dashboard hero banner.
+      * One-tap navigation to the comprehensive Platform Analytics screen.
+    - Flexible Date Filtering:
+      * Quick presets: Today, Yesterday, Last 7 Days, Last 30 Days, This Month, and Custom Date / Range.
+      * Interactive modal allows selecting a specific calendar date or a start date and end date range.
+      * Active filter period clearly displayed with calendar badge.
+    - Comprehensive Activity Metrics:
+      * 8 KPI cards: New Users Registered, Items Listed, Total Orders Placed, Confirmed/Completed Orders, Pending Orders, Cancelled/Returned Orders, Total Order Volume (₹), and User Reports Filed.
+    - Granular Detailed Itemization (Tabbed View):
+      * Items Added Tab: Detailed list of cards showing item name, price, category, listing type (Sell/Rent/Donate), seller, and time added.
+      * Orders Placed Tab: Detailed cards showing order number, item name, buyer name, order price, colored status badge, payment method, and timestamp.
+      * New Users Tab: Detailed cards showing full name, email, role badge (Student/Admin), and registration timestamp.
+      * Reports Tab: Detailed list of reports filed with reasons, reporter names, and status badges.
+    - Executive PDF Document Generation:
+      * Direct "Export PDF" button in header.
+      * Generates a formal, professional CampusMart Platform Activity Report document formatted with college branding, time scope header, KPI metrics grid, and detailed tables for items added, orders placed, and new users.
+      * Cross-platform export: native share sheet via expo-sharing on mobile (Android/iOS) and print/save dialog via expo-print on Web.
+    - Backend API:
+      * Dedicated GET /api/admin/analytics endpoint aggregating Users, Items, Orders, and Reports between start-of-day (00:00:00) and end-of-day (23:59:59).
 
 =========================================
 ACTUAL TECHNOLOGY STACK
@@ -156,9 +207,10 @@ ACTUAL TECHNOLOGY STACK
 - Database: MongoDB with Mongoose models.
 - Authentication: JWT-based authentication with AsyncStorage token persistence.
 - Payment Gateway: Razorpay API & Webhooks with UPI Intent & Escrow lifecycle.
-- Real-time messaging: Pusher.
-- Image storage: Cloudinary.
-- Notifications: Firebase Admin SDK with FCM push notifications.
+- Real-time messaging & alerts: Pusher.
+- Document & Image storage: Cloudinary (images and raw PDF storage).
+- Push Notifications: Firebase Admin SDK with FCM push notifications.
+- Document Viewer: Shared utility (src/utils/attachmentHelper.js) using Expo FileSystem, IntentLauncher, and Sharing.
 - PDF/invoice output: Expo Print and Expo Sharing on mobile; browser print on web.
 - Password validation: Shared utility (src/utils/passwordValidation.js).
 
@@ -175,10 +227,26 @@ CURRENTLY VERIFIED FLOWS
 - Seller delivery confirmation and buyer receipt confirmation triggering seller payout.
 - Buyer rating submission with fractional half-star support and "Rating" modal button.
 - Profile Payment screen with "Account" modal for bank account/UPI ID configuration and payout history.
+- Enhanced Seller Payment History: Displays complete item thumbnails, quantities, sale/rental badges, order fulfillment statuses, and buyer names with privacy protection.
+- Admin Notifications Management:
+  * Notifications Stat Card in dashboard grid navigating directly to Notifications Hub.
+  * Composing announcements targeted to all students or specific students.
+  * Uploading and attaching PDF documents up to 10MB to notifications.
+  * Direct silent redirection to the Notifications Hub after sending.
+  * Deleting admin notifications with cascaded cleanup of student inbox records.
+- Student Notifications:
+  * Viewing announcements and opening attached PDF documents in native viewers.
+  * Deleting individual notifications or clearing all notifications with confirmation dialogs.
 - Sold items deactivation preventing edits on sold products.
 - Redesigned Order Details action buttons in a unified 3-button row layout ([Cancel/Return] [Call] [Message]).
 - Real-time buyer/seller chat with custom offer creation, acceptance, and file attachments.
 - Full admin dashboard moderation: user suspension, item moderation, category management, and report resolution.
+- Admin Daily Activity Analytics & PDF Report Generator:
+  * Top-right CampusMart logo button on admin home banner opens Analytics screen.
+  * Presets (Today, Yesterday, Last 7 Days, Last 30 Days, This Month) and custom Single Day / Date Range modal picker.
+  * 8 KPI cards: New Users, Items Added, Total Orders, Confirmed Orders, Pending Orders, Cancelled/Returned, Total Volume (₹), and Reports Filed.
+  * Interactive tabs for granular inspection of items added, orders placed, new registrations, and reports.
+  * Executive PDF report generation via expo-print and expo-sharing with tables, KPI summaries, and formal college styling.
 
 =========================================
 NEXT RECOMMENDED STEPS

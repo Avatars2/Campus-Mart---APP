@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export default StyleSheet.create({
   container: {
@@ -9,43 +9,66 @@ export default StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 10,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  backButton: { position: 'absolute', left: 20, top: 50, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: '900',
     color: '#0F1111',
     marginBottom: 4,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 4,
+  },
   markAllText: {
-    color: '#007185', // Amazon link blue
+    color: '#007185',
     fontSize: 13,
-    marginBottom: 6,
+    fontWeight: '600',
+  },
+  clearAllText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '600',
   },
   listContainer: {
-    paddingBottom: 20, // Replaced padding: 10 with paddingBottom to allow full width borders
+    paddingBottom: 30,
   },
   notificationCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    alignItems: 'flex-start', // Align to top for better text flow
+    alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   unreadCard: {
-    backgroundColor: '#F7FAFA', // Very subtle light gray/blue tint for unread
+    backgroundColor: '#F7FAFA',
   },
   iconContainer: {
     width: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    marginTop: 2,
   },
   textContainer: {
     flex: 1,
@@ -70,13 +93,24 @@ export default StyleSheet.create({
     fontSize: 12,
     color: '#565959',
   },
+  actionColumn: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginLeft: 10,
+    alignSelf: 'stretch',
+    paddingVertical: 2,
+  },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#E77600', // Amazon orange
-    marginLeft: 8,
-    marginTop: 6,
+    backgroundColor: '#E77600',
+    marginBottom: 8,
+  },
+  deleteButton: {
+    padding: 6,
+    borderRadius: 16,
+    marginTop: 'auto',
   },
   emptyContainer: {
     flex: 1,
@@ -87,5 +121,84 @@ export default StyleSheet.create({
     marginTop: 15,
     fontSize: 16,
     color: '#565959',
+  },
+
+  // Confirmation Modal
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 22,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    ...Platform.select({
+      web: { boxShadow: '0px 8px 30px rgba(0,0,0,0.15)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 8,
+      },
+    }),
+  },
+  confirmModalIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  confirmModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  confirmModalMessage: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  confirmModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  confirmDeleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+  },
+  confirmDeleteText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

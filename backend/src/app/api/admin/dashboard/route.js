@@ -5,6 +5,7 @@ import Item from '@/models/Item';
 import Order from '@/models/Order';
 import Report from '@/models/Report';
 import Category from '@/models/Category';
+import AdminNotification from '@/models/AdminNotification';
 import { verifyAdminAuth } from '@/lib/auth';
 
 export async function GET(request) {
@@ -30,6 +31,7 @@ export async function GET(request) {
 
     const totalCategories = await Category.countDocuments();
     const pendingReports = await Report.countDocuments({ status: 'pending' });
+    const totalNotifications = await AdminNotification.countDocuments();
 
     // 2. Trend Calculations (Last 7 days count)
     const sevenDaysAgo = new Date();
@@ -169,6 +171,13 @@ export async function GET(request) {
     recentActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
     recentActivities = recentActivities.slice(0, 5);
 
+    // 7. Recent Admin Notifications
+    const recentNotifications = await AdminNotification.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('targetUser', 'full_name email')
+      .lean();
+
     return NextResponse.json({
       stats: {
         totalUsers,
@@ -181,6 +190,7 @@ export async function GET(request) {
         returnedOrders: returnedOrdersCount,
         totalCategories,
         pendingReports,
+        totalNotifications,
       },
       trends: {
         users: `+${newUsersWeek} this week`,
@@ -191,7 +201,8 @@ export async function GET(request) {
       activityData,
       distributionData,
       recentUsers,
-      recentActivities
+      recentActivities,
+      recentNotifications,
     });
   } catch (error) {
     console.error('Admin Dashboard Error:', error);

@@ -7,7 +7,6 @@ import client from '../../api/client';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 import openRazorpayCheckout from '../../payments/razorpayCheckout';
 
-
 const createCheckoutRequestKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
 
 export default function Checkout({ route, navigation }) {
@@ -79,30 +78,73 @@ export default function Checkout({ route, navigation }) {
           });
 
           if (checkoutResponse?.hosted) {
-            let statusResponse;
-            // Poll immediately upon browser close
-            for (let attempt = 0; attempt < 15; attempt += 1) {
-              try {
-                statusResponse = await client.get(`/payments/status/${payment.id}`);
-                if (statusResponse?.data?.payment?.status === 'captured') break;
-                if (['failed', 'expired', 'needs_review'].includes(statusResponse?.data?.payment?.status)) break;
-              } catch (e) {
-                // Keep polling
+            let statusResponse = null;
+            let isCaptured = false;
+
+            // Step 1: Quick check if already captured
+            try {
+              statusResponse = await client.get(`/payments/status/${payment.id}`);
+              if (statusResponse?.data?.payment?.status === 'captured') {
+                isCaptured = true;
               }
-              await new Promise((resolve) => setTimeout(resolve, 1500));
+            } catch (e) {
+              // ignore
             }
-            if (statusResponse?.data?.payment?.status !== 'captured') {
-              Alert.alert(
-                'Payment Status',
-                statusResponse?.data?.payment?.status === 'needs_review'
-                  ? 'Your payment was received and is under review. Please check your Orders tab.'
-                  : 'If you already paid, your order is confirming and will appear in your Orders tab in a few moments.'
-              );
+
+            // Step 2: If browser was closed/cancelled by user (e.g. clicked X cross button) without paying:
+            if (!isCaptured && (checkoutResponse?.type === 'cancel' || checkoutResponse?.type === 'dismiss')) {
+              // User cancelled checkout. Clean up pending payment session in background.
+              try {
+                await client.post('/payments/cancel', { payment_id: payment.id });
+              } catch (cancelErr) {
+                // ignore
+              }
               setCheckoutRequestKey(createCheckoutRequestKey());
-              navigation.navigate('Orders', { type: 'purchases' });
+              setLoading(false);
+              // Stay directly on the Checkout / Payment screen!
               return;
             }
-            orders = statusResponse.data.orders;
+
+            // Step 3: If not yet captured, poll for a few seconds to allow payment webhook/gateway confirmation
+            if (!isCaptured) {
+              for (let attempt = 0; attempt < 8; attempt += 1) {
+                try {
+                  statusResponse = await client.get(`/payments/status/${payment.id}`);
+                  if (statusResponse?.data?.payment?.status === 'captured') {
+                    isCaptured = true;
+                    break;
+                  }
+                  if (['failed', 'expired'].includes(statusResponse?.data?.payment?.status)) break;
+                } catch (e) {
+                  // Keep polling
+                }
+                await new Promise((resolve) => setTimeout(resolve, 1200));
+              }
+            }
+
+            if (isCaptured && statusResponse?.data?.orders?.length > 0) {
+              orders = statusResponse.data.orders;
+            } else {
+              if (statusResponse?.data?.payment?.status === 'needs_review') {
+                Alert.alert(
+                  'Payment Under Review',
+                  'Your payment was received and is under review. Please check your Purchases tab.'
+                );
+                setCheckoutRequestKey(createCheckoutRequestKey());
+                navigation.navigate('MainTabs', { screen: 'Buy', params: { tab: 'purchases' } });
+                return;
+              }
+
+              // Otherwise user cancelled or payment did not go through. Clean up and stay on checkout.
+              try {
+                await client.post('/payments/cancel', { payment_id: payment.id });
+              } catch (cancelErr) {
+                // ignore
+              }
+              setCheckoutRequestKey(createCheckoutRequestKey());
+              setLoading(false);
+              return;
+            }
           } else {
             const verification = await client.post('/payments/verify', {
               payment_id: payment.id,
@@ -113,7 +155,7 @@ export default function Checkout({ route, navigation }) {
             if (verification.data.payment.status !== 'captured') {
               Alert.alert(
                 'Payment processing',
-                'Razorpay is still confirming your payment. Check Orders shortly; the order is not confirmed until capture succeeds.'
+                'Razorpay is still confirming your payment. Check Purchases shortly; the order is not confirmed until capture succeeds.'
               );
               setCheckoutRequestKey(createCheckoutRequestKey());
               return;
