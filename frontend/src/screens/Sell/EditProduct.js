@@ -10,7 +10,8 @@ export default function EditProductScreen({ route, navigation }) {
 
   const [name, setName] = useState(item.name || '');
   const [price, setPrice] = useState(item.price ? item.price.toString() : '');
-  const [quantity, setQuantity] = useState(item.quantity ? item.quantity.toString() : '1');
+  const initialQty = (item.quantity !== undefined && item.quantity !== null) ? item.quantity.toString() : '1';
+  const [quantity, setQuantity] = useState(initialQty);
   const [isActive, setIsActive] = useState(item.is_active !== false);
   const [listingType, setListingType] = useState(item.listing_type || 'sell');
   const [rentalPeriod, setRentalPeriod] = useState(item.rental_period || 'day');
@@ -35,9 +36,8 @@ export default function EditProductScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const isSold = Boolean(
+  const isSoldItem = Boolean(
     item.marked_sold_at ||
-    (!item.is_active && !item.is_suspended && !item.is_currently_rented) ||
     (item.listing_type !== 'rent' && item.quantity <= 0)
   );
 
@@ -46,14 +46,17 @@ export default function EditProductScreen({ route, navigation }) {
   const [conditionModalVisible, setConditionModalVisible] = useState(false);
 
   useEffect(() => {
-    if (isSold) {
-      Alert.alert('Item Sold', 'This item has already been sold and cannot be edited.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-      return;
-    }
     fetchCategories();
-  }, [isSold]);
+  }, []);
+
+  const handleQuantityChange = (val) => {
+    const cleaned = val.replace(/[^0-9]/g, '');
+    setQuantity(cleaned);
+    const num = Number(cleaned);
+    if (!isNaN(num) && num > 0 && !isActive) {
+      setIsActive(true);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -146,14 +149,31 @@ export default function EditProductScreen({ route, navigation }) {
     setNewImageSelected(true);
   };
 
+  const makePrimary = (index) => {
+    if (index === 0) return;
+    setImageUris(prev => {
+      const selected = prev[index];
+      const remaining = prev.filter((_, i) => i !== index);
+      return [selected, ...remaining];
+    });
+    setNewImageSelected(true);
+  };
+
+  const moveImage = (index, direction) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= imageUris.length) return;
+    setImageUris(prev => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIdx];
+      updated[targetIdx] = temp;
+      return updated;
+    });
+    setNewImageSelected(true);
+  };
+
   const handleUpdateItem = async () => {
     setErrorMsg('');
-    
-    if (isSold) {
-      setErrorMsg('Sold items cannot be edited.');
-      Alert.alert('Item Sold', 'Sold items cannot be edited.');
-      return;
-    }
 
     if (!name.trim()) return setErrorMsg('Item Name cannot be empty.');
     if (!description.trim()) return setErrorMsg('Description cannot be empty.');
@@ -236,11 +256,37 @@ export default function EditProductScreen({ route, navigation }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
+          {isSoldItem && (
+            <View style={{
+              backgroundColor: '#FEF3C7',
+              borderColor: '#F59E0B',
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <Ionicons name="alert-circle" size={24} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>
+                  Restock Sold Item
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B45309', marginTop: 2, lineHeight: 16 }}>
+                  This item is currently sold out (0 in stock). Enter a quantity of 1 or more and ensure Item Visibility is ON to reactivate this listing.
+                </Text>
+              </View>
+            </View>
+          )}
+
           <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>Status</Text>
           <View style={styles.toggleContainer}>
             <View style={styles.toggleTextContainer}>
               <Text style={styles.toggleTitle}>Item Visibility</Text>
-              <Text style={styles.toggleSubtitle}>Active items are visible to buyers in the marketplace.</Text>
+              <Text style={styles.toggleSubtitle}>
+                {isActive ? 'Active: visible to buyers in marketplace.' : 'Hidden: hidden from marketplace, not sold.'}
+              </Text>
             </View>
             <Switch
               value={isActive}
@@ -259,25 +305,65 @@ export default function EditProductScreen({ route, navigation }) {
                 <Text style={styles.imageUploadSubtext}>Add up to 5 photos of your item</Text>
               </TouchableOpacity>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageListContainer}>
-                {imageUris.map((uri, index) => (
-                  <View key={index} style={styles.imageContainer}>
-                    <TouchableOpacity style={styles.removeImageButton} onPress={() => removeImage(index)}>
-                      <Ionicons name="close" size={16} color="#DC2626" />
+              <View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageListContainer}>
+                  {imageUris.map((uri, index) => {
+                    const isPrimary = index === 0;
+                    return (
+                      <View key={index} style={styles.imageContainer}>
+                        <TouchableOpacity style={styles.removeImageButton} onPress={() => removeImage(index)}>
+                          <Ionicons name="close" size={16} color="#DC2626" />
+                        </TouchableOpacity>
+
+                        {isPrimary ? (
+                          <View style={styles.primaryBadge}>
+                            <Text style={styles.primaryBadgeText}>⭐ Cover Photo</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity 
+                            style={styles.makePrimaryBtn} 
+                            onPress={() => makePrimary(index)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.makePrimaryBtnText}>Make Primary</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {index > 0 && (
+                          <TouchableOpacity 
+                            style={styles.imageArrowBtnLeft} 
+                            onPress={() => moveImage(index, -1)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="chevron-back" size={14} color="#0F1111" />
+                          </TouchableOpacity>
+                        )}
+
+                        {index < imageUris.length - 1 && (
+                          <TouchableOpacity 
+                            style={styles.imageArrowBtnRight} 
+                            onPress={() => moveImage(index, 1)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="chevron-forward" size={14} color="#0F1111" />
+                          </TouchableOpacity>
+                        )}
+
+                        <Image source={{ uri }} style={styles.previewImage} />
+                      </View>
+                    );
+                  })}
+                  {imageUris.length < 5 && (
+                    <TouchableOpacity 
+                      style={[styles.imageUploadBox, { width: 100, height: 100, marginBottom: 0 }]} 
+                      onPress={handleAddPhoto} 
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add" size={32} color="#007185" />
                     </TouchableOpacity>
-                    <Image source={{ uri }} style={styles.previewImage} />
-                  </View>
-                ))}
-                {imageUris.length < 5 && (
-                  <TouchableOpacity 
-                    style={[styles.imageUploadBox, { width: 100, height: 100, marginBottom: 0 }]} 
-                    onPress={handleAddPhoto} 
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="add" size={32} color="#007185" />
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+                  )}
+                </ScrollView>
+              </View>
             )}
           </View>
 
@@ -369,7 +455,7 @@ export default function EditProductScreen({ route, navigation }) {
                 placeholder="e.g., 1"
                 placeholderTextColor="#A0A8B8"
                 value={quantity}
-                onChangeText={setQuantity}
+                onChangeText={handleQuantityChange}
                 keyboardType="numeric"
               />
             </View>

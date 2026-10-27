@@ -28,7 +28,10 @@ export async function verifyAuth(request) {
     
     return { user: { ...decoded, is_suspended: user.is_suspended, role: user.role } };
   } catch (error) {
-    return { error: 'Token is not valid' };
+    if (error.name === 'TokenExpiredError') {
+      return { error: 'Token expired', status: 401, isExpired: true };
+    }
+    return { error: 'Token is not valid', status: 401 };
   }
 }
 

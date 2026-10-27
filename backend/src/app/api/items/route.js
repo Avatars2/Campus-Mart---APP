@@ -97,7 +97,14 @@ export async function GET(request) {
 
     await connectDB();
 
-    let query = { is_active: true };
+    let query = {
+      is_active: true,
+      is_suspended: { $ne: true },
+      marked_sold_at: null,
+      $nor: [
+        { listing_type: { $ne: 'rent' }, quantity: { $lte: 0 } }
+      ]
+    };
 
     if (search) {
       query.$or = [
@@ -146,12 +153,25 @@ export async function GET(request) {
     let sortOptions = { createdAt: -1 };
     if (sort === 'trending') {
       sortOptions = { average_rating: -1, ratings_count: -1, createdAt: -1 };
+    } else if (sort === 'price_asc') {
+      sortOptions = { price: 1, createdAt: -1 };
+    } else if (sort === 'price_desc') {
+      sortOptions = { price: -1, createdAt: -1 };
+    } else if (sort === 'recent' || sort === 'newest') {
+      sortOptions = { createdAt: -1 };
     }
 
-    const items = await Item.find(query)
+    const limitParam = searchParams.get('limit');
+    let itemsQuery = Item.find(query)
       .populate('category_id', 'name')
       .populate('seller_id', 'full_name profile_photo_url phone')
       .sort(sortOptions);
+
+    if (limitParam) {
+      itemsQuery = itemsQuery.limit(parseInt(limitParam, 10));
+    }
+
+    const items = await itemsQuery;
 
     const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
     const rentedItemIds = await Order.find({

@@ -45,7 +45,7 @@ async function finalizeReservations(payment) {
         },
         $pull: { reserved_payment_ids: payment._id.toString() },
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (item && item.quantity <= 0) {
       item.is_active = false;
@@ -143,7 +143,7 @@ export async function markPaymentCaptured(payment, providerPayment) {
         failure_reason: lateCapture ? 'Payment was captured after its five-minute checkout window' : null,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   );
   if (!capturedPayment) {
     const latestPayment = await Payment.findById(payment._id);
@@ -182,7 +182,7 @@ export async function markPaymentFailed(payment, reason, status = 'failed') {
   const updatedPayment = await Payment.findOneAndUpdate(
     { _id: payment._id, status: { $in: pendingPaymentStatuses } },
     { $set: { status, failure_reason: reason } },
-    { new: true }
+    { returnDocument: 'after' }
   );
   if (!updatedPayment) return Payment.findById(payment._id);
   await releaseReservations(updatedPayment);

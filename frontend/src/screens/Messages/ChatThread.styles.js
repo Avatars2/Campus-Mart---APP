@@ -272,7 +272,7 @@ export default StyleSheet.create({
   },
   attachMenuItem: {
     alignItems: 'center',
-    width: '33.33%',
+    width: '25%',
     marginBottom: 16,
   },
   attachMenuIconContainer: {
@@ -451,9 +451,24 @@ export default StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   locPinOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -20,
+    marginTop: -40,
+    zIndex: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationPinPreviewOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -18,
+    marginTop: -36,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   locFallbackContainer: {
     flex: 1,

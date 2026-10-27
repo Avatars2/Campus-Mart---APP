@@ -1,41 +1,61 @@
 import { isRunningInExpoGo } from 'expo';
 import * as WebBrowser from 'expo-web-browser';
-import { AppState, Platform } from 'react-native';
-
-function waitForAppToBecomeActive(timeoutMs = 5 * 60 * 1000) {
-  return new Promise((resolve, reject) => {
-    let leftApp = AppState.currentState !== 'active';
-    const timeout = setTimeout(() => {
-      subscription.remove();
-      reject(new Error('Payment page did not return to CampusMart. Reopen the app and check Orders before retrying.'));
-    }, timeoutMs);
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') {
-        leftApp = true;
-      } else if (leftApp) {
-        clearTimeout(timeout);
-        subscription.remove();
-        resolve();
-      }
-    });
-  });
-}
+import { getBaseUrl } from '../api/client';
 
 export default async function openRazorpayCheckout(options) {
   if (isRunningInExpoGo()) {
-    if (!options.hosted_checkout_url) {
-      throw new Error('Razorpay hosted checkout URL is missing. Please try again.');
+    const apiBase = getBaseUrl();
+    const params = new URLSearchParams();
+    if (options.key) params.append('key_id', options.key);
+    if (options.order_id) params.append('order_id', options.order_id);
+    if (options.amount) params.append('amount', options.amount);
+    if (options.currency) params.append('currency', options.currency);
+    if (options.name) params.append('name', options.name);
+    if (options.description) params.append('description', options.description);
+    params.append('redirect_url', 'campusmart://payment-complete');
+
+    // Always use unified Razorpay Checkout web modal endpoint so mobile gets the exact same UI and Order ID as web
+    const checkoutUrlString = `${apiBase}/payments/checkout-page?${params.toString()}`;
+
+    const redirectUrl = 'campusmart://payment-complete';
+    let browserResult;
+    try {
+      browserResult = await WebBrowser.openAuthSessionAsync(checkoutUrlString, redirectUrl);
+    } catch (e) {
+      browserResult = await WebBrowser.openBrowserAsync(checkoutUrlString, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        showTitle: true,
+        enableBarCollapsing: false,
+      });
     }
-    const checkoutUrl = new URL(options.hosted_checkout_url);
-    if (checkoutUrl.protocol !== 'https:' || checkoutUrl.hostname !== 'rzp.io') {
-      throw new Error('Razorpay returned an invalid hosted checkout URL.');
+
+    if (browserResult.type === 'success' && browserResult.url) {
+      try {
+        const parsed = new URL(browserResult.url);
+        const pId = parsed.searchParams.get('razorpay_payment_id');
+        const oId = parsed.searchParams.get('razorpay_order_id') || options.order_id;
+        const sig = parsed.searchParams.get('razorpay_signature');
+        const status = parsed.searchParams.get('status');
+        const linkStatus = parsed.searchParams.get('razorpay_payment_link_status');
+
+        if (status === 'success' || linkStatus === 'paid' || pId) {
+          return {
+            hosted: true,
+            type: 'success',
+            razorpay_payment_id: pId || null,
+            razorpay_order_id: oId,
+            razorpay_signature: sig,
+          };
+        }
+        if (status === 'cancelled' || status === 'failed') {
+          return { hosted: true, type: 'cancel', error: parsed.searchParams.get('error') };
+        }
+      } catch (err) {
+        // ignore parse error
+      }
     }
-    const browserResult = await WebBrowser.openBrowserAsync(checkoutUrl.toString(), {
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-      showTitle: true,
-      enableBarCollapsing: false,
-    });
-    return { hosted: true, type: browserResult.type };
+
+    return { hosted: true, type: browserResult.type || 'cancel' };
   }
 
   const { default: RazorpayCheckout } = await import('react-native-razorpay');

@@ -60,10 +60,8 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const registerForPushNotificationsAsync = async () => {
-    // Remote push notifications (FCM) were removed from Expo Go in SDK 53+
-    // They work in standalone APK / production development builds
-    if (isExpoGo || !Notifications) {
-      console.log('Push notifications: Remote push notifications are disabled in Expo Go.');
+    // Remote push notifications (FCM) are for physical mobile devices (Android/iOS)
+    if (isExpoGo || !Notifications || Platform.OS === 'web') {
       return;
     }
 

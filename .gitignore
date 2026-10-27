@@ -2,3 +2,8 @@ node_modules/
 .env
 .DS_Store
 .expo/
+.next/
+scratch/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

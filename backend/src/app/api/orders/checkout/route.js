@@ -297,7 +297,6 @@ export async function POST(request) {
           referenceId: payment._id.toString(),
           description: `Campus Mart order ${payment._id.toString()}`,
           notes: { payment_id: payment._id.toString() },
-          expiresAt,
         });
         payment.razorpay_payment_link_id = paymentLink.id;
         payment.razorpay_payment_link_url = paymentLink.short_url;

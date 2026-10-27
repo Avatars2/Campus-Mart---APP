@@ -60,7 +60,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       const response = await client.post('/auth/login', { email: normalizedEmail, password });
-      await signIn(response.data.token, response.data.user);
+      await signIn(response.data.token, response.data.user, response.data.refreshToken);
     } catch (error) {
       setErrorMsg(error.response?.data?.error || 'Invalid email or password.');
     } finally {

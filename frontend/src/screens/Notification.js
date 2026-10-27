@@ -8,6 +8,7 @@ import {
   Animated,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import styles from './Notification.styles';
 import { useNotifications } from '../context/NotificationContext';
@@ -38,13 +39,13 @@ const Notification = () => {
       Animated.timing(titleFadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(titleSlideAnim, {
         toValue: 0,
         friction: 5,
         tension: 40,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   }, []);

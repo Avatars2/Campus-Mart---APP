@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated, Platform } from 'react-native';
 import styles from './Wishlist.styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
@@ -20,13 +20,13 @@ export default function Wishlist({ navigation }) {
       Animated.timing(titleFadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(titleSlideAnim, {
         toValue: 0,
         friction: 5,
         tension: 40,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       })
     ]).start();
   }, []);
@@ -210,7 +210,21 @@ export default function Wishlist({ navigation }) {
               <View style={styles.itemDetails}>
                 <TouchableOpacity onPress={() => handleOpenItem(item)} activeOpacity={0.75}>
                   <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>₹{item.price}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={styles.itemPrice}>₹{item.price}</Text>
+                    {Boolean(item.original_price && item.original_price > item.price) && (
+                      <>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' }}>
+                          ₹{item.original_price}
+                        </Text>
+                        <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, color: '#B45309', fontWeight: '800' }}>
+                            {Math.round(((item.original_price - item.price) / item.original_price) * 100)}% OFF
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 </TouchableOpacity>
 
                 <View style={styles.badgeRow}>

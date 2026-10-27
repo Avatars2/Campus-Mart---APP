@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
 import styles from './styles';
@@ -11,6 +11,18 @@ export default function AdminReportsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Manage Reasons Modal State
+  const [reasonsModalVisible, setReasonsModalVisible] = useState(false);
+  const [adminReasons, setAdminReasons] = useState([]);
+  const [reasonsLoading, setReasonsLoading] = useState(false);
+  const [newReasonTitle, setNewReasonTitle] = useState('');
+  const [submittingReason, setSubmittingReason] = useState(false);
+
+  // Custom Delete Confirmation Popup State
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [reasonToDelete, setReasonToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchReports();
@@ -32,6 +44,96 @@ export default function AdminReportsScreen({ navigation }) {
   const onRefresh = () => {
     setRefreshing(true);
     fetchReports();
+  };
+
+  const fetchAdminReasons = async () => {
+    setReasonsLoading(true);
+    try {
+      const response = await client.get('/admin/report-reasons');
+      setAdminReasons(response.data || []);
+    } catch (error) {
+      console.log('Error fetching admin report reasons:', error);
+      try {
+        const fallbackRes = await client.get('/report-reasons');
+        setAdminReasons(fallbackRes.data || []);
+      } catch (fallbackErr) {
+        if (Platform.OS === 'web') {
+          window.alert('Failed to load report reasons.');
+        } else {
+          Alert.alert('Error', 'Failed to load report reasons.');
+        }
+      }
+    } finally {
+      setReasonsLoading(false);
+    }
+  };
+
+  const openReasonsModal = () => {
+    setReasonsModalVisible(true);
+    fetchAdminReasons();
+  };
+
+  const handleAddReason = async () => {
+    if (!newReasonTitle.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter a report reason title.');
+      } else {
+        Alert.alert('Validation Error', 'Please enter a report reason title.');
+      }
+      return;
+    }
+
+    setSubmittingReason(true);
+    try {
+      const res = await client.post('/admin/report-reasons', {
+        title: newReasonTitle.trim(),
+      });
+
+      const created = res.data?.reason || res.data;
+      setAdminReasons(prev => [created, ...prev]);
+      setNewReasonTitle('');
+    } catch (error) {
+      console.error('Error creating report reason:', error);
+      const errMsg = error.response?.data?.error || 'Failed to add report reason.';
+      if (Platform.OS === 'web') {
+        window.alert(errMsg);
+      } else {
+        Alert.alert('Error', errMsg);
+      }
+    } finally {
+      setSubmittingReason(false);
+    }
+  };
+
+  const onRequestDelete = (item) => {
+    setReasonToDelete(item);
+    setDeleteConfirmVisible(true);
+  };
+
+  const confirmDeleteReason = async () => {
+    if (!reasonToDelete) return;
+    const reasonId = reasonToDelete._id || reasonToDelete.id;
+
+    setIsDeleting(true);
+    // Optimistically update list immediately
+    setAdminReasons(prev => prev.filter(r => (r._id || r.id) !== reasonId));
+    setDeleteConfirmVisible(false);
+
+    try {
+      await client.delete(`/admin/report-reasons/${reasonId}`);
+      setReasonToDelete(null);
+    } catch (error) {
+      console.error('Admin delete error, trying fallback:', error);
+      try {
+        await client.delete(`/report-reasons/${reasonId}`);
+        setReasonToDelete(null);
+      } catch (err2) {
+        console.error('Delete failed:', err2);
+        fetchAdminReasons();
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -222,7 +324,13 @@ export default function AdminReportsScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Report Management</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity 
+          style={styles.headerAddBtn} 
+          onPress={openReasonsModal}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
 
@@ -304,6 +412,170 @@ export default function AdminReportsScreen({ navigation }) {
         }
         ListFooterComponent={renderPagination}
       />
+
+      {/* Manage Reasons Modal */}
+      <Modal
+        visible={reasonsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setReasonsModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="settings-outline" size={20} color="#1E3A8A" />
+                <Text style={styles.modalTitle}>Report Reasons</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setReasonsModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Add New Reason Form */}
+              <View style={styles.addSectionCard}>
+                <Text style={styles.formLabel}>Add New Report Reason</Text>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <TextInput
+                    style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Enter reason (e.g. Inappropriate Behavior)..."
+                    placeholderTextColor="#94A3B8"
+                    value={newReasonTitle}
+                    onChangeText={setNewReasonTitle}
+                    editable={!submittingReason}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.submitReasonBtn,
+                      { paddingHorizontal: 16, height: 44 },
+                      (!newReasonTitle.trim() || submittingReason) && styles.submitReasonBtnDisabled
+                    ]}
+                    onPress={handleAddReason}
+                    disabled={!newReasonTitle.trim() || submittingReason}
+                  >
+                    {submittingReason ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="add" size={18} color="#FFFFFF" />
+                        <Text style={styles.submitReasonBtnText}>Add</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Active Reasons List */}
+              <View style={styles.listHeaderRow}>
+                <Text style={styles.listSectionTitle}>Existing Reasons</Text>
+                <View style={styles.badgeCount}>
+                  <Text style={styles.badgeCountText}>{adminReasons.length}</Text>
+                </View>
+              </View>
+
+              {reasonsLoading ? (
+                <View style={{ paddingVertical: 20 }}>
+                  <ActivityIndicator size="small" color="#1E3A8A" />
+                </View>
+              ) : adminReasons.length === 0 ? (
+                <View style={styles.emptyReasonsBox}>
+                  <Ionicons name="list-outline" size={32} color="#CBD5E1" />
+                  <Text style={styles.emptyReasonsText}>No report reasons configured yet.</Text>
+                </View>
+              ) : (
+                <View style={styles.reasonsScrollList}>
+                  {adminReasons.map((item) => {
+                    const reasonId = item._id || item.id;
+                    return (
+                      <View key={reasonId} style={styles.reasonRow}>
+                        <View style={styles.reasonLeft}>
+                          <Ionicons name="alert-circle-outline" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                          <Text style={styles.reasonTitleText} numberOfLines={2}>
+                            {item.title}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteReasonBtn}
+                          onPress={() => onRequestDelete(item)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Mobile-Style Delete Confirmation Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          if (!isDeleting) {
+            setDeleteConfirmVisible(false);
+            setReasonToDelete(null);
+          }
+        }}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIconCircle}>
+              <Ionicons name="trash" size={28} color="#DC2626" />
+            </View>
+
+            <Text style={styles.confirmTitle}>Delete Report Reason</Text>
+            
+            <Text style={styles.confirmMessage}>
+              Are you sure you want to delete{' '}
+              <Text style={styles.confirmReasonHighlight}>
+                "{reasonToDelete?.title}"
+              </Text>
+              ? Students will no longer see this reason option.
+            </Text>
+
+            <View style={styles.confirmBtnRow}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => {
+                  setDeleteConfirmVisible(false);
+                  setReasonToDelete(null);
+                }}
+                disabled={isDeleting}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmDeleteBtn}
+                onPress={confirmDeleteReason}
+                disabled={isDeleting}
+                activeOpacity={0.8}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.confirmDeleteText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -101,6 +101,7 @@ export async function POST(request) {
       ifsc_code,
       beneficiary_name,
       bank_name,
+      branch_name,
       upi_id,
       payout_method = 'bank_account',
     } = payload;
@@ -141,11 +142,28 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Enter the account holder name' }, { status: 400 });
     }
 
+    let resolvedBankName = bank_name || null;
+    let resolvedBranchName = branch_name || null;
+
+    try {
+      const ifscRes = await fetch(`https://ifsc.razorpay.com/${ifsc}`);
+      if (ifscRes.ok) {
+        const ifscData = await ifscRes.json();
+        resolvedBankName = ifscData.BANK || resolvedBankName;
+        resolvedBranchName = ifscData.BRANCH ? `${ifscData.BRANCH}${ifscData.CITY ? ', ' + ifscData.CITY : ''}` : resolvedBranchName;
+      } else if (ifscRes.status === 404) {
+        return NextResponse.json({ error: 'Invalid IFSC code: No matching bank branch found in RBI records.' }, { status: 400 });
+      }
+    } catch (ifscErr) {
+      console.log('IFSC verification lookup warning:', ifscErr.message);
+    }
+
     user.bank_account = {
       account_number: accNum,
       ifsc_code: ifsc,
       beneficiary_name: bName,
-      bank_name: bank_name || null,
+      bank_name: resolvedBankName,
+      branch_name: resolvedBranchName,
     };
     user.payout_method = 'bank_account';
     user.razorpay_account_status = 'activated';
@@ -155,10 +173,10 @@ export async function POST(request) {
       message: 'Bank account linked for payouts successfully!',
       account_status: 'activated',
       payouts_available: true,
+      bank_account: user.bank_account,
     }, { status: 200 });
   } catch (error) {
     console.error('Seller payout details update failed:', error);
     return NextResponse.json({ error: error.message || 'Could not update payout account' }, { status: 500 });
   }
 }
-

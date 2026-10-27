@@ -82,6 +82,7 @@ const userSchema = new mongoose.Schema({
     ifsc_code: { type: String, default: null },
     beneficiary_name: { type: String, default: null },
     bank_name: { type: String, default: null },
+    branch_name: { type: String, default: null },
   },
   upi_id: {
     type: String,
@@ -95,6 +96,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['bank_account', 'upi', 'none'],
     default: 'none',
+  },
+  failed_login_attempts: {
+    type: Number,
+    default: 0,
+  },
+  lock_until: {
+    type: Date,
+    default: null,
+  },
+  refresh_token: {
+    type: String,
+    default: null,
+  },
+  token_version: {
+    type: Number,
+    default: 0,
   },
 }, { timestamps: true });
 

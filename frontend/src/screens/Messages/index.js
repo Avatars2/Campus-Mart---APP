@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, TextInput, Animated, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, TextInput, Animated, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
@@ -32,13 +32,13 @@ const MessageList = () => {
       Animated.timing(titleFadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(titleSlideAnim, {
         toValue: 0,
         friction: 5,
         tension: 40,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       })
     ]).start();
   }, []);

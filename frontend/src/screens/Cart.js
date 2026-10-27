@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import styles from './Cart.styles';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
@@ -21,13 +21,13 @@ export default function Cart({ navigation }) {
       Animated.timing(titleFadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(titleSlideAnim, {
         toValue: 0,
         friction: 5,
         tension: 40,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       })
     ]).start();
   }, []);
@@ -121,6 +121,9 @@ export default function Cart({ navigation }) {
       listing_type: ci.item.listing_type,
       rental_period: ci.item.rental_period,
       seller_id: ci.item.seller_id?.id || ci.item.seller_id?._id || ci.item.seller_id,
+      seller_name: ci.item.seller_id?.full_name || ci.item.seller_name || 'Campus Seller',
+      seller_photo: ci.item.seller_id?.profile_photo_url || null,
+      images: ci.item.images || [],
     }));
 
     // Navigate to the Checkout screen

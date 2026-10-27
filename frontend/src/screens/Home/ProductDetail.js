@@ -75,7 +75,11 @@ export default function ProductDetailScreen({ route, navigation }) {
         price: item.price,
         listing_type: item.listing_type,
         rental_period: item.rental_period,
-        quantity: 1
+        quantity: 1,
+        seller_id: item.seller_id?.id || item.seller_id?._id || item.seller_id,
+        seller_name: item.seller_name || item.seller_id?.full_name || 'Campus Seller',
+        seller_photo: item.seller_photo || item.seller_id?.profile_photo_url || null,
+        images: item.images || [],
       }],
       fromCart: false
     });
@@ -182,6 +186,18 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Text style={styles.priceText}>{item.price}</Text>
             {item.listing_type === 'rent' && (
               <Text style={styles.rentalPeriodText}>/ {item.rental_period || 'day'}</Text>
+            )}
+            {Boolean(item.original_price && Number(item.original_price) > Number(item.price)) && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 10 }}>
+                <Text style={{ fontSize: 16, color: '#94A3B8', textDecorationLine: 'line-through', fontWeight: '500' }}>
+                  ₹{item.original_price}
+                </Text>
+                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#FDE68A' }}>
+                  <Text style={{ fontSize: 12, color: '#B45309', fontWeight: '800' }}>
+                    🔥 {Math.round(((item.original_price - item.price) / item.original_price) * 100)}% OFF
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
 

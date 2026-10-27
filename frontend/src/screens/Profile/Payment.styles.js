@@ -40,7 +40,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#F0FDFA',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
@@ -54,10 +54,10 @@ export default StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
 
-  // Active Payout Destination Card
+  // ── Active Payout Destination Card ──
   activeCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -68,6 +68,7 @@ export default StyleSheet.create({
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
       android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
     }),
   },
   activeCardTop: {
@@ -107,10 +108,12 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   cardEditBtnText: {
     fontSize: 12,
@@ -145,18 +148,17 @@ export default StyleSheet.create({
   },
   beneficiaryText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#64748B',
+    fontWeight: '600',
+    color: '#475569',
   },
 
-  // Setup prompt card (when not configured)
+  // ── Setup Payout Destination Banner ──
   setupCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFDF5',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: '#FEF3C7',
-    backgroundColor: '#FFFDF5',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -193,85 +195,126 @@ export default StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Stats / Overview Row
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
+  // ── Small Earnings Summary Table ──
+  summaryTable: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.03)' },
+    }),
   },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  summaryTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  summaryTableCellLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  summaryTableIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  summaryTableTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  summaryTableSubtext: {
+    fontSize: 11,
     color: '#64748B',
-    marginBottom: 4,
   },
-  statAmount: {
+  summaryTableDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 2,
+  },
+  summaryTableAmountCompleted: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  summaryTableAmountEscrow: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+
+  // ── Info Banner (Escrow Protection) ──
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  infoBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  infoBannerText: {
+    fontSize: 12,
+    color: '#115E59',
+    lineHeight: 17,
+  },
+
+  // ── Section Header Row ──
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionHeaderTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
   },
-
-  // Payment / Transfer History Card
-  historyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    flex: 1,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
-      android: { elevation: 2 },
-    }),
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  historyTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  historyCountBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  historyCountText: {
+  sectionHeaderCount: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#475569',
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 
-  // History Item Card
+  // ── Settlement History Cards ──
+  transfersCard: {
+    marginBottom: 32,
+  },
   transferItem: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     ...Platform.select({
-      web: { boxShadow: '0px 1px 4px rgba(0,0,0,0.03)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.03,
-        shadowRadius: 4,
-        elevation: 1,
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 1px 6px rgba(0,0,0,0.04)' },
     }),
   },
   transferItemLast: {
@@ -281,7 +324,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   transferTopLeft: {
     flexDirection: 'row',
@@ -300,7 +343,7 @@ export default StyleSheet.create({
     flex: 1,
   },
   transferAmount: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F172A',
     marginBottom: 2,
@@ -308,10 +351,6 @@ export default StyleSheet.create({
   transferDate: {
     fontSize: 11,
     color: '#64748B',
-  },
-  transferRef: {
-    fontSize: 11,
-    color: '#94A3B8',
   },
   payoutBadge: {
     paddingHorizontal: 10,
@@ -324,11 +363,11 @@ export default StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Item Details Box
+  // Item Details Box Inside Transfer Card
   transferItemsContainer: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    padding: 12,
     marginTop: 4,
     borderWidth: 1,
     borderColor: '#F1F5F9',
@@ -378,12 +417,12 @@ export default StyleSheet.create({
     textTransform: 'capitalize',
   },
   transferItemPrice: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
   },
 
-  // Buyer Details Box
+  // Buyer Details Box Inside Transfer Card
   transferBuyerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -417,36 +456,48 @@ export default StyleSheet.create({
   transferFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
     gap: 4,
-    paddingTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
+  transferRef: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
 
-  // Empty State
-  emptyState: {
+  // Loading & Empty States
+  loadingContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  emptyStateIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
+  loadingText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 10,
+  },
+  emptyContainer: {
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  emptyStateTitle: {
+  emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
+    marginTop: 12,
     marginBottom: 4,
   },
-  emptyStateSubtitle: {
+  emptySubtitle: {
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
@@ -531,11 +582,74 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#FFFFFF',
   },
+  inputWrapperValid: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  inputWrapperError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
   input: {
     flex: 1,
     paddingVertical: 12,
     fontSize: 14,
     color: '#0F172A',
+  },
+  ifscVerifyBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#E6F7F9',
+    borderWidth: 1,
+    borderColor: '#B2EBF2',
+    marginLeft: 8,
+  },
+  ifscVerifyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#007185',
+  },
+  verifiedBranchCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+  },
+  verifiedBranchTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  verifiedBranchBank: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#14532D',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  verifiedBranchText: {
+    fontSize: 12,
+    color: '#166534',
+    lineHeight: 16,
+  },
+  inputFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  inputFeedbackValid: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  inputFeedbackError: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '500',
   },
   verifiedMessage: {
     flexDirection: 'row',

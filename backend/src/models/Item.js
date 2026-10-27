@@ -23,6 +23,10 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  original_price: {
+    type: Number,
+    default: null,
+  },
   quantity: {
     type: Number,
     required: true,

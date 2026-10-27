@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Modal, FlatList, Switch, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import styles from './AddProduct.styles';
+
+const DRAFT_KEY = '@campusmart_sell_draft';
 
 export default function AddProductScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -31,12 +34,128 @@ export default function AddProductScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [isActive, setIsActive] = useState(true);
 
+  // Draft state
+  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  const [draftData, setDraftData] = useState(null);
+  const [draftSavedToast, setDraftSavedToast] = useState(false);
+  const isRestoredRef = useRef(false);
+
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [conditionModalVisible, setConditionModalVisible] = useState(false);
 
   useEffect(() => {
     fetchCategories();
+    checkForDraft();
   }, []);
+
+  const checkForDraft = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.name || parsed.description || parsed.price || (parsed.imageUris && parsed.imageUris.length > 0)) {
+          setDraftData(parsed);
+          setDraftBannerVisible(true);
+        }
+      }
+    } catch (err) {
+      console.log('Error reading draft:', err);
+    }
+  };
+
+  const restoreDraft = () => {
+    if (!draftData) return;
+    isRestoredRef.current = true;
+    if (draftData.name) setName(draftData.name);
+    if (draftData.description) setDescription(draftData.description);
+    if (draftData.price) setPrice(draftData.price);
+    if (draftData.quantity) setQuantity(draftData.quantity);
+    if (draftData.listingType) setListingType(draftData.listingType);
+    if (draftData.rentalPeriod) setRentalPeriod(draftData.rentalPeriod);
+    if (draftData.condition) setCondition(draftData.condition);
+    if (draftData.category) setCategory(draftData.category);
+    if (draftData.imageUris && draftData.imageUris.length > 0) {
+      setImageUris(draftData.imageUris);
+    }
+    setDraftBannerVisible(false);
+  };
+
+  const discardDraft = async () => {
+    try {
+      await AsyncStorage.removeItem(DRAFT_KEY);
+      setDraftBannerVisible(false);
+      setDraftData(null);
+    } catch (err) {
+      console.log('Error discarding draft:', err);
+    }
+  };
+
+  // Debounced Auto-Save Draft
+  useEffect(() => {
+    if (!name.trim() && !description.trim() && !price && imageUris.length === 0) return;
+    const timer = setTimeout(async () => {
+      try {
+        await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({
+          name,
+          description,
+          price,
+          quantity,
+          listingType,
+          rentalPeriod,
+          condition,
+          category,
+          imageUris,
+          savedAt: Date.now(),
+        }));
+      } catch (err) {
+        // ignore
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [name, description, price, quantity, listingType, rentalPeriod, condition, category, imageUris]);
+
+  const handleManualSaveDraft = async () => {
+    try {
+      await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({
+        name,
+        description,
+        price,
+        quantity,
+        listingType,
+        rentalPeriod,
+        condition,
+        category,
+        imageUris,
+        savedAt: Date.now(),
+      }));
+      setDraftSavedToast(true);
+      setTimeout(() => setDraftSavedToast(false), 2200);
+    } catch (err) {
+      Alert.alert('Save Draft', 'Failed to save draft locally.');
+    }
+  };
+
+  // Reorder & Primary Thumbnail Controls
+  const makePrimary = (index) => {
+    if (index === 0) return;
+    setImageUris(prev => {
+      const selected = prev[index];
+      const remaining = prev.filter((_, i) => i !== index);
+      return [selected, ...remaining];
+    });
+  };
+
+  const moveImage = (index, direction) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= imageUris.length) return;
+    setImageUris(prev => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIdx];
+      updated[targetIdx] = temp;
+      return updated;
+    });
+  };
 
   const fetchCategories = async () => {
     try {
@@ -171,6 +290,9 @@ export default function AddProductScreen({ navigation }) {
           'Content-Type': 'multipart/form-data',
         },
       });
+
+      // Clear draft on successful listing creation
+      await AsyncStorage.removeItem(DRAFT_KEY);
       
       navigation.goBack();
     } catch (error) {
@@ -193,7 +315,24 @@ export default function AddProductScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color="#0F1111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add<Text style={{ color: '#007185' }}>Item</Text></Text>
+
+        <TouchableOpacity 
+          style={styles.saveDraftHeaderBtn} 
+          onPress={handleManualSaveDraft}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="bookmark-outline" size={14} color="#0369A1" />
+          <Text style={styles.saveDraftHeaderBtnText}>Save Draft</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Floating Draft Saved Toast */}
+      {draftSavedToast && (
+        <View style={styles.draftSavedToast}>
+          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+          <Text style={styles.draftSavedToastText}>Draft saved locally on this device</Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"} 
@@ -201,6 +340,27 @@ export default function AddProductScreen({ navigation }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
+          {/* Resume Draft Banner */}
+          {draftBannerVisible && draftData && (
+            <View style={styles.draftBanner}>
+              <Ionicons name="document-text" size={22} color="#1D4ED8" style={{ marginTop: 2 }} />
+              <View style={styles.draftBannerContent}>
+                <Text style={styles.draftBannerTitle}>Resume Unfinished Draft?</Text>
+                <Text style={styles.draftBannerSubtitle}>
+                  You have an unsaved draft for "{draftData.name || 'Untitled item'}".
+                </Text>
+                <View style={styles.draftBannerActions}>
+                  <TouchableOpacity style={styles.draftResumeBtn} onPress={restoreDraft} activeOpacity={0.8}>
+                    <Text style={styles.draftResumeBtnText}>Resume Draft</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.draftDiscardBtn} onPress={discardDraft} activeOpacity={0.7}>
+                    <Text style={styles.draftDiscardBtnText}>Discard</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
           <Text style={[styles.sectionTitle, styles.sectionTitleFirst]}>Status</Text>
           <View style={styles.toggleContainer}>
             <View style={styles.toggleTextContainer}>
@@ -224,25 +384,69 @@ export default function AddProductScreen({ navigation }) {
                 <Text style={styles.imageUploadSubtext}>Add up to 5 photos of your item</Text>
               </TouchableOpacity>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageListContainer}>
-                {imageUris.map((uri, index) => (
-                  <View key={index} style={styles.imageContainer}>
-                    <TouchableOpacity style={styles.removeImageButton} onPress={() => removeImage(index)}>
-                      <Ionicons name="close" size={16} color="#DC2626" />
+              <View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageListContainer}>
+                  {imageUris.map((uri, index) => {
+                    const isPrimary = index === 0;
+                    return (
+                      <View key={index} style={styles.imageContainer}>
+                        {/* Remove Image Button */}
+                        <TouchableOpacity style={styles.removeImageButton} onPress={() => removeImage(index)}>
+                          <Ionicons name="close" size={16} color="#DC2626" />
+                        </TouchableOpacity>
+
+                        {/* Primary Badge or Make Primary Button */}
+                        {isPrimary ? (
+                          <View style={styles.primaryBadge}>
+                            <Text style={styles.primaryBadgeText}>⭐ Cover Photo</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity 
+                            style={styles.makePrimaryBtn} 
+                            onPress={() => makePrimary(index)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.makePrimaryBtnText}>Make Primary</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Reorder Left Arrow (if index > 0) */}
+                        {index > 0 && (
+                          <TouchableOpacity 
+                            style={styles.imageArrowBtnLeft} 
+                            onPress={() => moveImage(index, -1)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="chevron-back" size={14} color="#0F1111" />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Reorder Right Arrow (if index < imageUris.length - 1) */}
+                        {index < imageUris.length - 1 && (
+                          <TouchableOpacity 
+                            style={styles.imageArrowBtnRight} 
+                            onPress={() => moveImage(index, 1)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="chevron-forward" size={14} color="#0F1111" />
+                          </TouchableOpacity>
+                        )}
+
+                        <Image source={{ uri }} style={styles.previewImage} />
+                      </View>
+                    );
+                  })}
+                  {imageUris.length < 5 && (
+                    <TouchableOpacity 
+                      style={[styles.imageUploadBox, { width: 100, height: 100, marginBottom: 0 }]} 
+                      onPress={handleAddPhoto} 
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add" size={32} color="#007185" />
                     </TouchableOpacity>
-                    <Image source={{ uri }} style={styles.previewImage} />
-                  </View>
-                ))}
-                {imageUris.length < 5 && (
-                  <TouchableOpacity 
-                    style={[styles.imageUploadBox, { width: 100, height: 100, marginBottom: 0 }]} 
-                    onPress={handleAddPhoto} 
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="add" size={32} color="#007185" />
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+                  )}
+                </ScrollView>
+              </View>
             )}
           </View>
 
@@ -356,8 +560,6 @@ export default function AddProductScreen({ navigation }) {
               <Ionicons name="chevron-down" size={20} color="#8792A2" />
             </TouchableOpacity>
           </View>
-
-
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Condition</Text>

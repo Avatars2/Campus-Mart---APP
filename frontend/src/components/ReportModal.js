@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +10,35 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
   const [description, setDescription] = useState('');
   const [proofImage, setProofImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reasons, setReasons] = useState([]);
+  const [loadingReasons, setLoadingReasons] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      fetchReasons();
+    } else {
+      setReason('');
+      setDescription('');
+      setProofImage(null);
+    }
+  }, [visible, targetType]);
+
+  const fetchReasons = async () => {
+    setLoadingReasons(true);
+    try {
+      const response = await client.get('/report-reasons');
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setReasons(response.data.map(item => item.title));
+      } else {
+        setReasons(['Harassment/Abuse', 'Scam/Fraud', 'Spam', 'Inappropriate Profile', 'Other']);
+      }
+    } catch (error) {
+      console.log('Failed to fetch admin report reasons, using defaults:', error);
+      setReasons(['Harassment/Abuse', 'Scam/Fraud', 'Spam', 'Inappropriate Profile', 'Other']);
+    } finally {
+      setLoadingReasons(false);
+    }
+  };
 
   const pickImage = async () => {
     try {
@@ -26,10 +55,6 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
       Alert.alert('Error', 'Failed to pick image');
     }
   };
-
-  const ITEM_REASONS = ['Counterfeit/Fake', 'Prohibited Item', 'Inaccurate Description', 'Scam', 'Other'];
-  const USER_REASONS = ['Harassment/Abuse', 'Scam/Fraud', 'Spam', 'Inappropriate Profile', 'Other'];
-  const reasons = targetType === 'item' ? ITEM_REASONS : USER_REASONS;
 
   const handleSubmit = async () => {
     if (!reason) {
@@ -94,18 +119,24 @@ export default function ReportModal({ visible, onClose, targetId, targetType, ta
             </Text>
 
             <Text style={styles.label}>Select a Reason <Text style={styles.requiredStar}>*</Text></Text>
-            <View style={styles.reasonsContainer}>
-              {reasons.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.reasonChip, reason === r && styles.reasonChipActive]}
-                  onPress={() => setReason(r)}
-                  disabled={loading}
-                >
-                  <Text style={[styles.reasonChipText, reason === r && styles.reasonChipTextActive]}>{r}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {loadingReasons ? (
+              <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#DC2626" />
+              </View>
+            ) : (
+              <View style={styles.reasonsContainer}>
+                {reasons.map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.reasonChip, reason === r && styles.reasonChipActive]}
+                    onPress={() => setReason(r)}
+                    disabled={loading}
+                  >
+                    <Text style={[styles.reasonChipText, reason === r && styles.reasonChipTextActive]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             <Text style={styles.label}>Additional Details</Text>
             <TextInput

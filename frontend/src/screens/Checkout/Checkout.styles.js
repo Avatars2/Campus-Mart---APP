@@ -258,5 +258,226 @@ export default StyleSheet.create({
     color: '#111',
     fontSize: 15,
     fontWeight: '600',
-  }
+  },
+
+  // Multi-seller notice banner
+  multiSellerNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+  },
+  multiSellerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0369A1',
+    marginBottom: 2,
+  },
+  multiSellerText: {
+    fontSize: 12,
+    color: '#0C4A6E',
+    lineHeight: 16,
+  },
+
+  // Seller Group Card
+  sellerGroupCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#D5D9D9',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  sellerGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  sellerInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  sellerAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  sellerAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellerSubOrderTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#007185',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sellerNameText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F1111',
+  },
+  sellerSubtotalBadge: {
+    backgroundColor: '#E6F5F5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#99D6D9',
+  },
+  sellerSubtotalText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#007185',
+  },
+
+  // Seller Items List
+  sellerItemsList: {
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  sellerItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  itemThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    resizeMode: 'cover',
+  },
+  itemThumbPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemInfoCol: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  itemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F1111',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  itemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  itemMetaText: {
+    fontSize: 12,
+    color: '#565959',
+  },
+  itemDot: {
+    fontSize: 10,
+    color: '#CBD5E1',
+  },
+  itemPriceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B12704',
+  },
+  itemDurationText: {
+    fontSize: 12,
+    color: '#007185',
+    fontWeight: '600',
+  },
+  itemTotalCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingTop: 2,
+  },
+  itemTotalText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F1111',
+  },
+
+  // Duration controls
+  durationSelector: {
+    backgroundColor: '#F0F8FA',
+    borderRadius: 6,
+    padding: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#D5D9D9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  durationLabel: {
+    color: '#0F1111',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  durationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  durationBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D5D9D9',
+  },
+  durationValue: {
+    minWidth: 28,
+    textAlign: 'center',
+    color: '#0F1111',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Seller Handoff Note
+  sellerHandoffNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 6,
+  },
+  sellerHandoffText: {
+    fontSize: 11,
+    color: '#007185',
+    fontWeight: '500',
+    flex: 1,
+  },
 });

@@ -8,7 +8,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
-import * as Contacts from 'expo-contacts/legacy';
 import client from '../../api/client';
 import { Pusher } from 'pusher-js/react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +23,16 @@ if (Platform.OS !== 'web') {
   UrlTile = Maps.UrlTile;
 }
 
+const getTileUrl = (lat, lng, zoom = 16) => {
+  if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return null;
+  const latRad = (lat * Math.PI) / 180;
+  const n = Math.pow(2, zoom);
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+  return `https://a.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${x}/${y}.png`;
+};
+
+
 const ChatThread = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -35,8 +44,6 @@ const ChatThread = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [contactPickerVisible, setContactPickerVisible] = useState(false);
-  const [availableContacts, setAvailableContacts] = useState([]);
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
 
@@ -394,33 +401,6 @@ const ChatThread = () => {
     }
   };
 
-  const shareContact = async () => {
-    setShowAttachMenu(false);
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Please allow contacts access to share a contact.');
-      return;
-    }
-    
-    try {
-      const { data } = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.PhoneNumbers],
-      });
-      
-      const validContacts = data.filter(c => c.name && c.phoneNumbers && c.phoneNumbers.length > 0)
-                                .sort((a, b) => a.name.localeCompare(b.name));
-      
-      if (validContacts.length > 0) {
-        setAvailableContacts(validContacts);
-        setContactPickerVisible(true);
-      } else {
-        Alert.alert('No Contacts', 'Could not find any contacts with phone numbers on this device.');
-      }
-    } catch (error) {
-      console.error('Contact Error:', error);
-      Alert.alert('Error', 'Could not fetch contacts.');
-    }
-  };
 
   const chooseImage = async () => {
     setShowAttachMenu(false);
@@ -635,16 +615,14 @@ const ChatThread = () => {
           activeOpacity={0.85}
         >
           <View style={styles.locationMapPreview}>
-            {/* Grid lines for map-like background */}
-            <View style={styles.locationGridContainer}>
-              {[0, 1, 2, 3, 4].map(i => (
-                <View key={`h${i}`} style={[styles.locationGridLineH, { top: `${i * 25}%` }]} />
-              ))}
-              {[0, 1, 2, 3, 4].map(i => (
-                <View key={`v${i}`} style={[styles.locationGridLineV, { left: `${i * 25}%` }]} />
-              ))}
+            <Image
+              source={{ uri: getTileUrl(lat, lng, 16) }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="cover"
+            />
+            <View style={styles.locationPinPreviewOverlay} pointerEvents="none">
+              <Ionicons name="location" size={36} color="#DC2626" />
             </View>
-            <Ionicons name="location" size={40} color="#DC2626" style={{ marginBottom: 8 }} />
           </View>
           <View style={styles.locationDetails}>
             <Text style={styles.locationTitle}>📍 Shared Location</Text>
@@ -850,9 +828,7 @@ const ChatThread = () => {
                 { icon: 'document', color: '#5F66CD', label: 'Document', onPress: chooseFile },
                 { icon: 'camera', color: '#D3396D', label: 'Camera', onPress: openCamera },
                 { icon: 'image', color: '#AC44CF', label: 'Gallery', onPress: chooseImage },
-                { icon: 'headset', color: '#E95922', label: 'Audio', onPress: () => { setShowAttachMenu(false); Alert.alert('Coming Soon', 'Audio feature is not yet implemented.'); } },
                 { icon: 'location', color: '#1DA661', label: 'Location', onPress: shareLocation },
-                { icon: 'person', color: '#0A82E0', label: 'Contact', onPress: shareContact },
               ].map((item, idx) => (
                 <TouchableOpacity key={idx} style={styles.attachMenuItem} onPress={item.onPress}>
                   <View style={[styles.attachMenuIconContainer, { backgroundColor: item.color }]}>
@@ -969,44 +945,6 @@ const ChatThread = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Contact Picker Modal */}
-      <Modal visible={contactPickerVisible} transparent animationType="slide" onRequestClose={() => setContactPickerVisible(false)}>
-        <View style={styles.contactModalOverlay}>
-          <View style={styles.contactModalContainer}>
-            <View style={styles.contactModalHeader}>
-              <Text style={styles.contactModalTitle}>Select Contact</Text>
-              <TouchableOpacity onPress={() => setContactPickerVisible(false)} style={{ padding: 4 }}>
-                <Ionicons name="close" size={24} color="#565959" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={availableContacts}
-              keyExtractor={(item, index) => item.id || String(index)}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.contactItemContainer}
-                  onPress={() => {
-                    const text = `ðŸ‘¤ Contact: ${item.name}\nðŸ“ž ${item.phoneNumbers[0].number}`;
-                    setInputText(prev => prev ? `${prev}\n${text}` : text);
-                    setContactPickerVisible(false);
-                  }}
-                >
-                  <View style={styles.contactIconWrapper}>
-                    <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>
-                      {item.name ? item.name.charAt(0).toUpperCase() : '#'}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={styles.contactName}>{item.name}</Text>
-                    <Text style={styles.contactPhone}>{item.phoneNumbers[0].number}</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-
       {/* Location Picker Modal */}
       <Modal visible={locationPickerVisible} animationType="slide" transparent={false} onRequestClose={() => setLocationPickerVisible(false)}>
         <View style={styles.locModalContainer}>
@@ -1031,12 +969,12 @@ const ChatThread = () => {
           </View>
           
           {/* Map Area - fills all available space */}
-          <View style={{ flex: 1, backgroundColor: '#E8E8E8' }}>
+          <View style={{ flex: 1, backgroundColor: '#E8E8E8', position: 'relative', overflow: 'hidden' }}>
             {currentLocation && MapView ? (
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, width: '100%', height: '100%', position: 'relative' }}>
                 <MapView
-                  style={StyleSheet.absoluteFillObject}
-                  mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+                  style={{ width: '100%', height: '100%' }}
+                  mapType="standard"
                   initialRegion={{
                     latitude: currentLocation.coords.latitude,
                     longitude: currentLocation.coords.longitude,
@@ -1047,24 +985,31 @@ const ChatThread = () => {
                     setSelectedMapRegion(region);
                   }}
                 >
-                  {Platform.OS === 'android' && UrlTile && (
+                  {UrlTile && (
                     <UrlTile
-                      urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
                       maximumZ={19}
                       flipY={false}
+                      tileSize={256}
+                      zIndex={1}
                     />
                   )}
                 </MapView>
                 {/* Center pin overlay */}
-                <View style={[styles.locPinOverlay, { pointerEvents: 'none' }]}>
+                <View style={styles.locPinOverlay} pointerEvents="none">
                   <Ionicons name="location" size={40} color="#DC2626" />
                 </View>
               </View>
             ) : currentLocation ? (
-              <View style={styles.locFallbackContainer}>
-                <Ionicons name="map" size={80} color="#B0B7C3" />
-                <Text style={styles.locFallbackTitle}>Location acquired</Text>
-                <Text style={styles.locFallbackSubtitle}>Map preview not available</Text>
+              <View style={{ flex: 1, width: '100%', height: '100%', position: 'relative' }}>
+                <Image
+                  source={{ uri: getTileUrl(currentLocation.coords.latitude, currentLocation.coords.longitude, 16) }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+                <View style={styles.locPinOverlay} pointerEvents="none">
+                  <Ionicons name="location" size={40} color="#DC2626" />
+                </View>
               </View>
             ) : (
               <View style={styles.locFallbackContainer}>

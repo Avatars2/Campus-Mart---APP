@@ -70,10 +70,24 @@ export default function SellerStore({ route, navigation }) {
         
         <View style={homeStyles.itemDetails}>
           <Text style={homeStyles.itemName} numberOfLines={2}>{item.name}</Text>
-          <Text style={homeStyles.itemPrice}>
-            <Text style={{ fontSize: 13, fontWeight: 'normal' }}>₹</Text>{item.price}
-            {item.listing_type === 'rent' ? <Text style={{ fontSize: 12, fontWeight: 'normal', color: '#565959' }}> / {item.rental_period || 'day'}</Text> : ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={homeStyles.itemPrice}>
+              <Text style={{ fontSize: 13, fontWeight: 'normal' }}>₹</Text>{item.price}
+              {item.listing_type === 'rent' ? <Text style={{ fontSize: 12, fontWeight: 'normal', color: '#565959' }}> / {item.rental_period || 'day'}</Text> : ''}
+            </Text>
+            {Boolean(item.original_price && Number(item.original_price) > Number(item.price)) && (
+              <>
+                <Text style={{ fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' }}>
+                  ₹{item.original_price}
+                </Text>
+                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, color: '#B45309', fontWeight: '800' }}>
+                    {Math.round(((item.original_price - item.price) / item.original_price) * 100)}% OFF
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
 
           <View style={homeStyles.ratingRow}>
             <RatingStars value={item.average_rating} count={item.ratings_count} size={13} />

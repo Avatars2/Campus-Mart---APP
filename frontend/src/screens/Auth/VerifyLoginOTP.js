@@ -46,7 +46,7 @@ export default function VerifyLoginOTPScreen({ route, navigation }) {
     setLoading(true);
     try {
       const response = await client.post('/auth/verify-login-otp', { email, otp });
-      await signIn(response.data.token, response.data.user);
+      await signIn(response.data.token, response.data.user, response.data.refreshToken);
     } catch (error) {
       setErrorMsg(error.response?.data?.error || 'Invalid or expired OTP.');
     } finally {

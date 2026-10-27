@@ -73,6 +73,16 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  rental_extensions: [{
+    extended_at: { type: Date, default: Date.now },
+    extension_duration: { type: Number, required: true },
+    extension_period: { type: String, default: 'day' },
+    cost: { type: Number, required: true },
+    previous_due_at: { type: Date },
+    new_due_at: { type: Date },
+    payment_method: { type: String, default: 'Razorpay' },
+    payment_id: { type: String, default: null }
+  }],
   buyer_rating: {
     type: Number,
     min: 0.5,

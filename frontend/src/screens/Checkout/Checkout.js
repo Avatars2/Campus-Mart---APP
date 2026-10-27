@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, Image } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import styles from './Checkout.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +29,26 @@ export default function Checkout({ route, navigation }) {
   const total = checkoutItems.reduce((sum, item, index) => sum + getItemTotal(item, index), 0);
   const deliveryMessage = 'Discuss with seller via Messages';
 
+  const sellerGroups = useMemo(() => {
+    const map = new Map();
+    checkoutItems.forEach((item, index) => {
+      const sId = String(item.seller_id || `seller_${index}`);
+      if (!map.has(sId)) {
+        map.set(sId, {
+          sellerId: sId,
+          sellerName: item.seller_name || 'Campus Seller',
+          sellerPhoto: item.seller_photo || null,
+          items: [],
+          subtotal: 0,
+        });
+      }
+      const group = map.get(sId);
+      group.items.push({ item, index });
+      group.subtotal += getItemTotal(item, index);
+    });
+    return Array.from(map.values());
+  }, [checkoutItems, rentalDurations]);
+
   const updateRentalDuration = (item, index, change) => {
     const key = getItemKey(item, index);
     setRentalDurations((current) => ({
@@ -39,9 +59,6 @@ export default function Checkout({ route, navigation }) {
 
   const handleConfirmOrder = async () => {
     if (checkoutItems.length === 0) return;
-    const useHostedCheckout = paymentMethod === 'Razorpay'
-      && Platform.OS !== 'web'
-      && isRunningInExpoGo();
     setLoading(true);
     setErrorMessage(null);
     let currentPaymentId = null;
@@ -55,7 +72,7 @@ export default function Checkout({ route, navigation }) {
         payment_method: paymentMethod,
         delivery_address: deliveryMessage,
         from_cart: fromCart,
-        ...(paymentMethod === 'Razorpay' ? { checkout_mode: useHostedCheckout ? 'hosted' : 'standard' } : {}),
+        ...(paymentMethod === 'Razorpay' ? { checkout_mode: 'standard' } : {}),
         ...(paymentMethod === 'Razorpay' ? { idempotency_key: checkoutRequestKey } : {}),
       });
 
@@ -77,90 +94,65 @@ export default function Checkout({ route, navigation }) {
             modal: { confirm_close: true },
           });
 
-          if (checkoutResponse?.hosted) {
-            let statusResponse = null;
-            let isCaptured = false;
+          let isCaptured = false;
+          let verifiedOrders = [];
 
-            // Step 1: Quick check if already captured
+          // Step 1: If Razorpay credentials were returned, verify signature immediately
+          if (checkoutResponse?.razorpay_payment_id) {
             try {
-              statusResponse = await client.get(`/payments/status/${payment.id}`);
-              if (statusResponse?.data?.payment?.status === 'captured') {
+              const verification = await client.post('/payments/verify', {
+                payment_id: payment.id,
+                razorpay_order_id: checkoutResponse.razorpay_order_id || payment.razorpay_order_id,
+                razorpay_payment_id: checkoutResponse.razorpay_payment_id,
+                razorpay_signature: checkoutResponse.razorpay_signature,
+              });
+              if (verification.data?.payment?.status === 'captured') {
                 isCaptured = true;
+                verifiedOrders = verification.data.orders || [];
               }
-            } catch (e) {
-              // ignore
+            } catch (vErr) {
+              // Signature might be missing in redirect, fall through to status check
             }
+          }
 
-            // Step 2: If browser was closed/cancelled by user (e.g. clicked X cross button) without paying:
-            if (!isCaptured && (checkoutResponse?.type === 'cancel' || checkoutResponse?.type === 'dismiss')) {
-              // User cancelled checkout. Clean up pending payment session in background.
+          // Step 2: Query /payments/status to reconcile directly with Razorpay API
+          // This guarantees that if payment succeeded in Razorpay, it captures and confirms
+          if (!isCaptured) {
+            for (let attempt = 0; attempt < 6; attempt += 1) {
               try {
-                await client.post('/payments/cancel', { payment_id: payment.id });
-              } catch (cancelErr) {
-                // ignore
-              }
-              setCheckoutRequestKey(createCheckoutRequestKey());
-              setLoading(false);
-              // Stay directly on the Checkout / Payment screen!
-              return;
-            }
-
-            // Step 3: If not yet captured, poll for a few seconds to allow payment webhook/gateway confirmation
-            if (!isCaptured) {
-              for (let attempt = 0; attempt < 8; attempt += 1) {
-                try {
-                  statusResponse = await client.get(`/payments/status/${payment.id}`);
-                  if (statusResponse?.data?.payment?.status === 'captured') {
-                    isCaptured = true;
-                    break;
-                  }
-                  if (['failed', 'expired'].includes(statusResponse?.data?.payment?.status)) break;
-                } catch (e) {
-                  // Keep polling
+                const statusRes = await client.get(`/payments/status/${payment.id}`);
+                if (statusRes.data?.payment?.status === 'captured') {
+                  isCaptured = true;
+                  verifiedOrders = statusRes.data.orders || [];
+                  break;
                 }
-                await new Promise((resolve) => setTimeout(resolve, 1200));
+                if (['failed', 'expired', 'cancelled'].includes(statusRes.data?.payment?.status)) {
+                  break;
+                }
+              } catch (sErr) {
+                // keep checking
               }
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             }
+          }
 
-            if (isCaptured && statusResponse?.data?.orders?.length > 0) {
-              orders = statusResponse.data.orders;
-            } else {
-              if (statusResponse?.data?.payment?.status === 'needs_review') {
-                Alert.alert(
-                  'Payment Under Review',
-                  'Your payment was received and is under review. Please check your Purchases tab.'
-                );
-                setCheckoutRequestKey(createCheckoutRequestKey());
-                navigation.navigate('MainTabs', { screen: 'Buy', params: { tab: 'purchases' } });
-                return;
-              }
-
-              // Otherwise user cancelled or payment did not go through. Clean up and stay on checkout.
-              try {
-                await client.post('/payments/cancel', { payment_id: payment.id });
-              } catch (cancelErr) {
-                // ignore
-              }
-              setCheckoutRequestKey(createCheckoutRequestKey());
-              setLoading(false);
-              return;
+          // Step 3: If payment was captured, proceed to confirm order!
+          if (isCaptured) {
+            if (verifiedOrders.length > 0) {
+              orders = verifiedOrders;
             }
           } else {
-            const verification = await client.post('/payments/verify', {
-              payment_id: payment.id,
-              razorpay_order_id: checkoutResponse.razorpay_order_id,
-              razorpay_payment_id: checkoutResponse.razorpay_payment_id,
-              razorpay_signature: checkoutResponse.razorpay_signature,
-            });
-            if (verification.data.payment.status !== 'captured') {
-              Alert.alert(
-                'Payment processing',
-                'Razorpay is still confirming your payment. Check Purchases shortly; the order is not confirmed until capture succeeds.'
-              );
-              setCheckoutRequestKey(createCheckoutRequestKey());
-              return;
+            // Step 4: User cancelled without completing payment
+            if (currentPaymentId) {
+              try {
+                await client.post('/payments/cancel', { payment_id: currentPaymentId });
+              } catch (cancelErr) {
+                // ignore
+              }
             }
-            orders = verification.data.orders;
+            setCheckoutRequestKey(createCheckoutRequestKey());
+            setLoading(false);
+            return;
           }
         }
 
@@ -181,6 +173,18 @@ export default function Checkout({ route, navigation }) {
         setErrorMessage(`Unexpected response status: ${res.status}`);
       }
     } catch (error) {
+      if (error?.message === 'Payment was cancelled' || error?.message === 'Payment cancelled') {
+        if (currentPaymentId) {
+          try {
+            await client.post('/payments/cancel', { payment_id: currentPaymentId });
+          } catch (cancelError) {
+            // ignore
+          }
+        }
+        setCheckoutRequestKey(createCheckoutRequestKey());
+        setLoading(false);
+        return;
+      }
       console.error('Checkout error:', error.response?.data || error);
       if (paymentMethod === 'Razorpay') {
         if (currentPaymentId) {
@@ -222,52 +226,138 @@ export default function Checkout({ route, navigation }) {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
+        {/* Consolidated Order Summary Top Header */}
         <View style={styles.orderSummaryCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.orderSummaryTitle}>
               Pay <Text style={styles.orderSummaryPrice}>₹{total}</Text>
             </Text>
             <Text style={styles.orderSummarySubtitle}>
-              for {checkoutItems.length} item{checkoutItems.length > 1 ? 's' : ''}
+              Total for {checkoutItems.length} item{checkoutItems.length > 1 ? 's' : ''}
+              {sellerGroups.length > 1 ? ` · ${sellerGroups.length} Seller Packages` : ''}
             </Text>
-            {checkoutItems.map((item, index) => (
-              <View key={index} style={{ marginTop: 12 }}>
-                <Text style={{ fontSize: 13, color: '#0F1111', fontWeight: '500' }}>{item.name}</Text>
-                <Text style={{ fontSize: 12, color: '#555' }}>Qty: {item.quantity}{item.listing_type === 'rent' ? ` · ₹${item.price} / ${item.rental_period || 'day'}` : ''}</Text>
-                
-                {item.listing_type === 'rent' && (
-                  <View style={{ backgroundColor: '#F0F8FA', borderRadius: 8, padding: 8, marginTop: 6, borderWidth: 1, borderColor: '#D5D9D9' }}>
-                    <Text style={{ color: '#0F1111', fontSize: 12, fontWeight: '500', marginBottom: 6 }}>
-                      Duration ({item.rental_period || 'day'}s):
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <TouchableOpacity
-                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
-                        onPress={() => updateRentalDuration(item, index, -1)}
-                      >
-                        <Ionicons name="remove" size={16} color="#007185" />
-                      </TouchableOpacity>
-                      <Text style={{ minWidth: 40, textAlign: 'center', color: '#0F1111', fontSize: 14, fontWeight: '700' }}>
-                        {getRentalDuration(item, index)}
-                      </Text>
-                      <TouchableOpacity
-                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
-                        onPress={() => updateRentalDuration(item, index, 1)}
-                      >
-                        <Ionicons name="add" size={16} color="#007185" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))}
           </View>
         </View>
 
-        <View style={{ backgroundColor: '#E4F4EC', marginHorizontal: 16, padding: 12, borderRadius: 4, flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <Ionicons name="information-circle-outline" size={18} color="#0F1111" style={{ marginRight: 8 }} />
-          <Text style={{ color: '#007185', fontSize: 13 }}>Contact seller via Messages to arrange delivery.</Text>
-        </View>
+        {/* Multi-Seller Notice Banner */}
+        {sellerGroups.length > 1 && (
+          <View style={styles.multiSellerNotice}>
+            <Ionicons name="layers-outline" size={20} color="#007185" style={{ marginRight: 10, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.multiSellerTitle}>Multi-Seller Consolidated Order</Text>
+              <Text style={styles.multiSellerText}>
+                Your cart items are grouped into {sellerGroups.length} separate seller sub-orders. You make 1 single payment, and each seller fulfills their package independently.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Grouped Sub-Orders by Seller */}
+        <Text style={styles.sectionHeaderAmazon}>
+          {sellerGroups.length > 1 ? 'SELLER PACKAGES & SUB-ORDERS' : 'ITEM DETAILS'}
+        </Text>
+
+        {sellerGroups.map((group, groupIndex) => (
+          <View key={group.sellerId || groupIndex} style={styles.sellerGroupCard}>
+            {/* Seller Header */}
+            <View style={styles.sellerGroupHeader}>
+              <View style={styles.sellerInfoRow}>
+                {group.sellerPhoto ? (
+                  <Image source={{ uri: group.sellerPhoto }} style={styles.sellerAvatar} />
+                ) : (
+                  <View style={styles.sellerAvatarPlaceholder}>
+                    <Ionicons name="person" size={14} color="#007185" />
+                  </View>
+                )}
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={styles.sellerSubOrderTag}>
+                    {sellerGroups.length > 1 ? `Package ${groupIndex + 1} of ${sellerGroups.length}` : 'Campus Seller'}
+                  </Text>
+                  <Text style={styles.sellerNameText} numberOfLines={1}>
+                    Sold by {group.sellerName}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.sellerSubtotalBadge}>
+                <Text style={styles.sellerSubtotalText}>₹{group.subtotal}</Text>
+              </View>
+            </View>
+
+            {/* Items inside this seller sub-order */}
+            <View style={styles.sellerItemsList}>
+              {group.items.map(({ item, index }) => {
+                const itemImg = item.images && item.images.length > 0 ? item.images[0] : null;
+                const isRent = item.listing_type === 'rent';
+                const duration = getRentalDuration(item, index);
+                const itemSubtotal = getItemTotal(item, index);
+
+                return (
+                  <View key={getItemKey(item, index)} style={styles.sellerItemRow}>
+                    {itemImg ? (
+                      <Image source={{ uri: itemImg }} style={styles.itemThumb} />
+                    ) : (
+                      <View style={styles.itemThumbPlaceholder}>
+                        <Ionicons name="cube-outline" size={20} color="#94A3B8" />
+                      </View>
+                    )}
+                    <View style={styles.itemInfoCol}>
+                      <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                      <View style={styles.itemMetaRow}>
+                        <Text style={styles.itemMetaText}>
+                          Qty: {item.quantity || 1}
+                        </Text>
+                        <Text style={styles.itemDot}>•</Text>
+                        <Text style={styles.itemPriceText}>
+                          ₹{item.price}{isRent ? ` / ${item.rental_period || 'day'}` : ''}
+                        </Text>
+                        {isRent && (
+                          <>
+                            <Text style={styles.itemDot}>•</Text>
+                            <Text style={styles.itemDurationText}>{duration} {item.rental_period || 'day'}{duration > 1 ? 's' : ''}</Text>
+                          </>
+                        )}
+                      </View>
+
+                      {isRent && (
+                        <View style={styles.durationSelector}>
+                          <Text style={styles.durationLabel}>
+                            Duration ({item.rental_period || 'day'}s):
+                          </Text>
+                          <View style={styles.durationControls}>
+                            <TouchableOpacity
+                              style={styles.durationBtn}
+                              onPress={() => updateRentalDuration(item, index, -1)}
+                            >
+                              <Ionicons name="remove" size={14} color="#007185" />
+                            </TouchableOpacity>
+                            <Text style={styles.durationValue}>{duration}</Text>
+                            <TouchableOpacity
+                              style={styles.durationBtn}
+                              onPress={() => updateRentalDuration(item, index, 1)}
+                            >
+                              <Ionicons name="add" size={14} color="#007185" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.itemTotalCol}>
+                      <Text style={styles.itemTotalText}>₹{itemSubtotal}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Hand-off Notice for this sub-order */}
+            <View style={styles.sellerHandoffNote}>
+              <Ionicons name="chatbubbles-outline" size={15} color="#007185" />
+              <Text style={styles.sellerHandoffText} numberOfLines={1}>
+                Coordinate campus hand-off with {group.sellerName} via Messages
+              </Text>
+            </View>
+          </View>
+        ))}
 
         <Text style={styles.sectionHeaderAmazon}>RECOMMENDED</Text>
         <View style={styles.paymentCardGroup}>

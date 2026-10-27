@@ -1,4 +1,4 @@
-﻿import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 
 const buildEmailHtml = (otpCode, label) => {
   const isLogin = label === 'Login';
@@ -99,5 +99,60 @@ export const sendOTP = async (email, otpCode, label = 'Verification') => {
   } catch (error) {
     console.error('[Email] Sending error:', error.message || error);
     return { success: false, error: error.message || 'Failed to send email' };
+  }
+};
+
+export const sendAccountLockoutEmail = async (email, studentName = 'Student', minutesLocked = 15) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('[Email] Email credentials not configured, skipping lockout email');
+    return { success: false };
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: `"CampusMart Security" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: '⚠️ Security Alert: CampusMart Account Temporarily Locked',
+    html: `
+      <div style="font-family:'Segoe UI',Arial,sans-serif;background:#F8FAFC;padding:32px;color:#1E293B;">
+        <div style="max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:16px;padding:32px;border:1px solid #E2E8F0;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+          <div style="text-align:center;margin-bottom:20px;">
+            <div style="display:inline-block;background:#FEE2E2;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;">🔒</div>
+          </div>
+          <h2 style="color:#DC2626;text-align:center;margin:0 0 12px;font-size:20px;">Security Alert: Account Temporarily Locked</h2>
+          <p style="color:#475569;font-size:15px;line-height:1.6;">Hi ${studentName},</p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;">
+            Your CampusMart account has been temporarily locked for <strong>${minutesLocked} minutes</strong> after <strong>5 consecutive failed password attempts</strong>.
+          </p>
+          <div style="background:#FFF1F2;border-left:4px solid #E11D48;padding:12px 16px;border-radius:8px;margin:20px 0;">
+            <p style="margin:0;color:#9F1239;font-size:14px;font-weight:600;">
+              Your account will automatically unlock after ${minutesLocked} minutes.
+            </p>
+          </div>
+          <p style="color:#64748B;font-size:14px;line-height:1.6;">
+            If you forgot your password, you can reset it securely via the <em>"Forgot Password"</em> option in the CampusMart app once the cooldown finishes.
+          </p>
+          <p style="color:#94A3B8;font-size:12px;margin-top:28px;border-top:1px solid #F1F5F9;padding-top:16px;">
+            If this wasn't you, your account credentials may be compromised. Please reset your password immediately upon account unlocking.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`[Email] Account lockout notification sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Email] Failed to send lockout notification:', error.message || error);
+    return { success: false };
   }
 };

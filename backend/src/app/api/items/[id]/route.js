@@ -24,10 +24,6 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Item not found or unauthorized' }, { status: 404 });
     }
 
-    if (item.marked_sold_at || (item.listing_type !== 'rent' && item.quantity <= 0 && !item.is_active)) {
-      return NextResponse.json({ error: 'Sold items cannot be edited' }, { status: 400 });
-    }
-
     const formData = await request.formData();
     const name = formData.get('name');
     const description = formData.get('description');
@@ -39,7 +35,9 @@ export async function PUT(request, { params }) {
     const quantity = formData.get('quantity');
     const is_active = formData.get('is_active');
 
-    if (is_active === 'true') {
+    const willBeActive = is_active !== null && is_active !== undefined ? is_active === 'true' : item.is_active;
+
+    if (willBeActive) {
       const seller = await User.findById(seller_id)
         .select('+razorpay_account_id razorpay_account_status bank_account upi_id');
       const isPayoutReady = Boolean(
@@ -66,23 +64,66 @@ export async function PUT(request, { params }) {
       item.listing_type = listing_type;
       item.rental_period = listing_type === 'rent' ? rental_period : null;
     }
-    if (quantity !== null && quantity !== undefined) item.quantity = Number(quantity);
-    if (is_active !== null && is_active !== undefined) item.is_active = is_active === 'true';
+
+    const currentListingType = listing_type || item.listing_type;
+
+    if (quantity !== null && quantity !== undefined) {
+      const parsedQty = Number(quantity);
+      item.quantity = parsedQty;
+
+      if (currentListingType !== 'rent') {
+        if (parsedQty > 0) {
+          // Restocked: clear marked_sold_at and activate if requested
+          item.marked_sold_at = null;
+          if (is_active !== null && is_active !== undefined) {
+            item.is_active = is_active === 'true';
+          } else {
+            item.is_active = true;
+          }
+        } else {
+          // Zero quantity: item is sold out
+          item.is_active = false;
+          if (!item.marked_sold_at) {
+            item.marked_sold_at = new Date();
+          }
+        }
+      } else {
+        // Rental items
+        if (is_active !== null && is_active !== undefined) {
+          item.is_active = is_active === 'true';
+        }
+      }
+    } else if (is_active !== null && is_active !== undefined) {
+      // Quantity was not passed, only visibility changed
+      const activeBool = is_active === 'true';
+      item.is_active = activeBool;
+      if (activeBool && (currentListingType === 'rent' || item.quantity > 0)) {
+        item.marked_sold_at = null;
+      }
+    }
 
     const files = formData.getAll('images');
     if (files && files.length > 0) {
       const uploadPromises = files.map(async (file) => {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const dataURI = `data:${file.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
-        
-        const uploadResponse = await cloudinary.uploader.upload(dataURI, {
-          folder: 'campusmart/items',
-        });
-        return uploadResponse.secure_url;
+        if (typeof file === 'string' && file.startsWith('http')) {
+          return file;
+        }
+        if (file && typeof file.arrayBuffer === 'function') {
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const dataURI = `data:${file.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
+          
+          const uploadResponse = await cloudinary.uploader.upload(dataURI, {
+            folder: 'campusmart/items',
+          });
+          return uploadResponse.secure_url;
+        }
+        return null;
       });
-      const imageUrls = await Promise.all(uploadPromises);
-      item.images = imageUrls;
+      const imageUrls = (await Promise.all(uploadPromises)).filter(Boolean);
+      if (imageUrls.length > 0) {
+        item.images = imageUrls;
+      }
     }
 
     await item.save();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+import openRazorpayCheckout from '../../payments/razorpayCheckout';
 
 const PAGE_SIZE = 10;
 
@@ -27,6 +28,9 @@ export default function BuyScreen({ navigation }) {
   const [invoiceLoading, setInvoiceLoading] = useState(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [extensionModalOrder, setExtensionModalOrder] = useState(null);
+  const [extensionDuration, setExtensionDuration] = useState(1);
+  const [isExtending, setIsExtending] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -90,6 +94,106 @@ export default function BuyScreen({ navigation }) {
         otherUserName: user.full_name || 'User'
       }
     });
+  };
+
+  const handleExtendRental = async () => {
+    if (!extensionModalOrder || isExtending) return;
+
+    setIsExtending(true);
+    try {
+      // Step 1: Request Razorpay Order from backend
+      const orderRes = await client.post('/orders/extend-rental', {
+        order_id: extensionModalOrder._id || extensionModalOrder.id,
+        extension_duration: extensionDuration,
+        action: 'create_order',
+      });
+
+      const { razorpay_order_id, hosted_checkout_url, amount, currency, key_id, duration, period } = orderRes.data;
+      const unitLabel = period === 'hour' ? 'Hour' : period === 'month' ? 'Month' : 'Day';
+      const unitLabelPlural = period === 'hour' ? 'Hours' : period === 'month' ? 'Months' : 'Days';
+      const label = duration === 1 ? unitLabel : unitLabelPlural;
+
+      // Step 2: Open Razorpay Checkout payment gateway
+      let checkoutResponse = null;
+      try {
+        checkoutResponse = await openRazorpayCheckout({
+          key: key_id,
+          order_id: razorpay_order_id,
+          amount: amount,
+          currency: currency || 'INR',
+          name: 'Campus Mart',
+          description: `Extend rental by +${duration} ${label}`,
+          hosted_checkout_url: hosted_checkout_url,
+          theme: { color: '#007185' },
+          modal: { confirm_close: true },
+        });
+      } catch (payErr) {
+        if (payErr.message === 'Payment was cancelled' || payErr.message === 'Payment cancelled') {
+          setIsExtending(false);
+          return;
+        }
+        throw payErr;
+      }
+
+      // Step 3: Confirm payment & extend rental with backend
+      try {
+        const confirmRes = await client.post('/orders/extend-rental', {
+          order_id: extensionModalOrder._id || extensionModalOrder.id,
+          extension_duration: extensionDuration,
+          action: 'confirm',
+          razorpay_order_id: checkoutResponse?.razorpay_order_id || razorpay_order_id,
+          razorpay_payment_id: checkoutResponse?.razorpay_payment_id || null,
+          razorpay_signature: checkoutResponse?.razorpay_signature || null,
+        });
+
+        // Immediately update local order state
+        if (confirmRes.data?.order) {
+          const updated = confirmRes.data.order;
+          setOrders(prev => prev.map(o =>
+            String(o._id || o.id) === String(updated._id || updated.id)
+              ? { ...o, ...updated, item_id: o.item_id }
+              : o
+          ));
+        }
+
+        // Seamlessly close modal and refresh active purchases without blocking Alert dialog
+        setExtensionModalOrder(null);
+        setExtensionDuration(1);
+        setSelectedOrderDetails(null);
+        await fetchOrders();
+        return;
+      } catch (confirmErr) {
+        const errMsg = confirmErr.response?.data?.error || confirmErr.message || '';
+        if (checkoutResponse?.type === 'cancel' || checkoutResponse?.type === 'dismiss') {
+          if (errMsg.includes('not been completed') || errMsg.includes('was not completed')) {
+            setIsExtending(false);
+            return;
+          }
+        }
+        throw confirmErr;
+      }
+    } catch (err) {
+      if (err?.message === 'Payment was cancelled' || err?.message === 'Payment cancelled') {
+        setIsExtending(false);
+        return;
+      }
+      console.error('Extend rental error:', err);
+      Alert.alert('Extension Failed', err.response?.data?.error || err.message || 'Could not extend rental. Please try again.');
+    } finally {
+      setIsExtending(false);
+    }
+  };
+
+  const calculateNewDueDate = (currentDueStr, duration, period) => {
+    const now = new Date();
+    const currentDue = currentDueStr ? new Date(currentDueStr) : now;
+    const base = currentDue.getTime() > now.getTime() ? currentDue : now;
+    const next = new Date(base);
+    const p = period || 'day';
+    if (p === 'hour') next.setHours(next.getHours() + duration);
+    else if (p === 'month') next.setMonth(next.getMonth() + duration);
+    else next.setDate(next.getDate() + duration);
+    return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + next.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
   const updateOrderStatus = (order, nextStatus, title, message) => {
@@ -475,10 +579,36 @@ export default function BuyScreen({ navigation }) {
                   )}
                 </View>
               </View>
+              {/* Rental Extension History */}
+              {item.rental_extensions && item.rental_extensions.length > 0 && (
+                <View style={styles.extensionHistoryBox}>
+                  <Text style={styles.extensionHistoryTitle}>
+                    {activeTab === 'purchases' ? 'Rental Extension History' : 'Buyer Rental Extensions'}
+                  </Text>
+                  {item.rental_extensions.map((ext, idx) => (
+                    <Text key={idx} style={styles.extensionHistoryItem}>
+                      • +{ext.extension_duration} {ext.extension_period}(s) (₹{ext.cost}) — New Due: {new Date(ext.new_due_at).toLocaleDateString()}
+                    </Text>
+                  ))}
+                </View>
+              )}
 
               <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#111827' }}>Actions</Text>
               
               <View style={{ gap: 12 }}>
+                {activeTab === 'purchases' && ['rental_active', 'return_requested'].includes(item.status) && orderItem.listing_type === 'rent' && (
+                  <TouchableOpacity
+                    style={[styles.extendRentalBtn, { paddingVertical: 12 }]}
+                    onPress={() => {
+                      setExtensionModalOrder(item);
+                      setExtensionDuration(1);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="timer-outline" size={18} color="#FFFFFF" />
+                    <Text style={[styles.extendRentalBtnText, { fontSize: 15 }]}>⏱️ Extend Rental Period</Text>
+                  </TouchableOpacity>
+                )}
                 {activeTab === 'sales' && item.status === 'pending' && (
                   <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'delivered', 'Mark item as delivered?', 'Confirm that you delivered this item to the buyer.'); }}>
                     <Ionicons name="cube-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
@@ -714,6 +844,21 @@ export default function BuyScreen({ navigation }) {
                 </Text>
               </View>
             )}
+            {/* Buyer Extend Rental Quick Button */}
+            {activeTab === 'purchases' && ['rental_active', 'return_requested'].includes(item.status) && orderItem.listing_type === 'rent' && (
+              <TouchableOpacity
+                style={styles.extendRentalBtn}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  setExtensionModalOrder(item);
+                  setExtensionDuration(1);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="timer-outline" size={13} color="#FFFFFF" />
+                <Text style={styles.extendRentalBtnText}>Extend Rental</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -884,6 +1029,111 @@ export default function BuyScreen({ navigation }) {
           />
         </View>
       </Modal>
+      {/* Buyer Rental Extension Modal */}
+      {extensionModalOrder && (() => {
+        const item = extensionModalOrder.item_id || {};
+        const period = ['hour', 'day', 'month'].includes(item.rental_period) ? item.rental_period : 'day';
+        const unitLabel = period === 'hour' ? 'Hour' : period === 'month' ? 'Month' : 'Day';
+        const unitLabelPlural = period === 'hour' ? 'Hours' : period === 'month' ? 'Months' : 'Days';
+        const unitPrice = Number(item.price) || 0;
+        const totalCost = unitPrice * extensionDuration;
+        const newDue = calculateNewDueDate(extensionModalOrder.rental_due_at, extensionDuration, period);
+
+        const maxDuration = period === 'hour' ? 72 : period === 'month' ? 12 : 30;
+
+        return (
+          <Modal visible transparent animationType="fade" onRequestClose={() => setExtensionModalOrder(null)}>
+            <View style={styles.modalBackdrop}>
+              <View style={[styles.confirmationModal, { maxWidth: 420 }]}>
+                <View style={[styles.confirmationIcon, { backgroundColor: '#EEF2FF' }]}>
+                  <Ionicons name="timer-outline" size={28} color="#4F46E5" />
+                </View>
+                <Text style={styles.confirmationTitle}>Extend Rental</Text>
+                <Text style={styles.confirmationMessage}>
+                  Extend rental duration for <Text style={{ fontWeight: '700', color: '#0F172A' }}>{item.name || 'this item'}</Text>.
+                </Text>
+
+                {/* Duration Stepper based on Item's Rental Period */}
+                <View style={styles.stepperContainer}>
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => setExtensionDuration(d => Math.max(1, d - 1))}
+                    disabled={extensionDuration <= 1 || isExtending}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="remove" size={22} color={extensionDuration <= 1 ? '#CBD5E1' : '#0F172A'} />
+                  </TouchableOpacity>
+
+                  <Text style={styles.stepperValueText}>
+                    +{extensionDuration} <Text style={{ fontSize: 16, color: '#64748B', fontWeight: '600' }}>{extensionDuration === 1 ? unitLabel : unitLabelPlural}</Text>
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => setExtensionDuration(d => Math.min(maxDuration, d + 1))}
+                    disabled={extensionDuration >= maxDuration || isExtending}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add" size={22} color={extensionDuration >= maxDuration ? '#CBD5E1' : '#0F172A'} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Cost & Projected Due Date Breakdown */}
+                <View style={styles.extensionCostSummary}>
+                  <View style={styles.extensionCostRow}>
+                    <Text style={styles.extensionCostLabel}>Item Rate</Text>
+                    <Text style={styles.extensionCostValue}>₹{unitPrice} / {unitLabel.toLowerCase()}</Text>
+                  </View>
+                  <View style={styles.extensionCostRow}>
+                    <Text style={styles.extensionCostLabel}>New Return Due</Text>
+                    <Text style={[styles.extensionCostValue, { color: '#059669', fontSize: 13 }]}>{newDue}</Text>
+                  </View>
+                  <View style={[styles.extensionCostRow, styles.extensionTotalRow]}>
+                    <Text style={styles.extensionTotalLabel}>Total to Pay</Text>
+                    <Text style={styles.extensionTotalValue}>₹{totalCost}</Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+                  <Ionicons name="shield-checkmark" size={14} color="#059669" />
+                  <Text style={{ fontSize: 12, color: '#059669', fontWeight: '600' }}>
+                    Secured by Razorpay Escrow
+                  </Text>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.confirmationActions}>
+                  <TouchableOpacity
+                    style={[styles.noButton, isExtending && { opacity: 0.5 }]}
+                    onPress={() => setExtensionModalOrder(null)}
+                    disabled={isExtending}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.noButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.yesButton,
+                      { backgroundColor: '#007185' },
+                      isExtending && styles.disabledButton,
+                    ]}
+                    onPress={handleExtendRental}
+                    disabled={isExtending}
+                    activeOpacity={0.8}
+                  >
+                    {isExtending ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.yesButtonText}>Pay</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        );
+      })()}
 
       {confirmation && (
         <Modal

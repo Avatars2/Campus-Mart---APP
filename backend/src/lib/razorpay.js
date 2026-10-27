@@ -91,23 +91,17 @@ export function verifyRazorpayPartnerWebhookSignature(rawBody, signature) {
   return safeHexCompare(expected, signature);
 }
 
-export async function createRazorpayOrder({ amount, currency, receipt, notes, expiresAt }) {
+export async function createRazorpayOrder({ amount, currency, receipt, notes }) {
   const payload = {
     amount,
     currency,
     receipt,
     notes,
   };
-  // Razorpay requires expire_by to be at least 15 minutes in future (minimum 900 seconds)
-  if (expiresAt) {
-    const expireTimestamp = Math.floor(expiresAt.getTime() / 1000);
-    const minTimestamp = Math.floor(Date.now() / 1000) + 16 * 60; // 16 minutes from now
-    payload.expire_by = Math.max(expireTimestamp, minTimestamp);
-  }
   return razorpayRequest('/orders', 'POST', payload);
 }
 
-export async function createRazorpayPaymentLink({ amount, currency, referenceId, description, notes, expiresAt }) {
+export async function createRazorpayPaymentLink({ amount, currency, referenceId, description, notes, expiresAt, callbackUrl }) {
   const payload = {
     amount,
     currency,
@@ -116,6 +110,8 @@ export async function createRazorpayPaymentLink({ amount, currency, referenceId,
     notes,
     notify: { sms: false, email: false },
     reminder_enable: false,
+    callback_url: callbackUrl || 'campusmart://payment-complete',
+    callback_method: 'get',
   };
   // Razorpay payment links require expire_by to be at least 15 minutes in future
   if (expiresAt) {

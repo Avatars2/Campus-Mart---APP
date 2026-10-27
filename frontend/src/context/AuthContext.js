@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import client from '../api/client';
 
 export const AuthContext = createContext();
 
@@ -38,9 +39,10 @@ export const AuthProvider = ({ children }) => {
       } else {
         Alert.alert('Session Expired', 'Please log in again.');
       }
-      
+
       try {
         await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('refreshToken');
         await AsyncStorage.removeItem('userRole');
         await AsyncStorage.removeItem('userInfo');
         setIsAuthenticated(false);
@@ -56,9 +58,12 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const signIn = async (token, user) => {
+  const signIn = async (token, user, refreshToken = null) => {
     try {
       await AsyncStorage.setItem('token', token);
+      if (refreshToken) {
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+      }
       await AsyncStorage.setItem('userRole', user?.role || 'student');
       await AsyncStorage.setItem('userInfo', JSON.stringify(user));
       setUserRole(user?.role || 'student');
@@ -71,7 +76,12 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
+      // Notify backend to invalidate refresh token
+      await client.post('/auth/logout', { refreshToken: storedRefreshToken }).catch(() => {});
+
       await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userRole');
       await AsyncStorage.removeItem('userInfo');
       setIsAuthenticated(false);

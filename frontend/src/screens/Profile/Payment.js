@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import styles from './Payment.styles';
 
+const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+
 export default function Payment({ navigation }) {
   const [payoutMethod, setPayoutMethod] = useState('bank_account');
   const [accountStatus, setAccountStatus] = useState('not_started');
@@ -31,9 +33,16 @@ export default function Payment({ navigation }) {
     bank_account_number: '',
     ifsc_code: '',
     bank_name: '',
+    branch_name: '',
   });
 
   const [upiId, setUpiId] = useState('');
+
+  // IFSC Validation & Dynamic Branch Lookup States
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [ifscLoading, setIfscLoading] = useState(false);
+  const [ifscVerified, setIfscVerified] = useState(false);
+  const [ifscError, setIfscError] = useState('');
 
   const loadPaymentInfo = useCallback(async () => {
     try {
@@ -44,12 +53,24 @@ export default function Payment({ navigation }) {
       const data = accountResponse.data;
       setAccountStatus(data.account_status || 'not_started');
       if (data.bank_account) {
+        const ifsc = data.bank_account.ifsc_code || '';
+        const bName = data.bank_account.bank_name || '';
+        const branch = data.bank_account.branch_name || '';
         setBankDetails({
           beneficiary_name: data.bank_account.beneficiary_name || '',
           bank_account_number: data.bank_account.account_number || '',
-          ifsc_code: data.bank_account.ifsc_code || '',
-          bank_name: data.bank_account.bank_name || '',
+          ifsc_code: ifsc,
+          bank_name: bName,
+          branch_name: branch,
         });
+        if (ifsc) {
+          setIfscVerified(true);
+          setBranchInfo({
+            bank: bName || 'Bank',
+            branch: branch,
+            ifsc: ifsc,
+          });
+        }
       }
       if (data.upi_id) {
         setUpiId(data.upi_id);
@@ -70,12 +91,101 @@ export default function Payment({ navigation }) {
     loadPaymentInfo();
   }, [loadPaymentInfo]);
 
+  // Dynamic IFSC Code Verification against Public RBI / Razorpay IFSC API
+  const verifyIfscCode = async (codeToVerify) => {
+    const code = String(codeToVerify || bankDetails.ifsc_code || '').trim().toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(code)) {
+      setIfscVerified(false);
+      setIfscError('IFSC must be an 11-character code (e.g. SBIN0001234)');
+      setBranchInfo(null);
+      return false;
+    }
+
+    setIfscLoading(true);
+    setIfscError('');
+    try {
+      const res = await fetch(`https://ifsc.razorpay.com/${code}`);
+      if (res.ok) {
+        const data = await res.json();
+        const branchStr = data.BRANCH ? `${data.BRANCH}${data.CITY ? ', ' + data.CITY : ''}` : '';
+        setBranchInfo({
+          bank: data.BANK || 'Bank',
+          branch: branchStr,
+          city: data.CITY || '',
+          state: data.STATE || '',
+          ifsc: data.IFSC || code,
+        });
+        setBankDetails((prev) => ({
+          ...prev,
+          ifsc_code: code,
+          bank_name: data.BANK || prev.bank_name,
+          branch_name: branchStr,
+        }));
+        setIfscVerified(true);
+        setIfscError('');
+        return true;
+      } else {
+        setIfscVerified(false);
+        setIfscError('No bank branch found for this IFSC code in official RBI records.');
+        setBranchInfo(null);
+        return false;
+      }
+    } catch (err) {
+      setIfscVerified(false);
+      setIfscError('Unable to connect to IFSC registry. Check your connection.');
+      setBranchInfo(null);
+      return false;
+    } finally {
+      setIfscLoading(false);
+    }
+  };
+
+  const handleIfscChange = (val) => {
+    const cleaned = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+    setBankDetails((prev) => ({ ...prev, ifsc_code: cleaned }));
+    setIfscError('');
+    if (cleaned.length === 11) {
+      verifyIfscCode(cleaned);
+    } else {
+      setIfscVerified(false);
+      setBranchInfo(null);
+    }
+  };
+
   const handleSavePayoutDetails = async () => {
+    if (payoutMethod === 'upi') {
+      const trimmed = upiId.trim();
+      if (!trimmed) {
+        Alert.alert('Missing UPI ID', 'Please enter your UPI ID (VPA).');
+        return;
+      }
+      if (!UPI_REGEX.test(trimmed)) {
+        Alert.alert('Invalid UPI ID', 'Please enter a valid UPI ID (e.g. yourname@okhdfcbank or 9876543210@paytm).');
+        return;
+      }
+    } else {
+      if (!bankDetails.beneficiary_name.trim()) {
+        Alert.alert('Missing Name', 'Please enter the account holder name as in your bank passbook.');
+        return;
+      }
+      if (!/^\d{9,18}$/.test(bankDetails.bank_account_number.trim())) {
+        Alert.alert('Invalid Account Number', 'Bank account number must be between 9 and 18 digits.');
+        return;
+      }
+      if (!ifscVerified) {
+        const verified = await verifyIfscCode(bankDetails.ifsc_code);
+        if (!verified) {
+          Alert.alert('Invalid IFSC Code', 'Please verify your 11-character bank IFSC code before saving.');
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
         payout_method: payoutMethod,
-        ...(payoutMethod === 'bank_account' ? bankDetails : { upi_id: upiId }),
+        ...(payoutMethod === 'bank_account' ? bankDetails : { upi_id: upiId.trim() }),
       };
       const response = await client.post('/users/payment-account', payload);
       setAccountStatus('activated');
@@ -96,6 +206,10 @@ export default function Payment({ navigation }) {
     upiId || (bankDetails.bank_account_number && bankDetails.ifsc_code)
   );
 
+  const trimmedUpi = upiId.trim();
+  const isUpiValid = trimmedUpi.length > 0 && UPI_REGEX.test(trimmedUpi);
+  const isUpiInvalid = trimmedUpi.length > 0 && !UPI_REGEX.test(trimmedUpi);
+
   const totalTransferred = (transfers
     .filter((t) => t.payout_status === 'transferred')
     .reduce((sum, t) => sum + (t.amount || 0), 0) / 100).toFixed(2);
@@ -108,45 +222,39 @@ export default function Payment({ navigation }) {
     switch (status) {
       case 'transferred':
         return {
-          label: 'Transferred',
-          color: '#059669',
+          label: 'Completed',
           bg: '#ECFDF5',
+          color: '#059669',
           icon: 'checkmark-circle',
-        };
-      case 'held':
-        return {
-          label: 'Held in Escrow',
-          color: '#D97706',
-          bg: '#FFFBEB',
-          icon: 'shield-checkmark',
         };
       case 'processing':
         return {
           label: 'Processing',
-          color: '#2563EB',
           bg: '#EFF6FF',
-          icon: 'sync-outline',
+          color: '#2563EB',
+          icon: 'time',
         };
-      case 'review':
+      case 'held':
         return {
-          label: 'Under Review',
-          color: '#7C3AED',
-          bg: '#F5F3FF',
-          icon: 'eye-outline',
+          label: 'In Escrow',
+          bg: '#FFFBEB',
+          color: '#D97706',
+          icon: 'lock-closed',
         };
+      case 'reversed':
       case 'failed':
         return {
           label: 'Failed',
-          color: '#DC2626',
           bg: '#FEF2F2',
+          color: '#DC2626',
           icon: 'alert-circle',
         };
       default:
         return {
-          label: status.replace(/_/g, ' '),
-          color: '#64748B',
+          label: 'Pending',
           bg: '#F1F5F9',
-          icon: 'ellipse',
+          color: '#64748B',
+          icon: 'help-circle',
         };
     }
   };
@@ -213,11 +321,16 @@ export default function Payment({ navigation }) {
                   <Text style={styles.activeCardLabel}>
                     {payoutMethod === 'upi' ? 'Active UPI ID' : 'Active Bank Account'}
                   </Text>
-                  <Text style={styles.activeCardValue} numberOfLines={1}>
+                  <Text style={styles.activeCardValue} numberOfLines={2}>
                     {payoutMethod === 'upi'
                       ? upiId
                       : `${bankDetails.bank_name || 'Bank'} (•••• ${String(bankDetails.bank_account_number || '').slice(-4)})`}
                   </Text>
+                  {payoutMethod === 'bank_account' && (bankDetails.branch_name || bankDetails.ifsc_code) ? (
+                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                      {bankDetails.branch_name ? `${bankDetails.branch_name} • ` : ''}IFSC: {bankDetails.ifsc_code}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
 
@@ -259,44 +372,56 @@ export default function Payment({ navigation }) {
               onPress={() => setModalVisible(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.setupBtnText}>Add</Text>
+              <Text style={styles.setupBtnText}>Setup</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* ── Earnings Overview Stats ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Total Received</Text>
-            <Text style={[styles.statAmount, { color: '#059669' }]}>₹{totalTransferred}</Text>
+        {/* ── Small Earnings Summary Table ── */}
+        <View style={styles.summaryTable}>
+          {/* Completed Earnings Row */}
+          <View style={styles.summaryTableRow}>
+            <View style={styles.summaryTableCellLeft}>
+              <View style={[styles.summaryTableIcon, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="checkmark-done-circle" size={18} color="#059669" />
+              </View>
+              <Text style={styles.summaryTableTitle}>Completed Earnings</Text>
+            </View>
+            <Text style={styles.summaryTableAmountCompleted}>₹{totalTransferred}</Text>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>In Escrow / Pending</Text>
-            <Text style={[styles.statAmount, { color: '#D97706' }]}>₹{pendingTransfers}</Text>
+
+          <View style={styles.summaryTableDivider} />
+
+          {/* In Escrow Holding Row */}
+          <View style={styles.summaryTableRow}>
+            <View style={styles.summaryTableCellLeft}>
+              <View style={[styles.summaryTableIcon, { backgroundColor: '#FFFBEB' }]}>
+                <Ionicons name="lock-closed" size={16} color="#D97706" />
+              </View>
+              <Text style={styles.summaryTableTitle}>In Escrow Holding</Text>
+            </View>
+            <Text style={styles.summaryTableAmountEscrow}>₹{pendingTransfers}</Text>
           </View>
         </View>
 
-        {/* ── Transfer / Payment Details History (Full Page) ── */}
-        <View style={styles.historyCard}>
-          <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Payment History</Text>
-            <View style={styles.historyCountBadge}>
-              <Text style={styles.historyCountText}>{transfers.length} transfers</Text>
-            </View>
-          </View>
+        {/* ── History Header ── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>History</Text>
+          <Text style={styles.sectionHeaderCount}>{transfers.length} transactions</Text>
+        </View>
 
-          {loading ? (
-            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color="#007185" />
+        <View style={styles.transfersCard}>
+          {loading && !refreshing ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#007185" size="large" />
+              <Text style={styles.loadingText}>Loading settlements...</Text>
             </View>
           ) : transfers.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <Ionicons name="receipt-outline" size={28} color="#94A3B8" />
-              </View>
-              <Text style={styles.emptyStateTitle}>No Payment History</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                Payouts from online purchases will appear here once items are delivered and confirmed.
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={44} color="#94A3B8" />
+              <Text style={styles.emptyTitle}>No settlements yet</Text>
+              <Text style={styles.emptySubtitle}>
+                When buyers purchase or rent your items, your earnings and payout confirmations will appear here.
               </Text>
             </View>
           ) : (
@@ -350,9 +475,19 @@ export default function Payment({ navigation }) {
                               {item.name}
                             </Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                              <View style={styles.transferTypeBadge}>
-                                <Text style={styles.transferTypeBadgeText}>
-                                  {item.listing_type === 'rent' ? 'Rental' : 'Sale'} • Qty: {item.quantity || 1}
+                              <View style={[
+                                styles.transferTypeBadge,
+                                item.listing_type === 'rent' && { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE', borderWidth: 1 }
+                              ]}>
+                                <Text style={[
+                                  styles.transferTypeBadgeText,
+                                  item.listing_type === 'rent' && { color: '#4F46E5', fontWeight: '700' }
+                                ]}>
+                                  {item.is_extension
+                                    ? '⏱️ Rental Extension'
+                                    : item.listing_type === 'rent'
+                                      ? `⏱️ Rental (${item.rental_duration || 1} ${item.rental_period || 'day'})`
+                                      : 'Sale'} • Qty: {item.quantity || 1}
                                 </Text>
                               </View>
                               {item.order_status ? (
@@ -474,30 +609,83 @@ export default function Payment({ navigation }) {
                         style={styles.input}
                         value={bankDetails.bank_account_number}
                         onChangeText={(val) => setBankDetails((prev) => ({ ...prev, bank_account_number: val }))}
-                        placeholder="Enter account number"
+                        placeholder="Enter account number (9 to 18 digits)"
                         placeholderTextColor="#94A3B8"
                         keyboardType="number-pad"
                       />
                     </View>
                   </View>
 
-                  <View style={{ marginBottom: 12 }}>
-                    <Text style={styles.label}>IFSC Code</Text>
-                    <View style={styles.inputWrapper}>
+                  <View style={{ marginBottom: 14 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={styles.label}>IFSC Code</Text>
+                      {ifscVerified && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="shield-checkmark" size={14} color="#059669" />
+                          <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>Branch Verified</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={[
+                      styles.inputWrapper,
+                      ifscVerified && styles.inputWrapperValid,
+                      Boolean(ifscError) && styles.inputWrapperError
+                    ]}>
                       <TextInput
                         style={styles.input}
                         value={bankDetails.ifsc_code}
-                        onChangeText={(val) => setBankDetails((prev) => ({ ...prev, ifsc_code: val.toUpperCase() }))}
+                        onChangeText={handleIfscChange}
                         placeholder="e.g. SBIN0001234"
                         placeholderTextColor="#94A3B8"
                         autoCapitalize="characters"
                         maxLength={11}
                       />
+                      {ifscLoading ? (
+                        <ActivityIndicator size="small" color="#007185" style={{ marginLeft: 8 }} />
+                      ) : bankDetails.ifsc_code.length === 11 && !ifscVerified ? (
+                        <TouchableOpacity
+                          style={styles.ifscVerifyBtn}
+                          onPress={() => verifyIfscCode(bankDetails.ifsc_code)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.ifscVerifyBtnText}>Verify</Text>
+                        </TouchableOpacity>
+                      ) : ifscVerified ? (
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      ) : null}
                     </View>
+
+                    {ifscLoading && (
+                      <View style={styles.inputFeedbackRow}>
+                        <ActivityIndicator size="small" color="#007185" />
+                        <Text style={{ fontSize: 12, color: '#007185' }}>Verifying branch with RBI registry...</Text>
+                      </View>
+                    )}
+
+                    {Boolean(ifscError) && (
+                      <View style={styles.inputFeedbackRow}>
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text style={styles.inputFeedbackError}>{ifscError}</Text>
+                      </View>
+                    )}
+
+                    {ifscVerified && branchInfo && (
+                      <View style={styles.verifiedBranchCard}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="business" size={16} color="#15803D" />
+                          <Text style={styles.verifiedBranchTitle}>Verified Bank Branch</Text>
+                        </View>
+                        <Text style={styles.verifiedBranchBank}>{branchInfo.bank}</Text>
+                        <Text style={styles.verifiedBranchText}>
+                          {branchInfo.branch} {branchInfo.state ? `(${branchInfo.state})` : ''}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={{ marginBottom: 12 }}>
-                    <Text style={styles.label}>Bank Name (Optional)</Text>
+                    <Text style={styles.label}>Bank Name (Auto-filled / Optional)</Text>
                     <View style={styles.inputWrapper}>
                       <TextInput
                         style={styles.input}
@@ -512,8 +700,21 @@ export default function Payment({ navigation }) {
               ) : (
                 <View>
                   <View style={{ marginBottom: 16 }}>
-                    <Text style={styles.label}>UPI ID / VPA</Text>
-                    <View style={styles.inputWrapper}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={styles.label}>UPI ID / VPA</Text>
+                      {isUpiValid && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                          <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>Valid UPI Format</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={[
+                      styles.inputWrapper,
+                      isUpiValid && styles.inputWrapperValid,
+                      isUpiInvalid && styles.inputWrapperError
+                    ]}>
                       <TextInput
                         style={styles.input}
                         value={upiId}
@@ -522,7 +723,30 @@ export default function Payment({ navigation }) {
                         placeholderTextColor="#94A3B8"
                         autoCapitalize="none"
                       />
+                      {isUpiValid ? (
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      ) : isUpiInvalid ? (
+                        <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                      ) : null}
                     </View>
+
+                    {isUpiValid ? (
+                      <View style={styles.inputFeedbackRow}>
+                        <Ionicons name="checkmark-circle" size={13} color="#10B981" />
+                        <Text style={styles.inputFeedbackValid}>Valid UPI ID format</Text>
+                      </View>
+                    ) : isUpiInvalid ? (
+                      <View style={styles.inputFeedbackRow}>
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text style={styles.inputFeedbackError}>
+                          Invalid UPI format. Format must be username@bank (e.g. name@okhdfcbank).
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                        Supports GPay, PhonePe, Paytm, BHIM, Cred, or any Indian banking UPI handle.
+                      </Text>
+                    )}
                   </View>
                 </View>
               )}

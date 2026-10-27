@@ -22,6 +22,10 @@ export const getJwtSecret = () => {
   return process.env.JWT_SECRET;
 };
 
+export const getRefreshSecret = () => {
+  return process.env.JWT_REFRESH_SECRET || (getJwtSecret() + '_refresh_campusmart_secure_token');
+};
+
 export const validateRegistrationInput = ({ full_name, email, password, phone, student_id }) => {
   const normalizedEmail = normalizeEmail(email);
   if (!full_name?.trim() || !normalizedEmail || !password || !phone?.trim() || !student_id?.trim()) {

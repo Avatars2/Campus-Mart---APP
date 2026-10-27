@@ -62,6 +62,7 @@ export async function GET(request) {
     }
 
     const responseOrders = orders.map((order) => order.toJSON());
+
     if (type === 'sales') {
       const paymentIds = orders.map((order) => order.payment_id).filter(Boolean);
       const payments = await Payment.find({ _id: { $in: paymentIds } })
