@@ -7,6 +7,7 @@ import User from '@/models/User'; // required for population
 import { verifyAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
 import { transferSellerFunds } from '@/lib/paymentLifecycle';
+import { pusherServer } from '@/lib/pusher';
 
 export async function GET(request) {
   try {
@@ -162,8 +163,8 @@ export async function PATCH(request) {
     await connectDB();
     const order = await Order.findOne({ _id: order_id })
       .populate('item_id', 'name price images listing_type rental_period')
-      .populate('seller_id', 'full_name email phone student_id department year_semester')
-      .populate('buyer_id', 'full_name email phone student_id department year_semester');
+      .populate('seller_id', 'full_name email phone student_id department year_semester profile_photo_url')
+      .populate('buyer_id', 'full_name email phone student_id department year_semester profile_photo_url');
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found or cannot be completed' }, { status: 404 });
@@ -361,6 +362,28 @@ export async function PATCH(request) {
       body: notificationBody,
       relatedId: order._id
     }).catch((error) => console.error('Completion notification failed:', error));
+
+    // Real-time WebSocket sync via Pusher to both buyer and seller
+    try {
+      const orderPayload = order.toJSON ? order.toJSON() : order;
+      const targetChannels = [...new Set([`user-${buyerId}`, `user-${sellerId}`])].filter(Boolean);
+      console.log(`[Pusher] Dispatching order:updated on channels:`, targetChannels, `status:`, status);
+      await pusherServer.trigger(
+        targetChannels,
+        'order:updated',
+        {
+          order: orderPayload,
+          orderId: order._id.toString(),
+          status,
+          updatedBy: userId,
+          title: notificationTitle,
+          message: notificationBody,
+        }
+      );
+      console.log(`[Pusher] order:updated dispatch successful`);
+    } catch (pusherError) {
+      console.error('[Pusher] order:updated trigger error:', pusherError);
+    }
 
     return NextResponse.json({
       message: `Order marked as ${status}`,

@@ -70,7 +70,23 @@ export default StyleSheet.create({
     fontSize: 14,
     color: '#0F1111',
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  newlyAddedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  newlyAddedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+    textTransform: 'uppercase',
   },
 
   // Carousel

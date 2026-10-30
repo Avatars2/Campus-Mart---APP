@@ -24,7 +24,7 @@ export async function PUT(request, { params }) {
     const report = await Report.findByIdAndUpdate(
       id,
       { status, admin_notes: admin_notes || '' },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!report) {

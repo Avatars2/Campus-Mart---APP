@@ -151,8 +151,32 @@ export async function GET(request) {
 
     const sort = searchParams.get('sort');
     let sortOptions = { createdAt: -1 };
+    let trendingItemIds = [];
+
     if (sort === 'trending') {
-      sortOptions = { average_rating: -1, ratings_count: -1, createdAt: -1 };
+      // Find items ordered in the previous 48 hours
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const recentOrders = await Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: fortyEightHoursAgo },
+            status: { $ne: 'cancelled' },
+          },
+        },
+        {
+          $group: {
+            _id: '$item_id',
+            orderCount: { $sum: 1 },
+            latestOrderDate: { $max: '$createdAt' },
+          },
+        },
+        {
+          $sort: { orderCount: -1, latestOrderDate: -1 },
+        },
+      ]);
+
+      trendingItemIds = recentOrders.map((r) => r._id);
+      query._id = { $in: trendingItemIds };
     } else if (sort === 'price_asc') {
       sortOptions = { price: 1, createdAt: -1 };
     } else if (sort === 'price_desc') {
@@ -164,14 +188,30 @@ export async function GET(request) {
     const limitParam = searchParams.get('limit');
     let itemsQuery = Item.find(query)
       .populate('category_id', 'name')
-      .populate('seller_id', 'full_name profile_photo_url phone')
-      .sort(sortOptions);
+      .populate('seller_id', 'full_name profile_photo_url phone');
+
+    if (sort !== 'trending') {
+      itemsQuery = itemsQuery.sort(sortOptions);
+    }
 
     if (limitParam) {
       itemsQuery = itemsQuery.limit(parseInt(limitParam, 10));
     }
 
-    const items = await itemsQuery;
+    let items = await itemsQuery;
+
+    // For trending items, sort by order frequency and recency in the last 48 hours
+    if (sort === 'trending' && trendingItemIds.length > 0) {
+      const rankMap = new Map();
+      trendingItemIds.forEach((id, idx) => {
+        rankMap.set(id.toString(), idx);
+      });
+      items.sort((a, b) => {
+        const rankA = rankMap.has(a._id.toString()) ? rankMap.get(a._id.toString()) : 99999;
+        const rankB = rankMap.has(b._id.toString()) ? rankMap.get(b._id.toString()) : 99999;
+        return rankA - rankB;
+      });
+    }
 
     const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
     const rentedItemIds = await Order.find({
@@ -180,13 +220,20 @@ export async function GET(request) {
     }).distinct('item_id');
     const rentedItemIdSet = new Set(rentedItemIds.map(id => id.toString()));
 
-    const formattedItems = items.map(item => ({
-      ...item.toJSON(),
-      category_name: item.category_id?.name,
-      seller_name: item.seller_id?.full_name,
-      seller_image: item.seller_id?.profile_photo_url,
-      is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
-    }));
+    const now = Date.now();
+    const formattedItems = items.map(item => {
+      const createdAtMs = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+      const isNewlyAdded = createdAtMs > 0 && (now - createdAtMs) <= 24 * 60 * 60 * 1000 && (now - createdAtMs) >= 0;
+
+      return {
+        ...item.toJSON(),
+        category_name: item.category_id?.name,
+        seller_name: item.seller_id?.full_name,
+        seller_image: item.seller_id?.profile_photo_url,
+        is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
+        is_newly_added: isNewlyAdded,
+      };
+    });
 
     return NextResponse.json(formattedItems);
   } catch (error) {

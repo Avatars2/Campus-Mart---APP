@@ -26,11 +26,18 @@ export async function GET(request) {
     }).distinct('item_id');
     const rentedItemIdSet = new Set(rentedItemIds.map(id => id.toString()));
 
-    const formattedItems = items.map(item => ({
-      ...item.toJSON(),
-      category_name: item.category_id?.name,
-      is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
-    }));
+    const now = Date.now();
+    const formattedItems = items.map(item => {
+      const createdAtMs = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+      const isNewlyAdded = createdAtMs > 0 && (now - createdAtMs) <= 24 * 60 * 60 * 1000 && (now - createdAtMs) >= 0;
+
+      return {
+        ...item.toJSON(),
+        category_name: item.category_id?.name,
+        is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
+        is_newly_added: isNewlyAdded,
+      };
+    });
 
     return NextResponse.json(formattedItems);
   } catch (error) {

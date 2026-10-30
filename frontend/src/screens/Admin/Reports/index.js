@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
 import styles from './styles';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function AdminReportsScreen({ navigation }) {
   const [reports, setReports] = useState([]);
@@ -11,6 +13,10 @@ export default function AdminReportsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
 
   // Manage Reasons Modal State
   const [reasonsModalVisible, setReasonsModalVisible] = useState(false);
@@ -136,9 +142,10 @@ export default function AdminReportsScreen({ navigation }) {
     }
   };
 
+  // Reset to page 1 whenever filter, search or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, pageSize]);
 
   // Counts
   const pendingCount = reports.filter(r => r.status === 'pending').length;
@@ -146,27 +153,56 @@ export default function AdminReportsScreen({ navigation }) {
   const dismissedCount = reports.filter(r => r.status === 'dismissed').length;
 
   // Filtered list
-  let filteredReports = reports;
-  
-  if (activeTab !== 'All') {
-    filteredReports = filteredReports.filter(r => r.status === activeTab.toLowerCase());
-  }
-  
-  if (searchQuery) {
-    const lowerQuery = searchQuery.toLowerCase();
-    filteredReports = filteredReports.filter(r => 
-      r.reason?.toLowerCase().includes(lowerQuery) ||
-      r.target_info?.name?.toLowerCase().includes(lowerQuery) ||
-      r.target_info?.full_name?.toLowerCase().includes(lowerQuery) ||
-      r.reporter_id?.full_name?.toLowerCase().includes(lowerQuery)
-    );
-  }
+  const filteredReports = useMemo(() => {
+    let list = reports;
+    if (activeTab !== 'All') {
+      list = list.filter(r => r.status === activeTab.toLowerCase());
+    }
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      list = list.filter(r => 
+        r.reason?.toLowerCase().includes(lowerQuery) ||
+        r.target_info?.name?.toLowerCase().includes(lowerQuery) ||
+        r.target_info?.full_name?.toLowerCase().includes(lowerQuery) ||
+        r.reporter_id?.full_name?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    return list;
+  }, [reports, activeTab, searchQuery]);
 
-  const PAGE_SIZE = 10;
   const pagedReports = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredReports.slice(start, start + PAGE_SIZE);
-  }, [filteredReports, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return filteredReports.slice(start, start + pageSize);
+  }, [filteredReports, currentPage, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredReports.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredReports.length, pageSize, currentPage]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -248,11 +284,11 @@ export default function AdminReportsScreen({ navigation }) {
   };
 
   const renderPagination = () => {
-    const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
-    if (totalPages <= 1) return null;
+    if (filteredReports.length === 0) return null;
 
-    const startIdx = (currentPage - 1) * PAGE_SIZE + 1;
-    const endIdx = Math.min(currentPage * PAGE_SIZE, filteredReports.length);
+    const totalPages = Math.max(1, Math.ceil(filteredReports.length / pageSize));
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredReports.length);
 
     // Basic pagination pages to display
     let pages = [];
@@ -270,38 +306,69 @@ export default function AdminReportsScreen({ navigation }) {
 
     return (
       <View style={styles.pagination}>
-        <Text style={styles.pageInfo}>
-          Showing {startIdx} to {endIdx} of {filteredReports.length} results
-        </Text>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredReports.length} reports
+          </Text>
+
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#1E3A8A"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
         <View style={styles.pageControls}>
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
             disabled={currentPage === 1}
-            onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
           >
-            <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? '#94A3B8' : '#3B82F6'} />
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+            />
           </TouchableOpacity>
 
-          {pages.map((p, i) => (
+          {pages.map((p, i) =>
             p === '...' ? (
-              <Text key={`dot-${i}`} style={styles.pageDots}>...</Text>
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
             ) : (
               <TouchableOpacity
                 key={p}
                 style={[styles.pageNumBtn, currentPage === p && styles.pageNumBtnActive]}
                 onPress={() => setCurrentPage(p)}
               >
-                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>{p}</Text>
+                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>
+                  {p}
+                </Text>
               </TouchableOpacity>
             )
-          ))}
+          )}
 
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
             disabled={currentPage === totalPages}
-            onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
-            <Ionicons name="chevron-forward" size={20} color={currentPage === totalPages ? '#94A3B8' : '#3B82F6'} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -575,6 +642,58 @@ export default function AdminReportsScreen({ navigation }) {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

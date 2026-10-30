@@ -18,7 +18,7 @@ export async function PUT(request, { params }) {
     const notification = await Notification.findOneAndUpdate(
       { _id: id, recipient: userId },
       { read: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!notification) {

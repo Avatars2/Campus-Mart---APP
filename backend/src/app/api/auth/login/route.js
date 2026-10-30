@@ -47,7 +47,7 @@ export async function POST(request) {
       await LoginAttempt.findOneAndUpdate(
         { identifier: `ip:${ip}` },
         { $inc: { attempts: 1 } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 400 });
     }
@@ -68,7 +68,7 @@ export async function POST(request) {
       await LoginAttempt.findOneAndUpdate(
         { identifier: `ip:${ip}` },
         { $inc: { attempts: 1 } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
 
       const failedAttempts = (user.failed_login_attempts || 0) + 1;

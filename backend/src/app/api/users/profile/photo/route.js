@@ -36,7 +36,7 @@ export async function POST(request) {
     const user = await User.findByIdAndUpdate(
       userId,
       { profile_photo_url: photoUrl },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!user) {

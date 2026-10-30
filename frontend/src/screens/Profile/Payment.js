@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -18,6 +19,7 @@ import client from '../../api/client';
 import styles from './Payment.styles';
 
 const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function Payment({ navigation }) {
   const [payoutMethod, setPayoutMethod] = useState('bank_account');
@@ -27,6 +29,12 @@ export default function Payment({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all', 'pending', 'successful'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5); // 5, 10, 20, 50, 100
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
   
   const [bankDetails, setBankDetails] = useState({
     beneficiary_name: '',
@@ -90,6 +98,33 @@ export default function Payment({ navigation }) {
   useEffect(() => {
     loadPaymentInfo();
   }, [loadPaymentInfo]);
+
+  // Reset to page 1 whenever history filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [historyFilter, pageSize]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
 
   // Dynamic IFSC Code Verification against Public RBI / Razorpay IFSC API
   const verifyIfscCode = async (codeToVerify) => {
@@ -218,6 +253,32 @@ export default function Payment({ navigation }) {
     .filter((t) => ['held', 'processing', 'review'].includes(t.payout_status))
     .reduce((sum, t) => sum + (t.amount || 0), 0) / 100).toFixed(2);
 
+  const pendingCount = transfers.filter((t) =>
+    ['held', 'processing', 'review', 'pending'].includes(t.payout_status)
+  ).length;
+
+  const successfulCount = transfers.filter((t) =>
+    ['transferred', 'processed', 'completed', 'success'].includes(t.payout_status)
+  ).length;
+
+  const filteredTransfers = useMemo(() => {
+    return transfers.filter((t) => {
+      if (historyFilter === 'pending') {
+        return ['held', 'processing', 'review', 'pending'].includes(t.payout_status);
+      }
+      if (historyFilter === 'successful') {
+        return ['transferred', 'processed', 'completed', 'success'].includes(t.payout_status);
+      }
+      return true;
+    });
+  }, [transfers, historyFilter]);
+
+  // Sliced transfers based on current page and selected page size
+  const pagedTransfers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTransfers.slice(start, start + pageSize);
+  }, [filteredTransfers, currentPage, pageSize]);
+
   const getStatusBadgeConfig = (status) => {
     switch (status) {
       case 'transferred':
@@ -271,26 +332,118 @@ export default function Payment({ navigation }) {
     });
   };
 
+  // Pagination controls with Results info & Page Size dropdown on the same row
+  const renderPagination = () => {
+    if (filteredTransfers.length === 0) return null;
+
+    const totalPages = Math.max(1, Math.ceil(filteredTransfers.length / pageSize));
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredTransfers.length);
+
+    // Build pages array with ellipsis support
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
+    }
+
+    return (
+      <View style={styles.pagination}>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredTransfers.length} {filteredTransfers.length === 1 ? 'transfer' : 'transfers'}
+          </Text>
+
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#007185"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
+            />
+          </TouchableOpacity>
+
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[
+                  styles.pageNumBtn,
+                  currentPage === p && styles.pageNumBtnActive,
+                ]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text
+                  style={[
+                    styles.pageNumText,
+                    currentPage === p && styles.pageNumTextActive,
+                  ]}
+                >
+                  {p}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.pageBtn,
+              currentPage === totalPages && styles.pageBtnDisabled,
+            ]}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* ── Top Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={24} color="#0F172A" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Payment</Text>
-        </View>
-
-        {/* Top-Right Button to View / Edit Bank & UPI Details */}
-        <TouchableOpacity
-          style={styles.headerRightButton}
-          onPress={() => setModalVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="card-outline" size={16} color="#007185" />
-          <Text style={styles.headerRightButtonText}>Account</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={24} color="#0F1111" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pay<Text style={{ color: '#007185' }}>ment</Text></Text>
       </View>
 
       <ScrollView
@@ -407,7 +560,44 @@ export default function Payment({ navigation }) {
         {/* ── History Header ── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderTitle}>History</Text>
-          <Text style={styles.sectionHeaderCount}>{transfers.length} transactions</Text>
+          <Text style={styles.sectionHeaderCount}>
+            {filteredTransfers.length} {filteredTransfers.length === 1 ? 'transaction' : 'transactions'}
+          </Text>
+        </View>
+
+        {/* ── History Filter Tabs: All, Pending, Successful ── */}
+        <View style={styles.historyFilterContainer}>
+          <TouchableOpacity
+            style={[styles.historyFilterBtn, historyFilter === 'all' && styles.historyFilterBtnActive]}
+            onPress={() => setHistoryFilter('all')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.historyFilterText, historyFilter === 'all' && styles.historyFilterTextActive]}>
+              All ({transfers.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.historyFilterBtn, historyFilter === 'pending' && styles.historyFilterBtnActive]}
+            onPress={() => setHistoryFilter('pending')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.filterDot, { backgroundColor: '#D97706' }]} />
+            <Text style={[styles.historyFilterText, historyFilter === 'pending' && styles.historyFilterTextActive]}>
+              Pending ({pendingCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.historyFilterBtn, historyFilter === 'successful' && styles.historyFilterBtnActive]}
+            onPress={() => setHistoryFilter('successful')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.filterDot, { backgroundColor: '#059669' }]} />
+            <Text style={[styles.historyFilterText, historyFilter === 'successful' && styles.historyFilterTextActive]}>
+              Successful ({successfulCount})
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.transfersCard}>
@@ -416,18 +606,24 @@ export default function Payment({ navigation }) {
               <ActivityIndicator color="#007185" size="large" />
               <Text style={styles.loadingText}>Loading settlements...</Text>
             </View>
-          ) : transfers.length === 0 ? (
+          ) : filteredTransfers.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="receipt-outline" size={44} color="#94A3B8" />
-              <Text style={styles.emptyTitle}>No settlements yet</Text>
+              <Text style={styles.emptyTitle}>
+                {transfers.length === 0
+                  ? 'No settlements yet'
+                  : `No ${historyFilter} settlements`}
+              </Text>
               <Text style={styles.emptySubtitle}>
-                When buyers purchase or rent your items, your earnings and payout confirmations will appear here.
+                {transfers.length === 0
+                  ? 'When buyers purchase or rent your items, your earnings and payout confirmations will appear here.'
+                  : `There are currently no ${historyFilter} transaction records.`}
               </Text>
             </View>
           ) : (
-            transfers.map((transfer, index) => {
+            pagedTransfers.map((transfer, index) => {
               const statusCfg = getStatusBadgeConfig(transfer.payout_status);
-              const isLast = index === transfers.length - 1;
+              const isLast = index === pagedTransfers.length - 1;
 
               return (
                 <View
@@ -538,6 +734,9 @@ export default function Payment({ navigation }) {
             })
           )}
         </View>
+
+        {/* ── Pagination Controls ── */}
+        {renderPagination()}
       </ScrollView>
 
       {/* ── Bank & UPI Payout Details Modal ── */}
@@ -779,6 +978,58 @@ export default function Payment({ navigation }) {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#007185" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

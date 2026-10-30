@@ -8,6 +8,7 @@ import ReportModal from '../../components/ReportModal';
 import RatingStars from '../../components/commerce/RatingStars';
 import storeStyles from './SellerStore.styles';
 import homeStyles from './styles'; // Reuse itemCard styles from Home
+import { isItemNewlyAdded } from '../../utils/itemUtils';
 
 export default function SellerStore({ route, navigation }) {
   const { sellerId, sellerName, sellerImage } = route.params;
@@ -48,6 +49,7 @@ export default function SellerStore({ route, navigation }) {
     const sImage = item.seller_image ? item.seller_image : 'https://via.placeholder.com/50';
     const conditionMap = { 5: 'New', 4: 'Like New', 3: 'Good', 2: 'Fair', 1: 'Poor' };
     const condition = item.condition_rating ? (conditionMap[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')) : '';
+    const isNewlyAdded = isItemNewlyAdded(item);
 
     return (
       <TouchableOpacity
@@ -66,6 +68,13 @@ export default function SellerStore({ route, navigation }) {
               <Text style={homeStyles.conditionBadgeText}>{condition}</Text>
             </View>
           ) : null}
+
+          {isNewlyAdded && (
+            <View style={homeStyles.newlyAddedBadge}>
+              <Ionicons name="sparkles" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+              <Text style={homeStyles.newlyAddedBadgeText}>Newly Added</Text>
+            </View>
+          )}
         </View>
         
         <View style={homeStyles.itemDetails}>

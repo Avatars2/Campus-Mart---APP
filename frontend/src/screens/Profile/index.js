@@ -144,7 +144,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Support & Safety</Text>
             <View style={styles.menuCard}>
               <TouchableOpacity
-                style={[styles.menuItem, styles.menuItemLast]}
+                style={styles.menuItem}
                 onPress={() => navigation.navigate('MyReports')}
                 activeOpacity={0.7}
               >
@@ -152,6 +152,17 @@ export default function ProfileScreen({ navigation }) {
                   <Ionicons name="shield-checkmark" size={20} color="#007185" />
                 </View>
                 <Text style={styles.menuText}>Reports</Text>
+                <Ionicons name="chevron-forward" size={18} color="#B0B7C3" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemLast]}
+                onPress={() => navigation.navigate('Help')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIconContainer}>
+                  <Ionicons name="help-buoy" size={20} color="#007185" />
+                </View>
+                <Text style={styles.menuText}>Help & FAQs</Text>
                 <Ionicons name="chevron-forward" size={18} color="#B0B7C3" />
               </TouchableOpacity>
             </View>

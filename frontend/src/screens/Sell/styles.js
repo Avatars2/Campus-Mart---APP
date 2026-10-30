@@ -29,12 +29,12 @@ export default StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    gap: 8,
+    gap: 6,
   },
   tabBtn: {
     flex: 1,
@@ -42,12 +42,12 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
     borderRadius: 8,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 6,
+    gap: 4,
   },
   tabBtnActive: {
     backgroundColor: '#E6F7F9',
@@ -213,6 +213,23 @@ export default StyleSheet.create({
   statusText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  newlyAddedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  newlyAddedBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#059669',
+    textTransform: 'uppercase',
   },
 
   // Bottom action buttons row
@@ -601,5 +618,133 @@ export default StyleSheet.create({
     fontSize: 11,
     color: '#B45309',
     fontWeight: '800',
+  },
+
+  // ── Pagination Styles ──
+  pagination: {
+    marginTop: 14,
+    marginBottom: 24,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    gap: 12,
+  },
+  paginationHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  pageInfo: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+    flex: 1,
+  },
+  pageSizeDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  pageSizeDropdownBtnActive: {
+    borderColor: '#007185',
+    backgroundColor: '#F0FDFA',
+  },
+  pageSizeDropdownText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+
+  // ── Anchored Dropdown Menu Styles ──
+  dropdownModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  anchoredDropdownMenu: {
+    position: 'absolute',
+    width: 96,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  dropdownItemActive: {
+    backgroundColor: '#F0FDFA',
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  dropdownItemTextActive: {
+    color: '#007185',
+    fontWeight: '800',
+  },
+
+  pageControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pageBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F0F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageBtnDisabled: {
+    backgroundColor: '#F8FAFC',
+  },
+  pageNumBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageNumBtnActive: {
+    backgroundColor: '#007185',
+  },
+  pageNumText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  pageNumTextActive: {
+    color: '#FFFFFF',
+  },
+  pageDots: {
+    fontSize: 14,
+    color: '#94A3B8',
+    paddingHorizontal: 2,
   },
 });

@@ -1,19 +1,23 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator,
-  TouchableOpacity, Image, RefreshControl, Modal, Pressable, Alert, TextInput
+  TouchableOpacity, Image, RefreshControl, Modal, Pressable, Alert, TextInput, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import styles from './styles';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function SellScreen({ navigation }) {
   const [items, setItems] = useState([]);
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'sale', 'rent'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'sale', 'rent', 'sold'
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5); // 5, 10, 20, 50, 100
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
   const [deleteModal, setDeleteModal] = useState({ visible: false, itemId: null });
   const [deleting, setDeleting] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
@@ -226,24 +230,77 @@ export default function SellScreen({ navigation }) {
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadItems, saveItems);
 
   // ── Filter & Pagination Logic ──
-  const saleCount = useMemo(() => items.filter(i => i.listing_type !== 'rent').length, [items]);
-  const rentCount = useMemo(() => items.filter(i => i.listing_type === 'rent').length, [items]);
+  const isItemSold = (item) => Boolean(
+    item.marked_sold_at ||
+    item.status === 'sold' ||
+    (item.listing_type !== 'rent' && typeof item.quantity === 'number' && item.quantity <= 0)
+  );
+
+  const saleCount = useMemo(
+    () => items.filter((i) => i.listing_type !== 'rent' && !isItemSold(i)).length,
+    [items]
+  );
+  const rentCount = useMemo(
+    () => items.filter((i) => i.listing_type === 'rent').length,
+    [items]
+  );
+  const soldCount = useMemo(
+    () => items.filter((i) => isItemSold(i)).length,
+    [items]
+  );
 
   const filteredItems = useMemo(() => {
     if (activeTab === 'sale') {
-      return items.filter(i => i.listing_type !== 'rent');
+      return items.filter((i) => i.listing_type !== 'rent' && !isItemSold(i));
     }
     if (activeTab === 'rent') {
-      return items.filter(i => i.listing_type === 'rent');
+      return items.filter((i) => i.listing_type === 'rent');
+    }
+    if (activeTab === 'sold') {
+      return items.filter((i) => isItemSold(i));
     }
     return items;
   }, [items, activeTab]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const pagedItems = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredItems.slice(start, start + PAGE_SIZE);
-  }, [filteredItems, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, currentPage, pageSize]);
+
+  // Reset to page 1 whenever filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredItems.length, pageSize, currentPage]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -270,7 +327,7 @@ export default function SellScreen({ navigation }) {
       setItems(prev => {
         const newItems = prev.filter(i => String(i.id || i._id) !== String(itemId));
         // Check if current page is now empty
-        const newTotalPages = Math.max(1, Math.ceil(newItems.length / PAGE_SIZE));
+        const newTotalPages = Math.max(1, Math.ceil(newItems.length / pageSize));
         if (currentPage > newTotalPages) {
           setCurrentPage(newTotalPages);
         }
@@ -349,24 +406,7 @@ export default function SellScreen({ navigation }) {
                 {item.listing_type === 'rent' ? ` / ${item.rental_period || 'day'}` : ''}
               </Text>
             )}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-              <View style={[
-                styles.typeBadge,
-                item.listing_type === 'rent' ? styles.rentTypeBadge : styles.saleTypeBadge
-              ]}>
-                <Ionicons
-                  name={item.listing_type === 'rent' ? 'time-outline' : 'pricetag-outline'}
-                  size={11}
-                  color={item.listing_type === 'rent' ? '#007185' : '#D97706'}
-                />
-                <Text style={[
-                  styles.typeBadgeText,
-                  { color: item.listing_type === 'rent' ? '#007185' : '#D97706' }
-                ]}>
-                  {item.listing_type === 'rent' ? 'Rent' : 'Sale'}
-                </Text>
-              </View>
-              <Text style={styles.itemCondition}>{conditionLabel}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
               <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
                 <Text style={[styles.statusText, { color: statusColor }]}>{statusText}</Text>
               </View>
@@ -417,72 +457,101 @@ export default function SellScreen({ navigation }) {
 
   // ── Pagination Bar Component ──
   const renderPagination = () => {
-    if (filteredItems.length <= PAGE_SIZE) return null; // HIDE IF <= 1 PAGE
+    if (filteredItems.length === 0) return null;
 
-    const pageButtons = [];
-    const maxVisible = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredItems.length);
 
-    for (let p = startPage; p <= endPage; p++) {
-      pageButtons.push(p);
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
     }
-
-    const startEntry = (currentPage - 1) * PAGE_SIZE + 1;
-    const endEntry = Math.min(currentPage * PAGE_SIZE, filteredItems.length);
 
     return (
       <View style={styles.pagination}>
-        <Text style={styles.pageInfo}>
-          {startEntry}–{endEntry} of {filteredItems.length} listings
-        </Text>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredItems.length} listings
+          </Text>
 
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#007185"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
         <View style={styles.pageControls}>
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
-            onPress={goToPrev}
             disabled={currentPage === 1}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
           >
-            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#CBD5E1' : '#007185'} />
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
+            />
           </TouchableOpacity>
 
-          {startPage > 1 && (
-            <>
-              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(1)}>
-                <Text style={styles.pageNumText}>1</Text>
-              </TouchableOpacity>
-              {startPage > 2 && <Text style={styles.pageDots}>…</Text>}
-            </>
-          )}
-
-          {pageButtons.map(p => (
-            <TouchableOpacity
-              key={p}
-              style={[styles.pageNumBtn, p === currentPage && styles.pageNumBtnActive]}
-              onPress={() => setCurrentPage(p)}
-            >
-              <Text style={[styles.pageNumText, p === currentPage && styles.pageNumTextActive]}>
-                {p}
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
               </Text>
-            </TouchableOpacity>
-          ))}
-
-          {endPage < totalPages && (
-            <>
-              {endPage < totalPages - 1 && <Text style={styles.pageDots}>…</Text>}
-              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(totalPages)}>
-                <Text style={styles.pageNumText}>{totalPages}</Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[
+                  styles.pageNumBtn,
+                  currentPage === p && styles.pageNumBtnActive,
+                ]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text
+                  style={[
+                    styles.pageNumText,
+                    currentPage === p && styles.pageNumTextActive,
+                  ]}
+                >
+                  {p}
+                </Text>
               </TouchableOpacity>
-            </>
+            )
           )}
 
           <TouchableOpacity
-            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
-            onPress={goToNext}
+            style={[
+              styles.pageBtn,
+              currentPage === totalPages && styles.pageBtnDisabled,
+            ]}
             disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
-            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#CBD5E1' : '#007185'} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -780,13 +849,37 @@ export default function SellScreen({ navigation }) {
             </Text>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'sold' && styles.tabBtnActive]}
+          onPress={() => handleTabChange('sold')}
+          activeOpacity={0.75}
+        >
+          <Ionicons
+            name="checkmark-done-circle-outline"
+            size={13}
+            color={activeTab === 'sold' ? '#007185' : '#64748B'}
+          />
+          <Text style={[styles.tabText, activeTab === 'sold' && styles.tabTextActive]}>Sold</Text>
+          <View style={[styles.tabCountBadge, activeTab === 'sold' && styles.tabCountBadgeActive]}>
+            <Text style={[styles.tabCountText, activeTab === 'sold' && styles.tabCountTextActive]}>
+              {soldCount}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {filteredItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconBg}>
             <Ionicons
-              name={activeTab === 'rent' ? 'time-outline' : 'pricetag-outline'}
+              name={
+                activeTab === 'rent'
+                  ? 'time-outline'
+                  : activeTab === 'sold'
+                  ? 'checkmark-done-circle-outline'
+                  : 'pricetag-outline'
+              }
               size={44}
               color="#007185"
             />
@@ -796,6 +889,8 @@ export default function SellScreen({ navigation }) {
               ? 'No rental listings'
               : activeTab === 'sale'
               ? 'No sale listings'
+              : activeTab === 'sold'
+              ? 'No sold listings'
               : 'No listings yet'}
           </Text>
           <Text style={styles.emptySubText}>
@@ -803,6 +898,8 @@ export default function SellScreen({ navigation }) {
               ? 'Start earning rental income by listing your first rental item!'
               : activeTab === 'sale'
               ? 'Start selling by adding your first sale item to the marketplace!'
+              : activeTab === 'sold'
+              ? 'Items that have been marked as sold will appear here.'
               : 'Start selling by adding your first item to the marketplace!'}
           </Text>
           <TouchableOpacity
@@ -843,6 +940,58 @@ export default function SellScreen({ navigation }) {
           : <Ionicons name="add" size={28} color="#FFF" />
         }
       </TouchableOpacity>
+
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#007185" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

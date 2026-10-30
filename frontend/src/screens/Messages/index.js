@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, TextInput, Animated, Alert, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, TextInput, Animated, Alert, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
@@ -11,7 +11,8 @@ import useScreenRefresh from '../../hooks/useScreenRefresh';
 const MessageList = () => {
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('Buying');
+  const [activeTab, setActiveTab] = useState('Buying'); // 'Buying' | 'Selling' | 'Groups'
+  const [requestsCount, setRequestsCount] = useState(0);
   const { user } = useContext(AuthContext);
   const userId = user?.id;
   const navigation = useNavigation();
@@ -26,6 +27,21 @@ const MessageList = () => {
 
   const titleFadeAnim = useRef(new Animated.Value(0)).current;
   const titleSlideAnim = useRef(new Animated.Value(-15)).current;
+
+  const fetchRequestsCount = useCallback(async () => {
+    try {
+      const response = await client.get('/buying-requests?status=open');
+      if (Array.isArray(response.data)) {
+        setRequestsCount(response.data.length);
+      }
+    } catch (err) {
+      console.log('Error fetching buying requests count:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRequestsCount();
+  }, [fetchRequestsCount]);
 
   useEffect(() => {
     Animated.parallel([
@@ -57,10 +73,23 @@ const MessageList = () => {
       refresh();
     });
 
+    const requestsChannel = pusher.subscribe('group-buying-requests');
+    requestsChannel.bind('buying-request:new', () => {
+      fetchRequestsCount();
+    });
+    requestsChannel.bind('buying-request:deleted', () => {
+      fetchRequestsCount();
+    });
+    requestsChannel.bind('buying-request:updated', () => {
+      fetchRequestsCount();
+    });
+
     return () => {
       pusher.unsubscribe(`user-${userId}`);
+      pusher.unsubscribe('group-buying-requests');
     };
   }, [userId, refresh]);
+
   const filteredConversations = conversations.filter(item => {
     const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
     const matchesSearch = otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -184,6 +213,8 @@ const MessageList = () => {
     );
   }
 
+  const groupMatchesSearch = 'items buying requests'.includes(searchQuery.toLowerCase().trim());
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -197,7 +228,7 @@ const MessageList = () => {
           <Ionicons name="search" size={20} color="#565959" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by user name..."
+            placeholder={activeTab === 'Groups' ? "Search groups..." : "Search by user name..."}
             placeholderTextColor="#565959"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -210,22 +241,92 @@ const MessageList = () => {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+      <View style={styles.tabBar}>
         <TouchableOpacity 
-          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: activeTab === 'Buying' ? 2 : 0, borderBottomColor: '#007185' }}
+          style={[styles.tabButton, activeTab === 'Buying' && styles.tabButtonActive]}
           onPress={() => setActiveTab('Buying')}
         >
-          <Text style={{ fontSize: 15, fontWeight: '600', color: activeTab === 'Buying' ? '#007185' : '#565959' }}>Buying</Text>
+          <Text style={[styles.tabText, activeTab === 'Buying' && styles.tabTextActive]}>Buying</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: activeTab === 'Selling' ? 2 : 0, borderBottomColor: '#007185' }}
+          style={[styles.tabButton, activeTab === 'Selling' && styles.tabButtonActive]}
           onPress={() => setActiveTab('Selling')}
         >
-          <Text style={{ fontSize: 15, fontWeight: '600', color: activeTab === 'Selling' ? '#007185' : '#565959' }}>Selling</Text>
+          <Text style={[styles.tabText, activeTab === 'Selling' && styles.tabTextActive]}>Selling</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'Groups' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('Groups')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.tabText, activeTab === 'Groups' && styles.tabTextActive]}>Groups</Text>
+            {requestsCount > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{requestsCount}</Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
       
-      {filteredConversations.length === 0 ? (
+      {activeTab === 'Groups' ? (
+        <ScrollView
+          style={styles.groupsContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                refresh();
+                fetchRequestsCount();
+              }}
+              colors={['#007185']}
+            />
+          }
+        >
+          {groupMatchesSearch ? (
+            <TouchableOpacity
+              style={styles.groupCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('BuyingRequestsGroup')}
+            >
+              <View style={styles.groupIconContainer}>
+                <Ionicons name="chatbubbles" size={26} color="#FFFFFF" />
+                <View style={styles.groupLiveDot} />
+              </View>
+
+              <View style={styles.groupCardContent}>
+                <View style={styles.groupCardHeader}>
+                  <Text style={styles.groupCardTitle}>Items Buying Requests</Text>
+                  <View style={styles.groupPill}>
+                    <Text style={styles.groupPillText}>All Students</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.groupCardDescription} numberOfLines={2}>
+                  Post what items you need or fulfill student requests with your listings.
+                </Text>
+
+                <View style={styles.groupCardFooter}>
+                  <View style={styles.groupMetaItem}>
+                    <Ionicons name="radio-button-on" size={12} color="#10B981" />
+                    <Text style={styles.groupMetaText}>
+                      {requestsCount} Active Request{requestsCount === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                  <View style={styles.groupArrowBtn}>
+                    <Text style={styles.groupOpenText}>Open Group</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#007185" />
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No groups found matching "{searchQuery}".</Text>
+            </View>
+          )}
+        </ScrollView>
+      ) : filteredConversations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
             {searchQuery ? 'No users found.' : 'No messages yet.'}
@@ -237,7 +338,7 @@ const MessageList = () => {
           renderItem={renderItem}
           keyExtractor={item => item._id || item.id}
           contentContainerStyle={styles.listContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={['#0052CC']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refresh(); fetchRequestsCount(); }} colors={['#0052CC']} />}
         />
       )}
     </View>

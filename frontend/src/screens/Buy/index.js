@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, Alert, Modal, Linking, ScrollView, TextInput, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,10 +11,22 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import openRazorpayCheckout from '../../payments/razorpayCheckout';
+import { AuthContext } from '../../context/AuthContext';
+import { getPusherClient } from '../../utils/pusher';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
+
+const FILTER_OPTIONS = [
+  { id: 'All', label: 'All' },
+  { id: 'Active', label: 'Active', dotColor: '#1D4ED8' },
+  { id: 'Completed', label: 'Completed', dotColor: '#10B981' },
+  { id: 'Returned', label: 'Returned', dotColor: '#8B5CF6' },
+  { id: 'Cancelled', label: 'Cancelled', dotColor: '#DC2626' },
+];
 
 export default function BuyScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
+  const currentUserId = user?.id || user?._id;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,6 +78,71 @@ export default function BuyScreen({ navigation }) {
     setRefreshing(true);
     fetchOrders();
   };
+
+  // Real-time WebSocket synchronization via Pusher
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const channelName = `user-${currentUserId}`;
+    const channel = pusher.subscribe(channelName);
+
+    const handleOrderUpdated = (data) => {
+      const { order: updatedOrder, status: newStatus, title, message, updatedBy } = data || {};
+      if (!updatedOrder) {
+        fetchOrders();
+        return;
+      }
+
+      const updatedOrderId = (updatedOrder._id || updatedOrder.id)?.toString();
+
+      // 1. Update order in state immediately without requiring manual refresh
+      setOrders((prevOrders) => {
+        const index = prevOrders.findIndex((o) => (o._id || o.id)?.toString() === updatedOrderId);
+        if (index !== -1) {
+          const next = [...prevOrders];
+          next[index] = { ...next[index], ...updatedOrder, status: newStatus || updatedOrder.status };
+          return next;
+        }
+        return prevOrders;
+      });
+
+      // 2. Refresh orders in background to ensure tab counters and pagination stay accurate
+      fetchOrders();
+
+      // 3. If order details modal is open for this order, update it live
+      setSelectedOrderDetails((prevModal) => {
+        if (!prevModal) return null;
+        const currentModalId = (prevModal._id || prevModal.id)?.toString();
+        if (currentModalId === updatedOrderId) {
+          return { ...prevModal, ...updatedOrder, status: newStatus || updatedOrder.status };
+        }
+        return prevModal;
+      });
+    };
+
+    const handleOrderCreated = () => {
+      fetchOrders();
+    };
+
+    const handleNewNotification = (data) => {
+      if (data?.type === 'ORDER') {
+        fetchOrders();
+      }
+    };
+
+    channel.bind('order:updated', handleOrderUpdated);
+    channel.bind('order:created', handleOrderCreated);
+    channel.bind('new:notification', handleNewNotification);
+
+    return () => {
+      channel.unbind('order:updated', handleOrderUpdated);
+      channel.unbind('order:created', handleOrderCreated);
+      channel.unbind('new:notification', handleNewNotification);
+    };
+  }, [currentUserId, activeTab]);
 
   const formatRentalTimeRemaining = (dueAt) => {
     const remainingSeconds = Math.max(0, Math.floor((new Date(dueAt).getTime() - currentTime) / 1000));
@@ -228,7 +305,13 @@ export default function BuyScreen({ navigation }) {
         }
         handleMessageUser(order.seller_id, order.item_id);
       }
-      if (nextStatus === 'completed' && order.item_id?.listing_type !== 'rent') {
+      // Prompt for rating only when the BUYER confirms receipt of a delivered purchase
+      if (
+        activeTab === 'purchases' &&
+        order.status === 'delivered' &&
+        nextStatus === 'completed' &&
+        order.item_id?.listing_type !== 'rent'
+      ) {
         setSelectedRating(0);
         setRatingPrompt(order);
       }
@@ -390,21 +473,30 @@ export default function BuyScreen({ navigation }) {
 
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Reset filter when switching between Purchases and Sales
-  useEffect(() => {
-    setActiveFilter('All');
-    setCurrentPage(1);
-  }, [activeTab]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeFilter]);
+  const [pageSize, setPageSize] = useState(5); // 5, 10, 20, 50, 100
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
 
   const activeCount = orders.filter(o => !['completed', 'cancelled', 'returned'].includes(o.status)).length;
   const completedCount = orders.filter(o => o.status === 'completed').length;
   const returnedCount = orders.filter(o => o.status === 'returned').length;
   const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
+
+  const getFilterCount = (id) => {
+    switch (id) {
+      case 'Active':
+        return activeCount;
+      case 'Completed':
+        return completedCount;
+      case 'Returned':
+        return returnedCount;
+      case 'Cancelled':
+        return cancelledCount;
+      default:
+        return orders.length;
+    }
+  };
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
@@ -417,47 +509,50 @@ export default function BuyScreen({ navigation }) {
     });
   }, [orders, activeFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const pagedOrders = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredOrders.slice(start, start + PAGE_SIZE);
-  }, [filteredOrders, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
 
-  const renderDashboardCards = () => (
-    <View style={{ flex: 1, flexDirection: 'column', gap: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => setActiveFilter('Active')} 
-        style={{ flex: 1, backgroundColor: '#EFF6FF', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, color: '#1D4ED8', fontWeight: '600' }}>Active Orders</Text>
-        <Text style={{ fontSize: 32, color: '#1E3A8A', fontWeight: '800' }}>{activeCount}</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => setActiveFilter('Completed')} 
-        style={{ flex: 1, backgroundColor: '#F0FDF4', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, color: '#15803D', fontWeight: '600' }}>Completed Orders</Text>
-        <Text style={{ fontSize: 32, color: '#14532D', fontWeight: '800' }}>{completedCount}</Text>
-      </TouchableOpacity>
+  // Reset filter when switching between Purchases and Sales
+  useEffect(() => {
+    setActiveFilter('All');
+    setCurrentPage(1);
+  }, [activeTab]);
 
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => setActiveFilter('Returned')} 
-        style={{ flex: 1, backgroundColor: '#FDF4FF', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, color: '#A21CAF', fontWeight: '600' }}>Returned Orders</Text>
-        <Text style={{ fontSize: 32, color: '#701A75', fontWeight: '800' }}>{returnedCount}</Text>
-      </TouchableOpacity>
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, pageSize]);
 
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => setActiveFilter('Cancelled')} 
-        style={{ flex: 1, backgroundColor: '#FEF2F2', paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, color: '#B91C1C', fontWeight: '600' }}>Cancelled Orders</Text>
-        <Text style={{ fontSize: 32, color: '#7F1D1D', fontWeight: '800' }}>{cancelledCount}</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredOrders.length, pageSize, currentPage]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
 
     const renderOrderDetailsModal = () => {
     if (!selectedOrderDetails) return null;
@@ -610,7 +705,20 @@ export default function BuyScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
                 {activeTab === 'sales' && item.status === 'pending' && (
-                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'delivered', 'Mark item as delivered?', 'Confirm that you delivered this item to the buyer.'); }}>
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={() => {
+                      setSelectedOrderDetails(null);
+                      const orderItemName = item.item_id?.name || 'this item';
+                      const buyerName = item.buyer_id?.full_name || 'the buyer';
+                      updateOrderStatus(
+                        item,
+                        'delivered',
+                        'Mark item as delivered?',
+                        `Confirm that you delivered ${orderItemName} to ${buyerName}.`
+                      );
+                    }}
+                  >
                     <Ionicons name="cube-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.completeButtonText}>Mark delivered</Text>
                   </TouchableOpacity>
@@ -635,13 +743,37 @@ export default function BuyScreen({ navigation }) {
                   </View>
                 )}
                 {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type !== 'rent' && (
-                  <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item received?', 'Tap Yes to confirm that the item was successfully received.'); }}>
+                  <TouchableOpacity
+                    style={styles.confirmReceivedButton}
+                    onPress={() => {
+                      setSelectedOrderDetails(null);
+                      const name = orderItem.name || 'this item';
+                      updateOrderStatus(
+                        item,
+                        'completed',
+                        'Confirm item received?',
+                        `Tap Yes to confirm that you have received ${name}.`
+                      );
+                    }}
+                  >
                     <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.confirmReceivedText}>Confirm Receipt</Text>
                   </TouchableOpacity>
                 )}
                 {activeTab === 'purchases' && item.status === 'delivered' && orderItem.listing_type === 'rent' && (
-                  <TouchableOpacity style={styles.confirmReceivedButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'rental_active', 'Start rental period?', 'Confirm that you received the item. The rental period starts now.'); }}>
+                  <TouchableOpacity
+                    style={styles.confirmReceivedButton}
+                    onPress={() => {
+                      setSelectedOrderDetails(null);
+                      const name = orderItem.name || 'this item';
+                      updateOrderStatus(
+                        item,
+                        'rental_active',
+                        'Start rental period?',
+                        `Confirm that you received ${name}. The rental period starts now.`
+                      );
+                    }}
+                  >
                     <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.confirmReceivedText}>Start Rental</Text>
                   </TouchableOpacity>
@@ -655,25 +787,42 @@ export default function BuyScreen({ navigation }) {
                 )}
                 {activeTab === 'sales' && item.status === 'return_requested' && orderItem.listing_type !== 'rent' && (
                   <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Reject Return?', 'The return request will be rejected and the order will remain completed.'); }}>
+                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }]} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Reject Return?', 'The return request will be rejected.'); }}>
                       <Ionicons name="close-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
                       <Text style={[styles.completeButtonText, { color: '#DC2626' }]}>Reject</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]} onPress={() => {
-                      const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
-                      const msg = isOnline
-                        ? 'Confirm that you accept the return and have received the item? This will automatically initiate the refund to the buyer.'
-                        : 'Confirm that you accept the return and have received the item.';
-                      setSelectedOrderDetails(null);
-                      updateOrderStatus(item, 'returned', 'Approve Return?', msg);
-                    }}>
+                    <TouchableOpacity
+                      style={[styles.completeButton, { flex: 1, backgroundColor: '#DC2626' }]}
+                      onPress={() => {
+                        setSelectedOrderDetails(null);
+                        const name = orderItem.name || 'this item';
+                        updateOrderStatus(
+                          item,
+                          'returned',
+                          'Approve Return?',
+                          `Confirm that you accept the return and have received ${name}.`
+                        );
+                      }}
+                    >
                       <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                       <Text style={styles.completeButtonText}>Approve</Text>
                     </TouchableOpacity>
                   </View>
                 )}
                 {activeTab === 'sales' && item.status === 'return_requested' && orderItem.listing_type === 'rent' && (
-                  <TouchableOpacity style={styles.completeButton} onPress={() => { setSelectedOrderDetails(null); updateOrderStatus(item, 'completed', 'Confirm item returned?', 'Confirm that you received the returned item from the buyer.'); }}>
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={() => {
+                      setSelectedOrderDetails(null);
+                      const name = orderItem.name || 'this item';
+                      updateOrderStatus(
+                        item,
+                        'completed',
+                        'Confirm item returned?',
+                        `Confirm that you received the returned ${name} from the buyer.`
+                      );
+                    }}
+                  >
                     <Ionicons name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.completeButtonText}>Confirm return</Text>
                   </TouchableOpacity>
@@ -684,13 +833,13 @@ export default function BuyScreen({ navigation }) {
                     <TouchableOpacity
                       style={[styles.messageButton, { flex: 1, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA', paddingHorizontal: 6 }]}
                       onPress={() => {
-                        const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
-                        const title = 'Cancel Order?';
-                        const message = isOnline
-                          ? 'Are you sure you want to cancel this order? It will be cancelled immediately and a full refund will be initiated to your original payment method.'
-                          : 'Are you sure you want to cancel this order? It will be cancelled immediately.';
                         setSelectedOrderDetails(null);
-                        updateOrderStatus(item, 'cancelled', title, message);
+                        updateOrderStatus(
+                          item,
+                          'cancelled',
+                          'Cancel Order?',
+                          'Are you sure you want to cancel this order?'
+                        );
                       }}
                     >
                       <Ionicons name="close-circle-outline" size={17} color="#DC2626" style={{ marginRight: 4 }} />
@@ -720,12 +869,14 @@ export default function BuyScreen({ navigation }) {
                     <TouchableOpacity
                       style={[styles.messageButton, { flex: 1, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 6 }]}
                       onPress={() => {
-                        const isOnline = ['UPI', 'Razorpay'].includes(item.payment_method);
-                        const message = isOnline
-                          ? 'Are you sure you want to return this item? Once the seller confirms receiving the returned item, a full refund will be automatically sent back to your payment account.'
-                          : 'Are you sure you want to return this item? This will notify the seller to arrange the return.';
                         setSelectedOrderDetails(null);
-                        updateOrderStatus(item, 'return_requested', 'Return Item?', message);
+                        const name = orderItem.name || 'this item';
+                        updateOrderStatus(
+                          item,
+                          'return_requested',
+                          'Return Item?',
+                          `Are you sure you want to return ${name}?`
+                        );
                       }}
                     >
                       <Ionicons name="return-down-back-outline" size={17} color="#D97706" style={{ marginRight: 4 }} />
@@ -844,21 +995,6 @@ export default function BuyScreen({ navigation }) {
                 </Text>
               </View>
             )}
-            {/* Buyer Extend Rental Quick Button */}
-            {activeTab === 'purchases' && ['rental_active', 'return_requested'].includes(item.status) && orderItem.listing_type === 'rent' && (
-              <TouchableOpacity
-                style={styles.extendRentalBtn}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  setExtensionModalOrder(item);
-                  setExtensionDuration(1);
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="timer-outline" size={13} color="#FFFFFF" />
-                <Text style={styles.extendRentalBtnText}>Extend Rental</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -885,77 +1021,104 @@ export default function BuyScreen({ navigation }) {
     );
   }
 
+  // Pagination controls with Results info & Page Size dropdown on the same row
   const renderPagination = () => {
-    if (filteredOrders.length <= PAGE_SIZE) return null;
+    if (filteredOrders.length === 0) return null;
 
-    const pageButtons = [];
-    const maxVisible = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    
-    if (endPage - startPage < maxVisible - 1) {
-      startPage = Math.max(1, endPage - maxVisible + 1);
+    const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredOrders.length);
+
+    // Build pages array with ellipsis support
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
     }
-
-    for (let p = startPage; p <= endPage; p++) {
-      pageButtons.push(p);
-    }
-
-    const startEntry = (currentPage - 1) * PAGE_SIZE + 1;
-    const endEntry = Math.min(currentPage * PAGE_SIZE, filteredOrders.length);
 
     return (
       <View style={styles.pagination}>
-        <Text style={styles.pageInfo}>
-          {startEntry}–{endEntry} of {filteredOrders.length} orders
-        </Text>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredOrders.length} orders
+          </Text>
 
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#007185"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
         <View style={styles.pageControls}>
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
-            onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            activeOpacity={0.7}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
           >
-            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#CBD5E1' : '#007185'} />
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
+            />
           </TouchableOpacity>
 
-          {startPage > 1 && (
-            <>
-              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(1)} activeOpacity={0.7}>
-                <Text style={styles.pageNumText}>1</Text>
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[
+                  styles.pageNumBtn,
+                  currentPage === p && styles.pageNumBtnActive,
+                ]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text
+                  style={[
+                    styles.pageNumText,
+                    currentPage === p && styles.pageNumTextActive,
+                  ]}
+                >
+                  {p}
+                </Text>
               </TouchableOpacity>
-              {startPage > 2 && <Text style={styles.pageDots}>…</Text>}
-            </>
-          )}
-
-          {pageButtons.map(p => (
-            <TouchableOpacity
-              key={p}
-              style={[styles.pageNumBtn, p === currentPage && styles.pageNumBtnActive]}
-              onPress={() => setCurrentPage(p)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.pageNumText, p === currentPage && styles.pageNumTextActive]}>{p}</Text>
-            </TouchableOpacity>
-          ))}
-
-          {endPage < totalPages && (
-            <>
-              {endPage < totalPages - 1 && <Text style={styles.pageDots}>…</Text>}
-              <TouchableOpacity style={styles.pageNumBtn} onPress={() => setCurrentPage(totalPages)} activeOpacity={0.7}>
-                <Text style={styles.pageNumText}>{totalPages}</Text>
-              </TouchableOpacity>
-            </>
+            )
           )}
 
           <TouchableOpacity
-            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
-            onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            style={[
+              styles.pageBtn,
+              currentPage === totalPages && styles.pageBtnDisabled,
+            ]}
             disabled={currentPage === totalPages}
-            activeOpacity={0.7}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
-            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#CBD5E1' : '#007185'} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -986,49 +1149,74 @@ export default function BuyScreen({ navigation }) {
         </TouchableOpacity>
       </View>
       
-      {/* Full-Screen List Modal */}
-      <Modal visible={activeFilter !== 'All'} animationType="slide" onRequestClose={() => setActiveFilter('All')}>
-        <View style={{ flex: 1, backgroundColor: '#F3F4F6' }}>
-          <View style={{
-            paddingTop: Platform.OS === 'ios' ? 50 : 20,
-            paddingBottom: 16,
-            paddingHorizontal: 20,
-            backgroundColor: '#FFF',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <TouchableOpacity 
-              style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 10, padding: 8 }} 
-              onPress={() => setActiveFilter('All')} 
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={24} color="#0F1111" />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 24, fontWeight: '900', color: '#0F1111', letterSpacing: -0.5 }}>
-              {activeFilter} <Text style={{ color: '#007185' }}>{activeTab === 'purchases' ? 'Purchases' : 'Sales'}</Text>
+      {/* Filter Horizontal Scroll (Same as MyReports) */}
+      <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {FILTER_OPTIONS.map((filter) => {
+            const isActive = activeFilter === filter.id;
+            const count = getFilterCount(filter.id);
+            return (
+              <TouchableOpacity
+                key={filter.id}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => {
+                  setActiveFilter(filter.id);
+                  setCurrentPage(1);
+                }}
+                activeOpacity={0.8}
+              >
+                {filter.dotColor && (
+                  <View
+                    style={[styles.filterDot, { backgroundColor: filter.dotColor }]}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.filterText,
+                    isActive && styles.filterTextActive,
+                  ]}
+                >
+                  {filter.label} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Orders List directly on screen */}
+      <FlatList
+        data={pagedOrders}
+        keyExtractor={(item, index) => item._id || item.id || String(index)}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007185']}
+          />
+        }
+        renderItem={renderOrderItem}
+        ListFooterComponent={renderPagination}
+        ListEmptyComponent={
+          <View style={[styles.emptyContainer, { marginTop: 40 }]}>
+            <View style={styles.iconBg}>
+              <Ionicons name="bag-handle-outline" size={52} color="#007185" />
+            </View>
+            <Text style={styles.emptyTitle}>
+              No {activeFilter === 'All' ? '' : activeFilter} Orders
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              You don't have any {activeFilter === 'All' ? '' : activeFilter.toLowerCase()} {activeTab === 'purchases' ? 'purchases' : 'sales'}.
             </Text>
           </View>
-          
-          <FlatList
-            data={pagedOrders}
-            keyExtractor={(item, index) => item._id || item.id || String(index)}
-            contentContainerStyle={styles.listContent}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />}
-            renderItem={renderOrderItem}
-            ListFooterComponent={renderPagination}
-            ListEmptyComponent={
-              <View style={[styles.emptyContainer, { marginTop: 40 }]}>
-                <View style={styles.iconBg}>
-                  <Ionicons name="bag-handle-outline" size={52} color="#0052CC" />
-                </View>
-                <Text style={styles.emptyTitle}>No {activeFilter} Orders</Text>
-                <Text style={styles.emptySubtitle}>You don't have any {activeFilter.toLowerCase()} {activeTab === 'purchases' ? 'purchases' : 'sales'}.</Text>
-              </View>
-            }
-          />
-        </View>
-      </Modal>
+        }
+      />
+
       {/* Buyer Rental Extension Modal */}
       {extensionModalOrder && (() => {
         const item = extensionModalOrder.item_id || {};
@@ -1135,46 +1323,151 @@ export default function BuyScreen({ navigation }) {
         );
       })()}
 
-      {confirmation && (
-        <Modal
-          visible
-          transparent
-          animationType="fade"
-          onRequestClose={() => setConfirmation(null)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.confirmationModal}>
-              <View style={styles.confirmationIcon}>
-                <Ionicons name="cube-outline" size={28} color="#0052CC" />
-              </View>
-              <Text style={styles.confirmationTitle}>{confirmation.title}</Text>
-              <Text style={styles.confirmationMessage}>{confirmation.message}</Text>
-              <View style={styles.confirmationActions}>
-                <TouchableOpacity
-                  style={[styles.noButton, isUpdating && { opacity: 0.5 }]}
-                  onPress={() => setConfirmation(null)}
-                  disabled={isUpdating}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.noButtonText}>No</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
-                  onPress={confirmOrderStatus}
-                  disabled={isUpdating}
-                  activeOpacity={0.8}
-                >
-                  {isUpdating ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+      {confirmation && (() => {
+        const order = confirmation.order || {};
+        const orderItem = (typeof order.item_id === 'object' && order.item_id !== null) ? order.item_id : {};
+        const buyer = (typeof order.buyer_id === 'object' && order.buyer_id !== null) ? order.buyer_id : {};
+        const seller = (typeof order.seller_id === 'object' && order.seller_id !== null) ? order.seller_id : {};
+
+        const itemName = orderItem.name || 'this item';
+        const buyerName = buyer.full_name || 'Buyer';
+        const sellerName = seller.full_name || 'Seller';
+        const itemImg = orderItem.images?.[0] || 'https://via.placeholder.com/100';
+        const isRent = orderItem.listing_type === 'rent';
+        const price = order.total_price != null ? order.total_price : orderItem.price;
+
+        const isDeliveredAction = confirmation.nextStatus === 'delivered';
+        const isConfirmReceiptAction = confirmation.nextStatus === 'completed' && (activeTab === 'purchases' || confirmation.title?.toLowerCase().includes('received'));
+        const isRentalStartAction = confirmation.nextStatus === 'rental_active';
+        const isCancelAction = confirmation.nextStatus === 'cancelled';
+        const isReturnRequestAction = confirmation.nextStatus === 'return_requested';
+        const isApproveReturnAction = confirmation.nextStatus === 'returned' || confirmation.title?.toLowerCase().includes('approve return');
+        const isRejectReturnAction = confirmation.title?.toLowerCase().includes('reject return');
+
+        let iconBg = '#E6F7F9';
+        let iconName = 'cube-outline';
+        let iconColor = '#007185';
+        let actionBtnText = 'Yes';
+
+        if (isDeliveredAction) {
+          iconBg = '#E6F7F9';
+          iconName = 'cube-outline';
+          iconColor = '#007185';
+          actionBtnText = 'Yes';
+        } else if (isConfirmReceiptAction) {
+          iconBg = '#DCFCE7';
+          iconName = 'checkmark-circle-outline';
+          iconColor = '#15803D';
+          actionBtnText = 'Yes';
+        } else if (isRentalStartAction) {
+          iconBg = '#EEF2FF';
+          iconName = 'timer-outline';
+          iconColor = '#4F46E5';
+          actionBtnText = 'Yes';
+        } else if (isCancelAction) {
+          iconBg = '#FEE2E2';
+          iconName = 'close-circle-outline';
+          iconColor = '#DC2626';
+          actionBtnText = 'Yes';
+        } else if (isReturnRequestAction || isApproveReturnAction) {
+          iconBg = '#FEF3C7';
+          iconName = 'return-down-back-outline';
+          iconColor = '#D97706';
+          actionBtnText = 'Yes';
+        } else if (confirmation.title?.toLowerCase().includes('reject')) {
+          iconBg = '#FEE2E2';
+          iconName = 'close-outline';
+          iconColor = '#DC2626';
+          actionBtnText = 'Yes';
+        }
+
+        const isSellerView = activeTab === 'sales' || isDeliveredAction;
+        const otherPersonLabel = isSellerView ? 'Buyer' : 'Seller';
+        const otherPersonName = isSellerView ? buyerName : sellerName;
+
+        return (
+          <Modal
+            visible
+            transparent
+            animationType="fade"
+            onRequestClose={() => setConfirmation(null)}
+          >
+            <View style={styles.modalBackdrop}>
+              <View style={[styles.confirmationModal, { maxWidth: 390, paddingHorizontal: 20 }]}>
+                {/* Header Icon */}
+                <View style={[styles.confirmationIcon, { backgroundColor: iconBg }]}>
+                  <Ionicons name={iconName} size={30} color={iconColor} />
+                </View>
+
+                {/* Title */}
+                <Text style={styles.confirmationTitle}>{confirmation.title}</Text>
+
+                {/* Message */}
+                <Text style={styles.confirmationMessage}>
+                  {isDeliveredAction ? (
+                    <>
+                      Confirm that you delivered{' '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{itemName}</Text>
+                      {' to '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{buyerName}</Text>.
+                    </>
+                  ) : isConfirmReceiptAction ? (
+                    <>
+                      Tap Yes to confirm that you have received{' '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{itemName}</Text>.
+                    </>
+                  ) : isCancelAction ? (
+                    'Are you sure you want to cancel this order?'
+                  ) : isReturnRequestAction ? (
+                    <>
+                      Are you sure you want to return{' '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{itemName}</Text>?
+                    </>
+                  ) : isApproveReturnAction ? (
+                    <>
+                      Confirm that you accept the return and have received{' '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{itemName}</Text>.
+                    </>
+                  ) : isRejectReturnAction ? (
+                    'The return request will be rejected.'
+                  ) : isRentalStartAction ? (
+                    <>
+                      Confirm that you received{' '}
+                      <Text style={{ fontWeight: '700', color: '#0F1111' }}>{itemName}</Text>. The rental period starts now.
+                    </>
                   ) : (
-                    <Text style={styles.yesButtonText}>Yes</Text>
+                    confirmation.message
                   )}
-                </TouchableOpacity>
+                </Text>
+
+                {/* Actions */}
+                <View style={styles.confirmationActions}>
+                  <TouchableOpacity
+                    style={[styles.noButton, isUpdating && { opacity: 0.5 }]}
+                    onPress={() => setConfirmation(null)}
+                    disabled={isUpdating}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.noButtonText}>No</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
+                    onPress={confirmOrderStatus}
+                    disabled={isUpdating}
+                    activeOpacity={0.8}
+                  >
+                    {isUpdating ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.yesButtonText}>Yes</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
       {ratingPrompt && (
         <Modal
           visible
@@ -1244,9 +1537,57 @@ export default function BuyScreen({ navigation }) {
         </Modal>
       )}
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0052CC']} />}>
-        {renderDashboardCards()}
-      </ScrollView>
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#007185" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }

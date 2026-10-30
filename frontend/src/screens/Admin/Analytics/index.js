@@ -166,267 +166,687 @@ export default function AdminAnalyticsScreen() {
         dateStyle: 'medium',
         timeStyle: 'short',
       });
-      const { summary, items, orders, users } = analyticsData;
+      const reportRef = `CMR-AUD-${Date.now().toString().slice(-6)}`;
+      const { summary, items = [], orders = [], users = [], reports = [] } = analyticsData;
 
       const html = `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
           <meta charset="utf-8">
-          <title>CampusMart Activity Report</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>CampusMart Operational Audit Report - ${reportRef}</title>
           <style>
+            @page {
+              size: A4 portrait;
+              margin: 14mm 14mm 16mm 14mm;
+            }
+            * {
+              box-sizing: border-box;
+            }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              color: #1F2937;
-              padding: 28px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #0F172A;
+              background-color: #F8FAFC;
               margin: 0;
-              background-color: #FFFFFF;
-            }
-            .header-banner {
-              background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
-              color: #FFFFFF;
               padding: 24px;
-              border-radius: 12px;
-              margin-bottom: 24px;
+              line-height: 1.45;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
-            .header-banner h1 {
-              margin: 0 0 6px 0;
-              font-size: 24px;
-              letter-spacing: -0.5px;
+
+            /* Preview action bar (only visible in web tab preview, hidden during print / PDF) */
+            .no-print {
+              display: block;
             }
-            .header-banner p {
-              margin: 0;
+            @media print {
+              .no-print {
+                display: none !important;
+              }
+              body {
+                background-color: #FFFFFF !important;
+                padding: 0 !important;
+              }
+              .page-break {
+                page-break-before: always;
+              }
+            }
+
+            .action-bar {
+              background-color: #1E293B;
+              color: #FFFFFF;
+              padding: 12px 20px;
+              border-radius: 10px;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            }
+            .action-bar-info {
               font-size: 13px;
-              color: #DBEAFE;
+              color: #E2E8F0;
             }
-            .meta-box {
+            .action-bar-info strong {
+              color: #60A5FA;
+            }
+            .action-bar-btns {
+              display: flex;
+              gap: 10px;
+            }
+            .btn {
+              cursor: pointer;
+              border: none;
+              border-radius: 6px;
+              padding: 7px 14px;
+              font-size: 12px;
+              font-weight: 700;
+              transition: all 0.2s;
+            }
+            .btn-primary {
+              background-color: #2563EB;
+              color: #FFFFFF;
+            }
+            .btn-secondary {
+              background-color: #475569;
+              color: #FFFFFF;
+            }
+
+            .document-container {
+              background-color: #FFFFFF;
+              border: 1px solid #E2E8F0;
+              border-radius: 12px;
+              padding: 28px 32px;
+              max-width: 900px;
+              margin: 0 auto;
+            }
+            @media print {
+              .document-container {
+                border: none;
+                border-radius: 0;
+                padding: 0;
+                max-width: 100%;
+              }
+            }
+
+            /* ── Official Institutional Header ── */
+            .doc-header {
               display: flex;
               justify-content: space-between;
-              background-color: #F8FAFC;
-              border: 1px solid #E2E8F0;
-              border-radius: 8px;
-              padding: 12px 18px;
-              margin-bottom: 24px;
+              align-items: flex-start;
+              border-bottom: 3px solid #1E3A8A;
+              padding-bottom: 18px;
+              margin-bottom: 20px;
+            }
+            .brand-section {
+              flex: 1;
+            }
+            .org-name {
+              font-size: 24px;
+              font-weight: 900;
+              letter-spacing: 0.5px;
+              color: #1E3A8A;
+              margin: 0 0 2px 0;
+            }
+            .org-sub {
+              font-size: 12px;
+              color: #64748B;
+              font-weight: 600;
+              margin: 0 0 8px 0;
+              text-transform: uppercase;
+              letter-spacing: 0.8px;
+            }
+            .doc-title-badge {
+              display: inline-block;
+              background-color: #EFF6FF;
+              border: 1px solid #BFDBFE;
+              color: #1E40AF;
+              font-size: 11px;
+              font-weight: 800;
+              padding: 3px 8px;
+              border-radius: 4px;
+              letter-spacing: 0.5px;
+            }
+
+            .meta-section {
+              text-align: right;
+            }
+            .meta-table {
+              font-size: 11.5px;
+              color: #475569;
+            }
+            .meta-table tr td:first-child {
+              font-weight: 700;
+              color: #1E293B;
+              padding-right: 10px;
+              text-align: right;
+            }
+            .meta-table tr td:last-child {
+              text-align: right;
+              color: #334155;
+            }
+            .confidential-tag {
+              display: inline-block;
+              margin-top: 6px;
+              background-color: #FEE2E2;
+              border: 1px solid #FECACA;
+              color: #991B1B;
+              font-size: 10px;
+              font-weight: 800;
+              padding: 2px 6px;
+              border-radius: 4px;
+              letter-spacing: 0.4px;
+            }
+
+            /* ── Scope Box ── */
+            .scope-banner {
+              background-color: #F1F5F9;
+              border-left: 4px solid #2563EB;
+              border-radius: 0 6px 6px 0;
+              padding: 10px 14px;
+              margin-bottom: 22px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 12.5px;
+            }
+            .scope-banner strong {
+              color: #0F172A;
+            }
+
+            /* ── KPI Matrix ── */
+            .kpi-title-heading {
               font-size: 13px;
+              font-weight: 800;
+              text-transform: uppercase;
+              color: #475569;
+              letter-spacing: 0.6px;
+              margin-bottom: 10px;
             }
             .kpi-grid {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 12px;
-              margin-bottom: 28px;
+              gap: 10px;
+              margin-bottom: 26px;
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             .kpi-card {
-              border: 1px solid #E5E7EB;
-              border-radius: 8px;
-              padding: 12px;
               background-color: #FFFFFF;
+              border: 1px solid #E2E8F0;
+              border-radius: 8px;
+              padding: 10px 12px;
+              border-top: 3px solid #64748B;
             }
-            .kpi-title {
-              font-size: 11px;
-              text-transform: uppercase;
-              color: #6B7280;
-              font-weight: 600;
-              margin-bottom: 4px;
-            }
-            .kpi-val {
-              font-size: 20px;
+            .kpi-card.blue { border-top-color: #2563EB; }
+            .kpi-card.green { border-top-color: #16A34A; }
+            .kpi-card.amber { border-top-color: #D97706; }
+            .kpi-card.red { border-top-color: #DC2626; }
+            .kpi-card.purple { border-top-color: #7C3AED; }
+
+            .kpi-label {
+              font-size: 10.5px;
               font-weight: 700;
-              color: #111827;
+              text-transform: uppercase;
+              color: #64748B;
+              margin-bottom: 3px;
+              letter-spacing: 0.3px;
+            }
+            .kpi-value {
+              font-size: 19px;
+              font-weight: 800;
+              color: #0F172A;
+            }
+            .kpi-value.green { color: #15803D; }
+            .kpi-value.amber { color: #B45309; }
+            .kpi-value.red { color: #B91C1C; }
+            .kpi-value.blue { color: #1D4ED8; }
+            .kpi-sub {
+              font-size: 9.5px;
+              color: #94A3B8;
+              margin-top: 2px;
+            }
+
+            /* ── Tables ── */
+            .section-block {
+              margin-bottom: 24px;
+              page-break-inside: auto;
+            }
+            .section-header-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              border-bottom: 1.5px solid #CBD5E1;
+              padding-bottom: 6px;
+              margin-bottom: 10px;
+              page-break-after: avoid;
             }
             .section-title {
-              font-size: 16px;
-              font-weight: 700;
+              font-size: 13.5px;
+              font-weight: 800;
               color: #1E3A8A;
-              margin-top: 24px;
-              margin-bottom: 12px;
-              border-bottom: 2px solid #E2E8F0;
-              padding-bottom: 6px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
             }
+            .section-count {
+              background-color: #F1F5F9;
+              color: #475569;
+              font-size: 11px;
+              font-weight: 700;
+              padding: 2px 7px;
+              border-radius: 10px;
+            }
+
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 20px;
-              font-size: 12px;
+              font-size: 11.5px;
+              margin-bottom: 6px;
+              page-break-inside: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+            tr {
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             th {
-              background-color: #F1F5F9;
+              background-color: #F8FAFC;
               color: #334155;
               text-align: left;
-              padding: 8px 10px;
-              font-weight: 600;
-              border-bottom: 1px solid #CBD5E1;
+              padding: 7px 9px;
+              font-weight: 700;
+              font-size: 10.5px;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              border-top: 1px solid #E2E8F0;
+              border-bottom: 2px solid #CBD5E1;
             }
             td {
-              padding: 8px 10px;
+              padding: 7px 9px;
               border-bottom: 1px solid #E2E8F0;
-              color: #475569;
+              color: #334155;
+              vertical-align: middle;
             }
             tr:nth-child(even) td {
-              background-color: #F8FAFC;
+              background-color: #FAFAFA;
             }
+
+            /* Badges */
             .badge {
               display: inline-block;
-              padding: 2px 8px;
+              padding: 2px 7px;
               border-radius: 4px;
-              font-size: 11px;
-              font-weight: 600;
+              font-size: 10px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.3px;
             }
             .badge-green { background-color: #DCFCE7; color: #166534; }
             .badge-amber { background-color: #FEF3C7; color: #92400E; }
             .badge-red { background-color: #FEE2E2; color: #991B1B; }
-            .badge-blue { background-color: #DBEAFE; color: #1E40AF; }
-            .footer {
-              margin-top: 36px;
-              padding-top: 14px;
-              border-top: 1px solid #E2E8F0;
-              font-size: 11px;
-              color: #94A3B8;
+            .badge-blue { background-color: #EFF6FF; color: #1D4ED8; }
+            .badge-purple { background-color: #FAF5FF; color: #6D28D9; }
+
+            /* Empty state in table */
+            .empty-row td {
               text-align: center;
+              padding: 16px;
+              color: #94A3B8;
+              font-style: italic;
+            }
+
+            /* ── Sign-off Block ── */
+            .signoff-section {
+              margin-top: 36px;
+              padding-top: 18px;
+              border-top: 1px solid #E2E8F0;
+              display: flex;
+              justify-content: space-between;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .sign-box {
+              width: 44%;
+            }
+            .sign-line {
+              border-bottom: 1px dashed #94A3B8;
+              height: 36px;
+              margin-bottom: 6px;
+            }
+            .sign-name {
+              font-size: 11px;
+              font-weight: 800;
+              color: #1E293B;
+              text-transform: uppercase;
+            }
+            .sign-title {
+              font-size: 10px;
+              color: #64748B;
+            }
+
+            /* ── Document Footer ── */
+            .doc-footer {
+              margin-top: 24px;
+              padding-top: 10px;
+              border-top: 1px solid #F1F5F9;
+              font-size: 10px;
+              color: #94A3B8;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
             }
           </style>
         </head>
         <body>
-          <div class="header-banner">
-            <h1>CampusMart Platform Activity Report</h1>
-            <p>Official Platform Audit & Operational Analytics Document</p>
-          </div>
-
-          <div class="meta-box">
-            <div><strong>Active Scope:</strong> ${periodLabel}</div>
-            <div><strong>Generated At:</strong> ${generatedAt}</div>
-            <div><strong>Generated By:</strong> CampusMart Admin</div>
-          </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-title">New Users</div>
-              <div class="kpi-val">${summary.totalNewUsers}</div>
+          <div class="no-print action-bar">
+            <div class="action-bar-info">
+              <strong>Campus Mart</strong> • Executive Platform Audit Report Preview
             </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Items Added</div>
-              <div class="kpi-val">${summary.totalItemsAdded}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Total Orders</div>
-              <div class="kpi-val">${summary.totalOrders}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Confirmed Orders</div>
-              <div class="kpi-val" style="color: #16A34A;">${summary.confirmedOrders}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Pending Orders</div>
-              <div class="kpi-val" style="color: #D97706;">${summary.pendingOrders}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Cancelled/Returned</div>
-              <div class="kpi-val" style="color: #DC2626;">${summary.cancelledOrders + summary.returnedOrders}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Order Volume</div>
-              <div class="kpi-val">₹${summary.totalOrderVolume.toFixed(2)}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Reports Filed</div>
-              <div class="kpi-val">${summary.totalReports}</div>
+            <div class="action-bar-btns">
+              <button class="btn btn-primary" onclick="window.print()">
+                Print / Save as PDF
+              </button>
+              <button class="btn btn-secondary" onclick="window.close()">Close Preview</button>
             </div>
           </div>
 
-          <div class="section-title">Items Added During This Period (${items.length})</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Price</th>
-                <th>Seller</th>
-                <th>Time Added</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${items.length === 0 ? '<tr><td colspan="6" style="text-align:center; padding:16px; color:#94A3B8;">No items added in this timeframe.</td></tr>' : ''}
-              ${items.map(i => `
-                <tr>
-                  <td><strong>${i.name}</strong></td>
-                  <td>${i.category}</td>
-                  <td><span class="badge badge-blue">${i.listing_type.toUpperCase()}</span></td>
-                  <td>₹${i.price}</td>
-                  <td>${i.seller}</td>
-                  <td>${new Date(i.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+          <div class="document-container">
+            <!-- Header -->
+            <div class="doc-header">
+              <div class="brand-section">
+                <div class="org-name">CAMPUS MART</div>
+                <div class="org-sub">Birla Vishvakarma Mahavidyalaya • Engineering College</div>
+                <div class="doc-title-badge">Platform Operations & Analytics Audit Report</div>
+              </div>
+              <div class="meta-section">
+                <table class="meta-table">
+                  <tr><td>Report ID:</td><td>${reportRef}</td></tr>
+                  <tr><td>Generated:</td><td>${generatedAt}</td></tr>
+                  <tr><td>Auditor:</td><td>Campus Administration</td></tr>
+                </table>
+                <div class="confidential-tag">CONFIDENTIAL AUDIT</div>
+              </div>
+            </div>
 
-          <div class="section-title">Orders Placed During This Period (${orders.length})</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Item</th>
-                <th>Buyer</th>
-                <th>Price</th>
-                <th>Status</th>
-                <th>Payment</th>
-                <th>Order Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${orders.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:16px; color:#94A3B8;">No orders placed in this timeframe.</td></tr>' : ''}
-              ${orders.map(o => {
-                const badgeClass = ['completed', 'delivered', 'rental_active'].includes(o.status)
-                  ? 'badge-green'
-                  : ['pending', 'cancel_requested'].includes(o.status)
-                  ? 'badge-amber'
-                  : 'badge-red';
-                return `
+            <!-- Scope Banner -->
+            <div class="scope-banner">
+              <div><strong>Reporting Timeframe Scope:</strong> ${periodLabel}</div>
+              <div style="font-size: 11px; color: #475569;">Birla Vishvakarma Mahavidyalaya Platform Node</div>
+            </div>
+
+            <!-- Executive Performance Matrix -->
+            <div class="kpi-title-heading">Executive KPI Summary</div>
+            <div class="kpi-grid">
+              <div class="kpi-card blue">
+                <div class="kpi-label">Total Orders</div>
+                <div class="kpi-value blue">${summary.totalOrders}</div>
+                <div class="kpi-sub">Placed in period</div>
+              </div>
+              <div class="kpi-card green">
+                <div class="kpi-label">Confirmed Orders</div>
+                <div class="kpi-value green">${summary.confirmedOrders}</div>
+                <div class="kpi-sub">Fulfilled / active</div>
+              </div>
+              <div class="kpi-card amber">
+                <div class="kpi-label">Pending Orders</div>
+                <div class="kpi-value amber">${summary.pendingOrders}</div>
+                <div class="kpi-sub">Awaiting action</div>
+              </div>
+              <div class="kpi-card red">
+                <div class="kpi-label">Cancelled / Returned</div>
+                <div class="kpi-value red">${(summary.cancelledOrders || 0) + (summary.returnedOrders || 0)}</div>
+                <div class="kpi-sub">Refunded / stopped</div>
+              </div>
+              <div class="kpi-card blue">
+                <div class="kpi-label">Gross Order Volume</div>
+                <div class="kpi-value">₹${Number(summary.totalOrderVolume || 0).toFixed(2)}</div>
+                <div class="kpi-sub">Transaction value</div>
+              </div>
+              <div class="kpi-card purple">
+                <div class="kpi-label">New Users</div>
+                <div class="kpi-value">${summary.totalNewUsers}</div>
+                <div class="kpi-sub">Registered accounts</div>
+              </div>
+              <div class="kpi-card blue">
+                <div class="kpi-label">Items Listed</div>
+                <div class="kpi-value">${summary.totalItemsAdded}</div>
+                <div class="kpi-sub">Products added</div>
+              </div>
+              <div class="kpi-card amber">
+                <div class="kpi-label">Reports Filed</div>
+                <div class="kpi-value">${summary.totalReports}</div>
+                <div class="kpi-sub">Moderation tickets</div>
+              </div>
+            </div>
+
+            <!-- 1. Orders Table -->
+            <div class="section-block">
+              <div class="section-header-row">
+                <div class="section-title">1. Order Transactions Log</div>
+                <div class="section-count">${orders.length} Records</div>
+              </div>
+              <table>
+                <thead>
                   <tr>
-                    <td>#${o._id.slice(-6).toUpperCase()}</td>
-                    <td><strong>${o.item_name}</strong></td>
-                    <td>${o.buyer_name}</td>
-                    <td>₹${o.total_price}</td>
-                    <td><span class="badge ${badgeClass}">${o.status.toUpperCase()}</span></td>
-                    <td>${o.payment_method}</td>
-                    <td>${new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <th style="width: 14%;">Order Ref</th>
+                    <th style="width: 24%;">Item Name</th>
+                    <th style="width: 18%;">Buyer</th>
+                    <th style="width: 12%;">Amount</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 10%;">Payment</th>
+                    <th style="width: 10%;">Date</th>
                   </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  ${orders.length === 0 ? '<tr class="empty-row"><td colspan="7">No order transactions recorded in this period.</td></tr>' : ''}
+                  ${orders.map(o => {
+                    const badgeClass = ['completed', 'delivered', 'rental_active'].includes(o.status)
+                      ? 'badge-green'
+                      : ['pending', 'cancel_requested'].includes(o.status)
+                      ? 'badge-amber'
+                      : 'badge-red';
+                    const orderId = String(o._id || o.id || '').slice(-6).toUpperCase();
+                    const dateFormatted = o.createdAt
+                      ? new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : 'N/A';
+                    return `
+                      <tr>
+                        <td><strong>#${orderId}</strong></td>
+                        <td><strong>${o.item_name || 'Item'}</strong></td>
+                        <td>${o.buyer_name || 'Buyer'}</td>
+                        <td><strong>₹${Number(o.total_price || 0).toFixed(2)}</strong></td>
+                        <td><span class="badge ${badgeClass}">${String(o.status || '').toUpperCase()}</span></td>
+                        <td>${String(o.payment_method || 'Online').toUpperCase()}</td>
+                        <td>${dateFormatted}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
 
-          <div class="section-title">Newly Registered Users (${users.length})</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Registered At</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${users.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:16px; color:#94A3B8;">No new users registered in this timeframe.</td></tr>' : ''}
-              ${users.map(u => `
-                <tr>
-                  <td><strong>${u.full_name}</strong></td>
-                  <td>${u.email}</td>
-                  <td><span class="badge badge-blue">${u.role.toUpperCase()}</span></td>
-                  <td>${new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+            <!-- 2. Products / Inventory Table -->
+            <div class="section-block">
+              <div class="section-header-row">
+                <div class="section-title">2. Product Inventory Added</div>
+                <div class="section-count">${items.length} Records</div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 26%;">Product Name</th>
+                    <th style="width: 18%;">Category</th>
+                    <th style="width: 12%;">Listing Type</th>
+                    <th style="width: 12%;">Price</th>
+                    <th style="width: 18%;">Seller</th>
+                    <th style="width: 14%;">Listed Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.length === 0 ? '<tr class="empty-row"><td colspan="6">No inventory items added in this period.</td></tr>' : ''}
+                  ${items.map(i => {
+                    const typeBadge = (i.listing_type || 'sell').toLowerCase() === 'rent' ? 'badge-purple' : 'badge-blue';
+                    const dateFormatted = i.createdAt
+                      ? new Date(i.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : 'N/A';
+                    return `
+                      <tr>
+                        <td><strong>${i.name || 'Product'}</strong></td>
+                        <td>${i.category || 'General'}</td>
+                        <td><span class="badge ${typeBadge}">${String(i.listing_type || 'SELL').toUpperCase()}</span></td>
+                        <td><strong>₹${Number(i.price || 0).toFixed(2)}</strong></td>
+                        <td>${i.seller || 'Student Seller'}</td>
+                        <td>${dateFormatted}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
 
-          <div class="footer">
-            CampusMart Automated Operational Audit Report • Generated Confidential Document • BIRLA VISHVAKARMA MAHAVIDYALAYA
+            <!-- 3. Registered Users Table -->
+            <div class="section-block">
+              <div class="section-header-row">
+                <div class="section-title">3. Newly Registered User Accounts</div>
+                <div class="section-count">${users.length} Records</div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 28%;">Full Name</th>
+                    <th style="width: 36%;">Email Address</th>
+                    <th style="width: 16%;">Account Role</th>
+                    <th style="width: 20%;">Registered On</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${users.length === 0 ? '<tr class="empty-row"><td colspan="4">No new user registrations recorded in this period.</td></tr>' : ''}
+                  ${users.map(u => {
+                    const dateFormatted = u.createdAt
+                      ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : 'N/A';
+                    return `
+                      <tr>
+                        <td><strong>${u.full_name || 'User'}</strong></td>
+                        <td>${u.email || 'N/A'}</td>
+                        <td><span class="badge badge-blue">${String(u.role || 'STUDENT').toUpperCase()}</span></td>
+                        <td>${dateFormatted}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 4. Reports & Incidents Table -->
+            <div class="section-block">
+              <div class="section-header-row">
+                <div class="section-title">4. Safety & Incident Reports</div>
+                <div class="section-count">${reports.length} Records</div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 14%;">Report ID</th>
+                    <th style="width: 36%;">Reason / Incident Description</th>
+                    <th style="width: 22%;">Reported By</th>
+                    <th style="width: 14%;">Status</th>
+                    <th style="width: 14%;">Logged At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${reports.length === 0 ? '<tr class="empty-row"><td colspan="5">No safety or incident reports filed in this period.</td></tr>' : ''}
+                  ${reports.map(r => {
+                    const statusClass = (r.status || 'pending').toLowerCase() === 'pending' ? 'badge-amber' : 'badge-green';
+                    const repId = String(r._id || r.id || '').slice(-6).toUpperCase();
+                    const dateFormatted = r.createdAt
+                      ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : 'N/A';
+                    return `
+                      <tr>
+                        <td><strong>#${repId}</strong></td>
+                        <td>${r.reason || 'Report incident'}</td>
+                        <td>${r.reporter_name || 'Student'}</td>
+                        <td><span class="badge ${statusClass}">${String(r.status || 'PENDING').toUpperCase()}</span></td>
+                        <td>${dateFormatted}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Official Sign-off -->
+            <div class="signoff-section">
+              <div class="sign-box">
+                <div class="sign-line"></div>
+                <div class="sign-name">Platform Administrator</div>
+                <div class="sign-title">Campus Mart Operations Desk</div>
+              </div>
+              <div class="sign-box" style="text-align: right;">
+                <div class="sign-line"></div>
+                <div class="sign-name">Birla Vishvakarma Mahavidyalaya</div>
+                <div class="sign-title">Campus Resale & Rental Ecosystem Node</div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="doc-footer">
+              <span>Campus Mart Official Audit System • Ref: ${reportRef}</span>
+              <span>Birla Vishvakarma Mahavidyalaya • Confidential Operational Document</span>
+            </div>
           </div>
         </body>
         </html>
       `;
 
       if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
+        // Method: Open in a clean new tab and trigger print/save as PDF.
+        // This isolates the document completely from the app UI, avoiding printing the website.
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.open();
+          printWindow.document.write(html);
+          printWindow.document.close();
+          setTimeout(() => {
+            try {
+              printWindow.focus();
+              printWindow.print();
+            } catch (e) {
+              console.error('Print window error:', e);
+            }
+          }, 600);
+        } else {
+          // Fallback if popup blocker is active: Use an isolated offscreen iframe
+          const iframe = document.createElement('iframe');
+          iframe.style.position = 'fixed';
+          iframe.style.left = '-9999px';
+          iframe.style.top = '-9999px';
+          iframe.style.width = '1024px';
+          iframe.style.height = '768px';
+          iframe.style.border = '0';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentWindow.document;
+          doc.open();
+          doc.write(html);
+          doc.close();
+          setTimeout(() => {
+            try {
+              iframe.contentWindow.focus();
+              iframe.contentWindow.print();
+            } catch (e) {
+              console.error('Print iframe error:', e);
+            } finally {
+              setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                  document.body.removeChild(iframe);
+                }
+              }, 3000);
+            }
+          }, 600);
+        }
       } else {
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) {
@@ -439,6 +859,7 @@ export default function AdminAnalyticsScreen() {
       }
     } catch (err) {
       console.error('PDF Generation failed:', err);
+      Alert.alert('Error', 'Failed to generate PDF report.');
     } finally {
       setPdfGenerating(false);
     }

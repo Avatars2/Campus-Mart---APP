@@ -29,7 +29,7 @@ export async function PATCH(request) {
         razorpay_account_id: razorpay_account_id || null,
         razorpay_account_status: accountStatus,
       } },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('_id full_name razorpay_account_status');
     if (!seller) return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
     return NextResponse.json({ message: 'Seller payout account updated', seller }, { status: 200 });

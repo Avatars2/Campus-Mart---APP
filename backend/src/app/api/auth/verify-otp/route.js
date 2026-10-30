@@ -16,7 +16,7 @@ export async function POST(request) {
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { is_verified: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!user) {

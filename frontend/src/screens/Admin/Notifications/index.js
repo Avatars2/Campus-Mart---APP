@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   Modal,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -18,13 +19,32 @@ import client from '../../../api/client';
 import { openAttachment } from '../../../utils/attachmentHelper';
 import styles from './styles';
 
-export default function AdminNotificationsScreen() {
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
+
+export default function AdminNotificationsScreen({ route }) {
   const [notifications, setNotifications] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('ALL_TABS'); // 'ALL_TABS', 'ALL', 'SPECIFIC'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
+
+  // Sync deletion if passed back through route params
+  useEffect(() => {
+    if (route?.params?.deletedId) {
+      const targetId = route.params.deletedId;
+      setNotifications((prev) => {
+        const updated = prev.filter((n) => (n.id || n._id) !== targetId);
+        filterNotifications(updated, searchQuery, activeTab);
+        return updated;
+      });
+    }
+  }, [route?.params?.deletedId]);
 
   // Delete Confirmation Modal State
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -81,12 +101,143 @@ export default function AdminNotificationsScreen() {
 
   const handleSearch = (text) => {
     setSearchQuery(text);
+    setCurrentPage(1);
     filterNotifications(notifications, text, activeTab);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setCurrentPage(1);
     filterNotifications(notifications, searchQuery, tab);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredList.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredList.length, pageSize, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
+  const pagedList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredList.slice(start, start + pageSize);
+  }, [filteredList, currentPage, pageSize]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
+
+  const renderPagination = () => {
+    if (filteredList.length === 0) return null;
+
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredList.length);
+
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
+    }
+
+    return (
+      <View style={styles.pagination}>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredList.length} notifications
+          </Text>
+
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#1E3A8A"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+            />
+          </TouchableOpacity>
+
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[styles.pageNumBtn, currentPage === p && styles.pageNumBtnActive]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>
+                  {p}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const handleOpenPdf = async (attachment) => {
@@ -142,63 +293,69 @@ export default function AdminNotificationsScreen() {
       : '';
 
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+      <TouchableOpacity
+        style={styles.tableRowCard}
+        onPress={() => {
+          navigation.navigate('AdminNotificationDetail', {
+            notification: item,
+          });
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.tableRowLeft}>
           <View
             style={[
-              styles.audienceBadge,
-              isAll ? styles.audienceBadgeAll : styles.audienceBadgeSpecific,
+              styles.tableIconWrap,
+              isAll ? styles.tableIconWrapAll : styles.tableIconWrapSpecific,
             ]}
           >
             <Ionicons
-              name={isAll ? 'people' : 'person'}
-              size={12}
+              name={isAll ? 'megaphone' : 'person'}
+              size={18}
               color={isAll ? '#2563EB' : '#7C3AED'}
             />
-            <Text style={isAll ? styles.audienceTextAll : styles.audienceTextSpecific}>
-              {isAll
-                ? `All Students (${item.recipientCount || 'All'})`
-                : `Student: ${item.targetUser?.full_name || 'Individual'}`}
+          </View>
+          <View style={styles.tableInfoCol}>
+            <View style={styles.tableTopRow}>
+              <View
+                style={[
+                  styles.audienceBadge,
+                  isAll ? styles.audienceBadgeAll : styles.audienceBadgeSpecific,
+                ]}
+              >
+                <Ionicons
+                  name={isAll ? 'people' : 'person'}
+                  size={11}
+                  color={isAll ? '#2563EB' : '#7C3AED'}
+                />
+                <Text
+                  style={isAll ? styles.audienceTextAll : styles.audienceTextSpecific}
+                  numberOfLines={1}
+                >
+                  {isAll
+                    ? `All Students (${item.recipientCount || 'All'})`
+                    : `Student: ${item.targetUser?.full_name || 'Individual'}`}
+                </Text>
+              </View>
+              {hasPdf && (
+                <View style={styles.tablePdfBadge}>
+                  <Ionicons name="document-attach" size={11} color="#DC2626" />
+                  <Text style={styles.tablePdfBadgeText}>PDF</Text>
+                </View>
+              )}
+              <Text style={styles.cardDate}>{dateStr}</Text>
+            </View>
+
+            <Text style={styles.tableTitleText} numberOfLines={1}>
+              {item.title}
             </Text>
           </View>
-          <Text style={styles.cardDate}>{dateStr}</Text>
         </View>
 
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardBody} numberOfLines={3}>
-          {item.body}
-        </Text>
-
-        {hasPdf && (
-          <TouchableOpacity
-            style={styles.attachmentChip}
-            onPress={() => handleOpenPdf(item.attachment)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="document-text" size={16} color="#2563EB" />
-            <Text style={styles.attachmentText} numberOfLines={1}>
-              {decodeURIComponent(item.attachment.name || 'Attached PDF Document')}
-            </Text>
-            {Boolean(item.attachment.size) && (
-              <Text style={styles.attachmentSizeText}>
-                ({formatFileSize(item.attachment.size)})
-              </Text>
-            )}
-            <Ionicons name="open-outline" size={14} color="#2563EB" />
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.cardFooter}>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => promptDelete(item)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="trash-outline" size={15} color="#DC2626" />
-            <Text style={styles.deleteBtnText}>Delete</Text>
-          </TouchableOpacity>
+        <View style={styles.tableRowRight}>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -275,7 +432,7 @@ export default function AdminNotificationsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredList}
+          data={pagedList}
           keyExtractor={(item) => String(item.id || item._id)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -283,6 +440,7 @@ export default function AdminNotificationsScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />
           }
+          ListFooterComponent={renderPagination}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="notifications-off-outline" size={54} color="#CBD5E1" />
@@ -351,6 +509,58 @@ export default function AdminNotificationsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

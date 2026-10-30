@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { View, Text, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
 import styles from './styles';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function AdminCategoriesScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
@@ -12,7 +14,10 @@ export default function AdminCategoriesScreen({ navigation }) {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [pageSize, setPageSize] = useState(5);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -129,67 +134,136 @@ export default function AdminCategoriesScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('All');
 
-  const filteredCategories = categories.filter(cat => 
-    cat.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    cat.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCategories = useMemo(() => {
+    return categories.filter(cat => 
+      cat.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      cat.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [categories, searchQuery]);
 
   const pagedCategories = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredCategories.slice(start, start + PAGE_SIZE);
-  }, [filteredCategories, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return filteredCategories.slice(start, start + pageSize);
+  }, [filteredCategories, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredCategories.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredCategories.length, pageSize, currentPage]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+      return;
+    }
+    if (dropdownBtnRef.current?.measureInWindow) {
+      dropdownBtnRef.current.measureInWindow((x, y, width, height) => {
+        if (typeof x === 'number' && typeof y === 'number' && width > 0) {
+          const windowHeight = Dimensions.get('window').height;
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            bottom: Math.max(10, windowHeight - y + 6),
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setDropdownVisible(true);
+      });
+    } else {
+      setDropdownVisible(true);
+    }
+  };
 
   const renderPagination = () => {
-    const totalPages = Math.ceil(filteredCategories.length / PAGE_SIZE);
-    if (totalPages <= 1) return null;
+    if (filteredCategories.length === 0) return null;
+
+    const totalPages = Math.max(1, Math.ceil(filteredCategories.length / pageSize));
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, filteredCategories.length);
+
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
+    }
 
     return (
       <View style={styles.pagination}>
-        <Text style={styles.pageInfo}>
-          Showing {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredCategories.length)} of {filteredCategories.length}
-        </Text>
+        {/* ── Results Info & Page Size Dropdown in the Same Row ── */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {filteredCategories.length} categories
+          </Text>
+
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#1E3A8A"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Page Controls (Previous, Numbers, Next) ── */}
         <View style={styles.pageControls}>
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
-            onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
+            onPress={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
           >
-            <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#CBD5E1' : '#3B82F6'} />
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+            />
           </TouchableOpacity>
 
-          {[...Array(totalPages)].map((_, i) => {
-            const pageNum = i + 1;
-            if (
-              pageNum === 1 || 
-              pageNum === totalPages || 
-              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-            ) {
-              return (
-                <TouchableOpacity
-                  key={pageNum}
-                  style={currentPage === pageNum ? styles.pageNumBtnActive : styles.pageNumBtn}
-                  onPress={() => setCurrentPage(pageNum)}
-                >
-                  <Text style={currentPage === pageNum ? styles.pageNumTextActive : styles.pageNumText}>
-                    {pageNum}
-                  </Text>
-                </TouchableOpacity>
-              );
-            } else if (
-              pageNum === currentPage - 2 || 
-              pageNum === currentPage + 2
-            ) {
-              return <Text key={pageNum} style={styles.pageDots}>...</Text>;
-            }
-            return null;
-          })}
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[styles.pageNumBtn, currentPage === p && styles.pageNumBtnActive]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>
+                  {p}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
 
           <TouchableOpacity
             style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
-            onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
           >
-            <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#CBD5E1' : '#3B82F6'} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -257,7 +331,7 @@ export default function AdminCategoriesScreen({ navigation }) {
           ListEmptyComponent={(!errorMsg && filteredCategories.length === 0) ? <Text style={styles.emptyState}>No categories found.</Text> : null}
           renderItem={({ item: cat, index }) => {
             const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-            const globalIndex = (currentPage - 1) * PAGE_SIZE + index;
+            const globalIndex = (currentPage - 1) * pageSize + index;
             const color = colors[globalIndex % colors.length];
             return (
               <View style={[styles.categoryCard, { borderLeftColor: color }]}>
@@ -389,6 +463,58 @@ export default function AdminCategoriesScreen({ navigation }) {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Anchored Page Size Dropdown Modal (Opens right at the Page button) ── */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View
+            style={[
+              styles.anchoredDropdownMenu,
+              { bottom: dropdownPos.bottom, right: dropdownPos.right },
+            ]}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isSelected && styles.dropdownItemTextActive,
+                    ]}
+                  >
+                    {size}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

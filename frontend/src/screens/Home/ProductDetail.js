@@ -6,6 +6,7 @@ import { AuthContext } from '../../context/AuthContext';
 import styles from './ProductDetail.styles';
 import RatingStars from '../../components/commerce/RatingStars';
 import ReportModal from '../../components/ReportModal';
+import { isItemNewlyAdded } from '../../utils/itemUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -142,7 +143,15 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
           
           <Text style={styles.productTitle}>{item.name}</Text>
-          <Text style={styles.statsText}>{item.quantity > 0 ? `${item.quantity} available` : 'Out of stock'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <Text style={styles.statsText}>{item.quantity > 0 ? `${item.quantity} available` : 'Out of stock'}</Text>
+            {isItemNewlyAdded(item) && (
+              <View style={styles.newlyAddedBadge}>
+                <Ionicons name="sparkles" size={11} color="#059669" />
+                <Text style={styles.newlyAddedBadgeText}>Newly Added</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* IMAGE SECTION */}

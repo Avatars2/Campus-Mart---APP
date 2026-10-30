@@ -1,21 +1,21 @@
 =========================================
 CAMPUS MART - PROGRESS REPORT
-Date: October 27, 2026
+Date: October 31, 2026
 =========================================
 
 PROJECT STATUS:
-CampusMart is a comprehensive student marketplace platform. The core marketplace,
-authentication, real-time messaging, custom offers, checkout, online payment gateway (Razorpay/UPI),
-Escrow fund protection, automated refunds, direct order cancellation, 7-day purchase returns,
-inventory restocking, order & delivery confirmation, rating flows, push notifications,
-admin moderation, dynamic report reasons management with in-app mobile confirmation popups,
-admin notification management with PDF attachments, enhanced seller payment history,
-admin daily activity analytics with date-range PDF report generation,
-rental extensions with accurate real-time countdown timers, and full OpenStreetMap CartoDB
-location sharing with in-chat live map previews are fully implemented and verified.
+CampusMart is a comprehensive student marketplace and rental platform. The core marketplace,
+authentication, real-time messaging, community buying requests board, custom offers, checkout,
+online payment gateway (Razorpay/UPI), Escrow fund protection, automated refunds, direct order
+cancellation, 7-day purchase returns, inventory restocking, order & delivery confirmation with
+custom in-app dialogs, rating flows, push notifications, admin moderation, dynamic report reasons
+management, admin notifications with PDF attachments, enhanced seller payout history,
+admin daily activity analytics with date-range PDF exports, rental extensions with countdown timers,
+OpenStreetMap CartoDB location sharing with live in-chat map previews, and 24-hour newly added item
+labels are fully implemented, verified, and active.
 
 IMPLEMENTATION SUMMARY:
-Fully implemented: 16 modules
+Fully implemented: 17 modules
 Partially implemented: 0 modules
 Not started: 0 modules
 Estimated overall completion: approximately 100%
@@ -55,7 +55,7 @@ MODULE BREAKDOWN
    - Categories include Books, Electronics, Furniture, Stationery, Clothing, and Others.
    - Item cards show seller information, price, condition, quantity, and average rating.
    - Product details show images, description, seller information, and rating summary.
-   - Cleaned up availability display on product detail pages (removed extraneous '+' signs).
+   - Cleaned up availability display on product detail pages.
    - Rental cards show hourly, daily, or monthly rates and currently-rented availability.
    - RatingStars component renders fractional half-star displays accurately (e.g. 3.5 shows ★★★½☆).
    - Sorting Controls:
@@ -64,14 +64,16 @@ MODULE BREAKDOWN
      * Quick filter sort pills in horizontal scroll bar.
    - Price Range Filter:
      * Dedicated "Price" filter pill in quick filter bar showing active price range with instant clear button.
-     * Standalone Price Filter Modal with Dual Inputs (Min Price to Max Price) and student budget presets (Under ₹200, ₹200-₹500, ₹500-₹1000, ₹1000-₹2500, ₹2500+).
+     * Standalone Price Filter Modal with Dual Inputs (Min Price to Max Price) and student budget presets.
    - "Campus Trending" Carousel:
-     * Curated horizontal carousel banner at the top of the marketplace feed showing top-rated, hot items.
-     * Trending cards show cover image with "🔥 HOT" tag, Buy/Rent badge, formatted price, title, star rating, and seller name with avatar.
+     * Curated horizontal carousel banner at top of marketplace feed showing top-rated, hot items.
+     * Trending cards show cover image with "HOT" tag, Buy/Rent badge, formatted price, title, star rating, and seller name with avatar.
    - Active Discount Offers & Strikethrough Pricing:
      * Real-time calculation of discount percentage when an item has an active price drop or offer.
      * Displays original price strikethrough (₹original_price) paired alongside the discounted price.
-     * Prominent "🔥 X% OFF" badge on item images and trending carousel cards showing exact savings.
+     * Prominent "X% OFF" badge on item images and trending carousel cards.
+   - "Newly Added" 24-Hour Item Label:
+     * Dynamically tags items created within the past 24 hours with a distinct "NEWLY ADDED" badge.
 
 4. BUY PAGE AND CHECKOUT [COMPLETED - 100%]
    - Cart and wishlist management.
@@ -93,11 +95,12 @@ MODULE BREAKDOWN
    - Ecommerce-style order confirmation screen with buyer, seller, item, payment, delivery, and total details.
    - Invoice generation/printing is implemented without app action buttons in the printed output.
    - Rental checkout supports duration selection (hours/days/months) and calculates totals accurately.
+   - Cleaned up main Orders card view: removed redundant "Extend Rental" button from card body to keep orders feed focused and clean.
 
 5. SELL PAGE & LISTING MANAGEMENT [COMPLETED - 100%]
    - Create listings with item details, category, price, condition, quantity, listing type, and images.
    - Multi-Image Reordering & Primary Thumbnail Picker:
-     * Visual "⭐ Cover Photo" primary badge on the 1st photo.
+     * Visual "Cover Photo" primary badge on the 1st photo.
      * 1-tap "Make Primary" overlay button on non-primary images.
      * Left/right arrow controls to reorder images into any desired sequence in both AddProduct and EditProduct.
    - Auto-Save Drafts in Local Storage:
@@ -111,13 +114,12 @@ MODULE BREAKDOWN
      * Dedicated backend endpoint (POST /api/items/[id]/price-drop) with original price tracking.
      * Real-time in-app Pusher and FCM push notification alert automatically sent to all students who have the item in their Wishlist.
    - Dual Listing Categorization (Sale vs Rent Tabs & Badges):
-     * Seller listings now feature instant filter tabs: "All (count)", "Sale (count)", and "Rent (count)".
-     * Each listing card displays a prominent type badge: "🏷️ Sale" or "⏱️ Rent" alongside condition and status badges.
-     * Dedicated empty states tailored for Sale and Rent tabs with contextual action buttons.
+     * Seller listings feature instant filter tabs: "All (count)", "Sale (count)", and "Rent (count)".
+     * Streamlined card layout with focused action controls.
    - Restock Sold Items & Inactive/Hidden Status Lifecycle:
      * Allowed editing sold items in both UI and backend (removed blocking edit guard).
      * Restocking quantity > 0 automatically reactivates listing and clears marked_sold_at.
-     * Sold items strictly excluded from home marketplace feed ($nor with quantity <= 0 and marked_sold_at: null).
+     * Sold items strictly excluded from home marketplace feed.
      * Toggling Item Visibility OFF correctly shows 'Hidden' badge (not 'Sold'), and turning ON restores 'Active'.
 
 6. PROFILE AND USER MANAGEMENT [COMPLETED - 100%]
@@ -135,6 +137,7 @@ MODULE BREAKDOWN
 
 7. REAL-TIME MESSAGING & LOCATION SYSTEM [COMPLETED - 100%]
    - Pusher-powered real-time chat between buyers and sellers.
+   - Tab-based filtering on Messages index screen: Buying, Selling, and Groups tabs.
    - Unread message counters, read receipts, and sound/vibration alerts.
    - Custom/Special Offers: in-chat negotiation with direct checkout acceptance.
    - Streamlined Attachment Tray:
@@ -142,93 +145,111 @@ MODULE BREAKDOWN
      * Cleaned up UI: removed non-functional audio and mobile number sharing options.
    - High-Precision Location Sharing & Interactive Map:
      * WhatsApp-style "Send Location" modal with full-screen interactive MapView and centered red marker.
-     * High-speed, reliable CartoDB Voyager OpenStreetMap CDN tiles (https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png) with zero rate-limiting or connection resets.
+     * High-speed, reliable CartoDB Voyager OpenStreetMap CDN tiles with zero rate-limiting or connection resets.
      * Standard map rendering on Android and iOS with native smooth touch, pan, and pinch-to-zoom.
      * Precise needle anchoring: pin tip anchored directly at 50% coordinates with pointerEvents="none" so gesture navigation is never obstructed.
-     * Dynamic in-chat street map preview: shared location bubbles render live high-resolution map tiles with an embedded pin icon and direct "Tap to open in Maps" Google Maps navigation link.
+     * Dynamic in-chat street map preview: shared location bubbles render live high-resolution map tiles with an embedded pin icon and direct Google Maps navigation link.
      * Cross-platform fallback: renders high-res map tile images on Web and environments without native MapView.
 
-8. NOTIFICATION SYSTEM [COMPLETED - 100%]
+8. COMMUNITY "ITEMS BUYING REQUESTS" BOARD [COMPLETED - 100%]
+   - Integrated "Groups" Tab in Messages:
+     * Dedicated 3rd tab alongside Buying and Selling in Messages screen.
+     * Real-time counter badge indicating total active student requests currently open on campus.
+     * High-visibility "Items Buying Requests" group entry card leading to the community feed.
+   - Multi-Tier Filter Controls:
+     * Tier 1 (Request Type): Segmented pills for "All Types", "🛒 Buy", and "⏱ Rent" with high-contrast active state.
+     * Tier 2 (Category Chips): Horizontal scrolling pills for "All Categories", "Books", "Electronics", "Stationery", "Clothing", "Furniture", and "Others".
+   - Student Request Posting Workflow:
+     * Floating Action Button (+) "Post Request" opening clean request creation modal.
+     * Students enter item name, Buy or Rent type, category, optional target budget (₹), and descriptive notes.
+     * Real-time broadcast over Pusher ("group-buying-requests") instantly distributing new requests to all campus users.
+   - Seller Direct Contact Actions:
+     * Call Button: Direct phone dialer integration (tel:${buyerPhone}) allowing sellers to call buyers immediately.
+     * Message Buyer Button: Launches 1-on-1 private ChatThread directly referencing the requested item for private negotiation.
+   - Requester Completion & End Controls:
+     * "End Request" button with in-app confirmation modal: "This will be ended for your {item name}."
+     * Tapping confirm updates status to FULFILLED/ENDED in DB and changes badge to green "ENDED".
+     * Delete trash button allowing authors to permanently remove their request at any time.
+   - Bulletproof Deduplication & ID Normalization:
+     * Fixed race condition where simultaneous Pusher WebSocket event and HTTP POST response created duplicate request cards.
+     * Normalized Mongoose schema toJSON transform to keep both `id` and `_id` as uniform strings.
+     * Frontend deduplication on submit, incoming Pusher events, and fetch requests.
+
+9. NOTIFICATION SYSTEM [COMPLETED - 100%]
    - In-app notification center with unread count badges.
    - Firebase Cloud Messaging (FCM) push notifications initialized.
    - Real-time notification delivery via Pusher for instant alerts.
    - PDF attachment viewer using native intent launcher and sharing.
    - Individual deletion and "Clear All" with confirmation modals.
 
-9. ADMIN DASHBOARD & MODERATION [COMPLETED - 100%]
-   - Admin-only routes and screens with role-based access control.
-   - User moderation: view all users, suspend/ban users, and lift suspensions.
-   - Item moderation: view all listings, remove inappropriate items, and view statistics.
-   - Category management: add, edit, and toggle marketplace categories.
-   - Dynamic Report Reasons Manager:
-     * Top-right '+' button in Report Management header.
-     * Adding and deleting user report reasons.
-     * Native-like popup dialog with clean Cancel/Delete actions.
-     * Dynamic loading of reasons into student Report User modal from backend API.
+10. ADMIN DASHBOARD & MODERATION [COMPLETED - 100%]
+    - Admin-only routes and screens with role-based access control.
+    - User moderation: view all users, suspend/ban users, and lift suspensions.
+    - Item moderation: view all listings, remove inappropriate items, and view statistics.
+    - Category management: add, edit, and toggle marketplace categories.
+    - Dynamic Report Reasons Manager:
+      * Top-right '+' button in Report Management header.
+      * Adding and deleting user report reasons.
+      * Native-like popup dialog with clean Cancel/Delete actions.
+      * Dynamic loading of reasons into student Report User modal from backend API.
 
-10. PAYMENT GATEWAY & ESCROW LIFECYCLE [COMPLETED - 100%]
+11. PAYMENT GATEWAY & ESCROW LIFECYCLE [COMPLETED - 100%]
     - Razorpay Checkout + UPI payments.
     - Secure Escrow mechanism: payments held until buyer marks item received.
     - Instant automated refund-to-source on cancellation or return approval.
     - Payout cancellation protecting escrow from double-disbursement.
 
-11. DELIVERY CONFIRMATION & RENTAL EXTENSIONS [COMPLETED - 100%]
+12. DELIVERY CONFIRMATION & STANDARDIZED POPUPS [COMPLETED - 100%]
     - Handshake Delivery Verification:
       * Seller marks item as "Delivered" upon handover.
       * Buyer verifies item and marks "Confirm Receipt" (or "Start Rental" for rental items).
       * Instant automatic escrow payout disbursement triggered to seller once buyer confirms receipt.
+    - Standardized Popups with Real Item & User Names:
+      * Seller Mark as Delivered: "Confirm that you delivered {item name} to {buyer name}."
+      * Confirm Item Received: "Tap Yes to confirm that you have received {item name}."
+      * Cancel Order: "Are you sure you want to cancel this order?"
+      * Return Item: "Are you sure you want to return {item name}?"
+      * Approve Return: "Confirm that you accept the return and have received {item name}."
+      * Reject Return: "The return request will be rejected."
     - Rental Extension Requests with Razorpay:
       * Dynamic stepper adjusts in unit increments based on the item's listing period (Hours, Days, Months).
       * Prorated pricing calculation based on unit rental rate (₹price * duration).
       * Integrated with Razorpay Checkout payment gateway: buyer securely pays extension fee online.
       * Real-time update of rental_due_at, rental_duration, and total_price with recorded extension history.
-      * Instant automated push notification sent to seller informing them of extension and payment.
     - Rental Countdown Timer Fix:
-      * Fixed expired rental extension bug: when extending an already overdue rental, the new due date is dynamically calculated from the exact current timestamp (Date.now()) rather than past expired due dates.
-      * Ensures countdown timers never lock at 00:00:00 (0m 0s) and actively tick down the full renewed rental window.
+      * Dynamic calculation from current timestamp (Date.now()) prevents countdown timers from locking at 00:00:00.
 
-12. ADMIN NOTIFICATIONS MANAGEMENT [COMPLETED - 100%]
+13. ADMIN NOTIFICATIONS MANAGEMENT [COMPLETED - 100%]
     - Notifications Stat Card in dashboard grid navigating directly to Notifications Hub.
     - Composing announcements targeted to all students or specific students.
     - Uploading and attaching PDF documents up to 10MB to notifications.
     - Direct silent redirection to the Notifications Hub after sending.
     - Deleting admin notifications with cascaded cleanup of student inbox records.
 
-13. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
+14. ITEM REVIEWS AND RATINGS [COMPLETED - 100%]
     - Half-star rating prompt (supports 0.5 increments from 0.5 to 5.0).
     - Fractional rating bug resolved: item average calculations properly handle fractional star ratings without NaN corruption.
     - Rating modal button text updated to "Rating" with loading indicator.
-    - Removed redundant rating button from buyer's Order Details modal actions to maintain clean order management.
     - RatingStars component displays half-star icons cleanly.
     - Ratings update item average rating and total rating count in real-time.
 
-14. REPORT SYSTEM & DYNAMIC ADMIN REASON MANAGER [COMPLETED - 100%]
+15. REPORT SYSTEM & DYNAMIC ADMIN REASON MANAGER [COMPLETED - 100%]
     - Dedicated student reporting workflow for reporting suspicious/inappropriate users.
     - Proof image uploads stored securely via Cloudinary.
     - Profile "My Reports" view allows students to track status of submitted reports.
     - Admin Report Details screen showcases full context and attached evidence for resolution.
 
-15. ADMIN DAILY ACTIVITY ANALYTICS & PDF REPORT GENERATION [COMPLETED - 100%]
-    - Top-Right Logo Action:
-      * Branded CampusMart logo button placed in the top-right corner of the Admin Dashboard hero banner.
-      * One-tap navigation to the comprehensive Platform Analytics screen.
-    - Flexible Date Filtering:
-      * Quick presets: Today, Yesterday, Last 7 Days, Last 30 Days, This Month, and Custom Date / Range.
-      * Interactive modal allows selecting a specific calendar date or a start date and end date range.
-      * Active filter period clearly displayed with calendar badge.
-    - Comprehensive Activity Metrics:
-      * 8 KPI cards: New Users Registered, Items Listed, Total Orders Placed, Confirmed/Completed Orders, Pending Orders, Cancelled/Returned Orders, Total Order Volume (₹), and User Reports Filed.
-    - Granular Detailed Itemization (Tabbed View):
-      * Items Added Tab: Detailed list of cards showing item name, price, category, listing type (Sell/Rent/Donate), seller, and time added.
-      * Orders Placed Tab: Detailed cards showing order number, item name, buyer name, order price, colored status badge, payment method, and timestamp.
-      * New Users Tab: Detailed cards showing full name, email, role badge (Student/Admin), and registration timestamp.
-      * Reports Tab: Detailed list of reports filed with reasons, reporter names, and status badges.
-    - Executive PDF Document Generation:
-      * Direct "Export PDF" button in header.
-      * Generates a formal, professional CampusMart Platform Activity Report document formatted with college branding, time scope header, KPI metrics grid, and detailed tables for items added, orders placed, and new users.
-      * Cross-platform export: native share sheet via expo-sharing on mobile (Android/iOS) and print/save dialog via expo-print on Web.
-    - Backend API:
-      * Dedicated GET /api/admin/analytics endpoint aggregating Users, Items, Orders, and Reports between start-of-day (00:00:00) and end-of-day (23:59:59).
+16. ADMIN DAILY ACTIVITY ANALYTICS & PDF REPORT GENERATION [COMPLETED - 100%]
+    - Top-Right Logo Action navigating to the comprehensive Platform Analytics screen.
+    - Flexible Date Filtering: Today, Yesterday, Last 7 Days, Last 30 Days, This Month, and Custom Date / Range.
+    - 8 KPI cards: New Users Registered, Items Listed, Total Orders Placed, Confirmed/Completed Orders, Pending Orders, Cancelled/Returned Orders, Total Order Volume (₹), and User Reports Filed.
+    - Granular Detailed Itemization: Items Added Tab, Orders Placed Tab, New Users Tab, and Reports Tab.
+    - Executive PDF Document Generation: Formal branded CampusMart Activity Report export with expo-print and expo-sharing.
+
+17. CROSS-PLATFORM DIALOGS & WEB COMPATIBILITY [COMPLETED - 100%]
+    - In-app modal dialog replacements for React Native Web compatibility where Alert.alert is a no-op.
+    - End Request and Delete Request confirmation dialogs with custom colored icons (green checkmark / red trash).
+    - Dual platform support for Web (Chrome/Safari) and Native (Android/iOS).
 
 =========================================
 ACTUAL TECHNOLOGY STACK
@@ -239,7 +260,7 @@ ACTUAL TECHNOLOGY STACK
 - Database: MongoDB with Mongoose models.
 - Authentication: JWT-based authentication with AsyncStorage token persistence.
 - Payment Gateway: Razorpay API & Webhooks with UPI Intent & Escrow lifecycle.
-- Real-time messaging & alerts: Pusher.
+- Real-time messaging & community alerts: Pusher channels.
 - Document & Image storage: Cloudinary (images and raw PDF storage).
 - Push Notifications: Firebase Admin SDK with FCM push notifications.
 - Document Viewer: Shared utility (src/utils/attachmentHelper.js) using Expo FileSystem, IntentLauncher, and Sharing.
@@ -250,13 +271,21 @@ ACTUAL TECHNOLOGY STACK
 CURRENTLY VERIFIED FLOWS
 =========================================
 - Student registration, email verification, and login.
+- Community "Items Buying Requests" board in Messages:
+  * Posting buy/rent item requests with category and budget.
+  * Two-tier filter UI (Type: All Types, Buy, Rent; Category: Books, Electronics, Stationery, etc.).
+  * Direct seller contact: Call (tel:) and Message Buyer (1-on-1 ChatThread).
+  * Request completion: "End Request" with confirmation modal ("This will be ended for your {item name}.") and delete button.
+  * Real-time sync via Pusher without duplicate card rendering.
 - Marketplace search, category filters, and product details with half-star ratings.
+- "Newly Added" 24-hour item labels on freshly listed items.
 - Home page price drop badges with original price strikethrough and discount percentage.
-- Sell page listing filters with Sale and Rent tabs and distinct badges.
+- Sell page listing filters with Sale and Rent tabs.
 - Razorpay online payment checkout with inventory reservation.
 - Direct order cancellation on pending orders with instant Razorpay refund to source.
 - Automated inventory restocking on order cancellation and item return.
 - 7-Day purchase return request and seller confirmation with automated refund.
+- Standardized order confirmation popups showing real item and user names.
 - Escrow settlement cancellation on refunded orders to prevent seller disbursements.
 - Seller delivery confirmation and buyer receipt confirmation triggering seller payout.
 - Rental extension checkout with Razorpay and dynamic overdue timer correction.

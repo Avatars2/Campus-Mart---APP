@@ -258,17 +258,91 @@ export default StyleSheet.create({
 
   // ── Pagination ──
   pagination: {
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 24,
     paddingHorizontal: 16,
     alignItems: 'center',
     gap: 12,
   },
+  paginationHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
   pageInfo: {
     fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
+    flex: 1,
   },
+  pageSizeDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  pageSizeDropdownBtnActive: {
+    borderColor: '#1E3A8A',
+    backgroundColor: '#EFF6FF',
+  },
+  pageSizeDropdownText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+
+  // Anchored Dropdown Menu Styles
+  dropdownModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  anchoredDropdownMenu: {
+    position: 'absolute',
+    width: 96,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  dropdownItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  dropdownItemTextActive: {
+    color: '#1E3A8A',
+    fontWeight: '800',
+  },
+
   pageControls: {
     flexDirection: 'row',
     alignItems: 'center',

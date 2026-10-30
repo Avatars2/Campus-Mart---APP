@@ -7,6 +7,7 @@ import styles from './styles';
 import { useNotifications } from '../../context/NotificationContext';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 import RatingStars from '../../components/commerce/RatingStars';
+import { isItemNewlyAdded } from '../../utils/itemUtils';
 
 const SORT_OPTIONS = [
   { key: 'recent', label: 'Recently Listed (Default)', icon: 'time-outline' },
@@ -187,6 +188,9 @@ export default function HomeScreen({ route, navigation }) {
             <Ionicons name="flame" size={20} color="#EA580C" />
             <Text style={styles.trendingTitle}>Campus Trending</Text>
           </View>
+          <View style={styles.trendingBadge}>
+            <Text style={styles.trendingBadgeText}>Last 48 hrs</Text>
+          </View>
         </View>
         <ScrollView
           horizontal
@@ -199,6 +203,7 @@ export default function HomeScreen({ route, navigation }) {
             const itemId = item.id || item._id;
             const hasOffer = Boolean(item.original_price && Number(item.original_price) > Number(item.price));
             const discountPct = hasOffer ? Math.round(((Number(item.original_price) - Number(item.price)) / Number(item.original_price)) * 100) : 0;
+            const isNewlyAdded = isItemNewlyAdded(item);
 
             return (
               <TouchableOpacity
@@ -209,9 +214,12 @@ export default function HomeScreen({ route, navigation }) {
               >
                 <View style={styles.trendingCardImageWrapper}>
                   <Image source={{ uri: img }} style={styles.trendingCardImage} />
-                  <View style={styles.trendingTag}>
-                    <Text style={styles.trendingTagText}>🔥 HOT</Text>
-                  </View>
+                  {isNewlyAdded && (
+                    <View style={styles.trendingNewlyAddedBadge}>
+                      <Ionicons name="sparkles" size={9} color="#FFFFFF" style={{ marginRight: 2 }} />
+                      <Text style={styles.trendingNewlyAddedBadgeText}>Newly Added</Text>
+                    </View>
+                  )}
                   {hasOffer && (
                     <View style={styles.trendingOfferBadge}>
                       <Text style={styles.trendingOfferBadgeText}>🔥 {discountPct}% OFF</Text>
@@ -270,6 +278,7 @@ export default function HomeScreen({ route, navigation }) {
     const condition = item.condition_rating ? (conditionMap[item.condition_rating] || item.condition_rating.toString().replace('_', ' ')) : '';
     const hasOffer = Boolean(item.original_price && Number(item.original_price) > Number(item.price));
     const discountPct = hasOffer ? Math.round(((Number(item.original_price) - Number(item.price)) / Number(item.original_price)) * 100) : 0;
+    const isNewlyAdded = isItemNewlyAdded(item);
 
     return (
       <TouchableOpacity
@@ -279,11 +288,6 @@ export default function HomeScreen({ route, navigation }) {
       >
         <View style={styles.itemImageContainer}>
           <Image source={{ uri: imageUrl }} style={styles.itemImage} />
-          {hasOffer && (
-            <View style={styles.cardDiscountRibbon}>
-              <Text style={styles.cardDiscountRibbonText}>🔥 {discountPct}% OFF</Text>
-            </View>
-          )}
           {item.listing_type === 'rent' ? (
             <View style={[styles.conditionBadge, { backgroundColor: '#007185' }]}>
               <Text style={styles.conditionBadgeText}>{item.is_currently_rented ? 'Rented' : 'Rent'}</Text>
@@ -293,6 +297,19 @@ export default function HomeScreen({ route, navigation }) {
               <Text style={styles.conditionBadgeText}>{condition}</Text>
             </View>
           ) : null}
+
+          {isNewlyAdded && (
+            <View style={styles.newlyAddedBadge}>
+              <Ionicons name="sparkles" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+              <Text style={styles.newlyAddedBadgeText}>Newly Added</Text>
+            </View>
+          )}
+
+          {hasOffer && (
+            <View style={[styles.cardDiscountRibbon, isNewlyAdded && { top: 23 }]}>
+              <Text style={styles.cardDiscountRibbonText}>🔥 {discountPct}% OFF</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.itemDetails}>
