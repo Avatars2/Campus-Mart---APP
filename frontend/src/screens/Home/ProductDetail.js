@@ -218,6 +218,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 onPress={handleAddToCartClick}
                 disabled={item.is_currently_rented}
               >
+                <Ionicons name="cart-outline" size={20} color="#007185" />
                 <Text style={styles.actionButtonYellowText}>Add to Cart</Text>
               </TouchableOpacity>
               
@@ -227,6 +228,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 onPress={handleBuyNow}
                 disabled={item.is_currently_rented}
               >
+                <Ionicons name={item.listing_type === 'rent' ? 'timer-outline' : 'flash-outline'} size={19} color="#FFFFFF" />
                 <Text style={styles.actionButtonOrangeText}>{item.is_currently_rented ? 'Currently Rented' : item.listing_type === 'rent' ? 'Rent Now' : 'Buy Now'}</Text>
               </TouchableOpacity>
             </>
@@ -348,31 +350,31 @@ export default function ProductDetailScreen({ route, navigation }) {
         transparent={true}
         onRequestClose={() => setConfirmModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: '85%', maxWidth: 400, backgroundColor: '#FFF', borderRadius: 16, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0F2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-              <Ionicons name="cart" size={32} color="#0F1111" />
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 380, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20 }}>
+            <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#E6F7F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <Ionicons name="cart-outline" size={30} color="#007185" />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F1111', marginBottom: 8, textAlign: 'center' }}>Add to Cart?</Text>
-            <Text style={{ fontSize: 16, color: '#565959', marginBottom: 24, textAlign: 'center', lineHeight: 22 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>Add to Cart?</Text>
+            <Text style={{ fontSize: 13.5, color: '#64748B', marginBottom: 24, textAlign: 'center', lineHeight: 20 }}>
               Are you sure you want to add "{item.name}" to your cart?
             </Text>
             
             <View style={{ width: '100%', flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#FFF', paddingVertical: 12, borderRadius: 100, alignItems: 'center', borderWidth: 1, borderColor: '#D5D9D9' }}
+                style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 13, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}
                 onPress={() => setConfirmModalVisible(false)}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={{ color: '#0F1111', fontSize: 16, fontWeight: '500' }}>No</Text>
+                <Text style={{ color: '#475569', fontSize: 14.5, fontWeight: '700' }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#FFD814', paddingVertical: 12, borderRadius: 100, alignItems: 'center', borderWidth: 1, borderColor: '#FCD200' }}
+                style={{ flex: 1, backgroundColor: '#007185', paddingVertical: 13, borderRadius: 10, alignItems: 'center', shadowColor: '#007185', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3 }}
                 onPress={confirmAddToCart}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={{ color: '#0F1111', fontSize: 16, fontWeight: '500' }}>Yes</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '700' }}>Add to Cart</Text>
               </TouchableOpacity>
             </View>
           </View>

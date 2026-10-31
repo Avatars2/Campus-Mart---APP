@@ -75,7 +75,7 @@ export async function POST(request) {
       description,
       price: Number(price),
       condition_rating: Number(condition_rating),
-      quantity: Number(quantity),
+      quantity: listing_type === 'rent' ? 1 : Math.max(1, Number(quantity) || 1),
       listing_type,
       rental_period: listing_type === 'rent' ? rental_period : null,
       images,

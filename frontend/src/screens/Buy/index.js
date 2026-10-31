@@ -343,92 +343,623 @@ export default function BuyScreen({ navigation }) {
     }
   };
 
-  const escapeHtml = (value) => String(value || 'Not provided')
+  const escapeHtml = (value) => String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-    const generateInvoiceHtml = (order) => {
+  const generateInvoiceHtml = (order) => {
     const item = order.item_id && typeof order.item_id === 'object' ? order.item_id : {};
     const buyer = order.buyer_id && typeof order.buyer_id === 'object' ? order.buyer_id : {};
     const seller = order.seller_id && typeof order.seller_id === 'object' ? order.seller_id : {};
-    const status = order.status === 'completed'
-      ? 'Completed'
-      : order.status === 'return_requested'
-        ? 'Return requested'
-        : order.status === 'rental_active'
-          ? 'Rental active'
-          : order.status === 'delivered'
-            ? 'Delivered'
-            : 'Pending';
-    const orderNumber = String(order._id || order.id || 'CAMPUSMART').slice(-10).toUpperCase();
-    const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
-    const payment = ['UPI', 'Razorpay'].includes(order.payment_method)
-      ? 'Paid securely with Razorpay'
-      : 'Pay when you receive the item';
 
-    return `
-      <html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 36px; color: #0F1111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E5E7EB; padding-bottom: 24px; }
-        .brand { color: #0F1111; font-size: 32px; font-weight: 900; margin: 0 0 4px; letter-spacing: -0.5px; }
-        .brand span { color: #007185; }
-        .muted { color: #565959; }
-        .meta { text-align: right; line-height: 1.7; }
-        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 32px 0; }
-        .party { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; min-height: 120px; background: #FAFAFA; }
-        .party h3 { color: #565959; font-size: 12px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .party strong { font-size: 16px; margin-bottom: 8px; display: block; color: #0F1111; }
-        .party span { display: block; line-height: 1.6; color: #565959; }
-        .summary { background: #E6F7F9; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; display: flex; gap: 32px; border: 1px solid #B4E4EA; }
-        .summary div { display: flex; flex-direction: column; }
-        .summary div span:first-child { color: #565959; font-size: 12px; text-transform: uppercase; margin-bottom: 4px; }
-        .summary div span:last-child { font-weight: 700; color: #007185; font-size: 16px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-        th { background: #F3F4F6; color: #565959; text-align: left; padding: 14px 16px; font-weight: 600; text-transform: uppercase; font-size: 12px; border-bottom: 2px solid #E5E7EB; }
-        td { border-bottom: 1px solid #E5E7EB; padding: 16px; vertical-align: middle; }
-        .amount { font-weight: 700; text-align: right; white-space: nowrap; color: #0F1111; }
-        .total-row { border-top: 2px solid #E5E7EB; margin-top: 16px; padding-top: 24px; display: flex; justify-content: flex-end; align-items: center; }
-        .total-label { font-size: 16px; color: #565959; margin-right: 16px; }
-        .total-amount { font-size: 24px; font-weight: 900; color: #007185; }
-        .details-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 1px solid #E5E7EB; }
-        .details-box p { margin: 0 0 12px 0; }
-        .details-box p:last-child { margin: 0; }
-        .invoice-actions { margin-top: 40px; text-align: center; }
-        .invoice-actions button { border: 0; border-radius: 8px; background: #007185; color: #FFFFFF; cursor: pointer; font-size: 15px; font-weight: 700; padding: 14px 24px; box-shadow: 0 2px 4px rgba(0,113,133,0.2); }
-        @media print { .invoice-actions { display: none; } body { padding: 0; } }
-      </style></head><body>
-        <div class="header"><div><p class="brand">Campus<span>Mart</span></p><span class="muted">Student Marketplace Invoice</span></div><div class="meta"><strong>ORDER INVOICE</strong><br><span class="muted">Issued ${escapeHtml(new Date().toLocaleDateString('en-IN'))}</span></div></div>
-        <div class="parties">
-          <div class="party"><h3>Buyer Details</h3><strong>${escapeHtml(buyer.full_name || 'Buyer')}</strong><span>Mobile: ${escapeHtml(buyer.phone)}</span><span>Student ID: ${escapeHtml(buyer.student_id)}</span></div>
-          <div class="party"><h3>Seller Details</h3><strong>${escapeHtml(seller.full_name || 'Seller')}</strong><span>Mobile: ${escapeHtml(seller.phone)}</span><span>Student ID: ${escapeHtml(seller.student_id)}</span></div>
+    const statusMap = {
+      completed: { label: 'Order Completed & Confirmed', bg: '#ECFDF5', border: '#A7F3D0', color: '#065F46', icon: '✓' },
+      delivered: { label: 'Item Delivered (Awaiting Buyer Confirmation)', bg: '#EFF6FF', border: '#BFDBFE', color: '#1E40AF', icon: '📦' },
+      rental_active: { label: 'Active Campus Rental Period', bg: '#F0FDFA', border: '#99F6E4', color: '#0F766E', icon: '⏱️' },
+      return_requested: { label: 'Return Requested by Buyer', bg: '#FEF2F2', border: '#FECACA', color: '#991B1B', icon: '↩️' },
+      cancelled: { label: 'Order Cancelled', bg: '#F8FAFC', border: '#E2E8F0', color: '#64748B', icon: '✕' },
+    };
+    const currentStatus = statusMap[order.status] || { label: 'Pending Handover & Inspection', bg: '#FFFBEB', border: '#FDE68A', color: '#92400E', icon: '⏳' };
+
+    const orderRawId = String(order._id || order.id || 'CAMPUSMART');
+    const orderNumber = orderRawId.slice(-10).toUpperCase();
+    const invoiceNumber = `CM-INV-${orderRawId.slice(-8).toUpperCase()}`;
+
+    const orderDate = order.createdAt
+      ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const invoiceDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const isRental = item.listing_type === 'rent' || Boolean(order.rental_duration);
+    const listingTypeLabel = isRental
+      ? `⏱️ Campus Rental (${order.rental_duration || item.rental_period || 'Rental'})`
+      : '🛒 Campus Purchase (Buy)';
+
+    const conditionText = item.condition_rating
+      ? `Condition: ${item.condition_rating}/10`
+      : 'Condition: Good / Verified';
+
+    const quantity = Number(order.quantity || 1);
+    const totalAmount = Number(order.total_price || 0).toFixed(2);
+    const unitPrice = (Number(order.total_price || 0) / (quantity || 1)).toFixed(2);
+
+    const isOnlinePayment = ['UPI', 'Razorpay'].includes(order.payment_method);
+    const paymentMethodText = isOnlinePayment
+      ? 'Paid Online via Razorpay / UPI'
+      : 'Pay Cash on Handover / Delivery';
+
+    const paymentStatusText = order.payment_status === 'paid'
+      ? 'Paid & Protected in Escrow'
+      : order.payment_status === 'refunded'
+        ? 'Refunded to Source'
+        : 'Payment Due on Handover';
+
+    const buyerDept = [buyer.department, buyer.year_semester].filter(Boolean).join(' • ') || 'Campus Student';
+    const sellerDept = [seller.department, seller.year_semester].filter(Boolean).join(' • ') || 'Campus Student';
+
+    const deliveryAddress = order.delivery_address || 'In-Campus Meetup (Discuss with seller via Messages)';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CampusMart Invoice - #${escapeHtml(orderNumber)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      margin: 0;
+      padding: 36px 16px;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 13.5px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .invoice-card {
+      max-width: 820px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+      padding: 36px 40px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #F1F5F9;
+      padding-bottom: 24px;
+    }
+    .brand-title {
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -0.6px;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+    .brand-title span { color: #007185; }
+    .brand-subtitle {
+      font-size: 12.5px;
+      color: #64748B;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+    .badge-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .invoice-meta {
+      text-align: right;
+    }
+    .invoice-tag {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .meta-sub {
+      font-size: 12px;
+      color: #64748B;
+      line-height: 1.6;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin: 24px 0 20px;
+    }
+    .meta-box label {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748B;
+      margin-bottom: 4px;
+    }
+    .meta-box strong {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .status-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      border: 1px solid ${currentStatus.border};
+      background: ${currentStatus.bg};
+    }
+    .status-pill {
+      font-size: 13px;
+      font-weight: 700;
+      color: ${currentStatus.color};
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .listing-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+    }
+    .parties {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .party-card {
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      background: #FFFFFF;
+    }
+    .party-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .party-role-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #007185;
+    }
+    .party-id-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      background: #F1F5F9;
+      color: #475569;
+      padding: 2px 7px;
+      border-radius: 5px;
+      border: 1px solid #E2E8F0;
+    }
+    .party-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 6px;
+    }
+    .party-detail {
+      font-size: 12.5px;
+      color: #475569;
+      line-height: 1.6;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .table-container {
+      margin-bottom: 24px;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background: #F8FAFC;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #F1F5F9;
+      vertical-align: middle;
+      font-size: 13.5px;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .item-name {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+    .item-subtext {
+      font-size: 11.5px;
+      color: #64748B;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .spec-pill {
+      background: #F1F5F9;
+      color: #334155;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 10.5px;
+    }
+    .spec-pill.condition {
+      background: #EFF6FF;
+      color: #1D4ED8;
+    }
+    .spec-pill.rental {
+      background: #F0FDFA;
+      color: #0F766E;
+    }
+    .amount {
+      font-weight: 800;
+      color: #0F172A;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .info-summary-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 18px;
+      margin-bottom: 24px;
+      align-items: start;
+    }
+    .handover-escrow-card {
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      background: #F8FAFC;
+    }
+    .card-subtitle {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748B;
+      margin-bottom: 4px;
+    }
+    .card-body-text {
+      font-size: 12.5px;
+      color: #1E293B;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .escrow-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      color: #065F46;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+    .financial-card {
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      background: #FFFFFF;
+    }
+    .calc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 12.5px;
+      color: #475569;
+    }
+    .free-pill {
+      background: #DCFCE7;
+      color: #15803D;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.3px;
+    }
+    .grand-total-row {
+      border-top: 2px solid #E2E8F0;
+      margin-top: 10px;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .grand-total-label {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0F172A;
+    }
+    .grand-total-amount {
+      font-size: 22px;
+      font-weight: 900;
+      color: #007185;
+    }
+    .footer {
+      border-top: 1px dashed #CBD5E1;
+      padding-top: 20px;
+      text-align: center;
+      font-size: 11.5px;
+      color: #64748B;
+      line-height: 1.6;
+    }
+    .footer-support {
+      margin-top: 4px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .invoice-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .btn-action {
+      border: none;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      padding: 12px 24px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+    .btn-primary {
+      background: #007185;
+      color: #FFFFFF;
+      box-shadow: 0 4px 6px -1px rgba(0, 113, 133, 0.2);
+    }
+    .btn-primary:hover {
+      background: #005A6A;
+    }
+    .btn-secondary {
+      background: #E2E8F0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background: #CBD5E1;
+    }
+    @media print {
+      body {
+        background: #FFFFFF !important;
+        padding: 0 !important;
+      }
+      .invoice-card {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+      .invoice-actions, .no-print {
+        display: none !important;
+      }
+      @page {
+        margin: 12mm;
+        size: auto;
+      }
+    }
+    @media (max-width: 640px) {
+      .parties { grid-template-columns: 1fr; }
+      .meta-grid { grid-template-columns: 1fr 1fr; }
+      .info-summary-grid { grid-template-columns: 1fr; }
+      .invoice-card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-card">
+    <div class="header">
+      <div>
+        <p class="brand-title">Campus<span>Mart</span></p>
+        <div class="brand-subtitle">Student Peer-to-Peer Marketplace Receipt</div>
+        <div class="badge-verified">&#10003; Verified Campus Order</div>
+      </div>
+      <div class="invoice-meta">
+        <div class="invoice-tag">Order Invoice</div>
+        <div class="meta-sub">
+          <strong>${escapeHtml(invoiceNumber)}</strong><br>
+          Issued ${escapeHtml(invoiceDate)}
         </div>
-        <div class="summary">
-          <div><span>Order Number</span><span>#${escapeHtml(orderNumber)}</span></div>
-          <div><span>Order Date</span><span>${escapeHtml(orderDate)}</span></div>
-          <div><span>Status</span><span>${status}</span></div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <label>Order ID</label>
+        <strong>#${escapeHtml(orderNumber)}</strong>
+      </div>
+      <div class="meta-box">
+        <label>Order Date</label>
+        <strong>${escapeHtml(orderDate)}</strong>
+      </div>
+      <div class="meta-box">
+        <label>Payment Method</label>
+        <strong>${isOnlinePayment ? 'Razorpay Online' : 'Cash on Meetup'}</strong>
+      </div>
+      <div class="meta-box">
+        <label>Payment Status</label>
+        <strong>${order.payment_status === 'paid' ? 'Paid (Escrow)' : 'Due at Handover'}</strong>
+      </div>
+    </div>
+
+    <div class="status-banner">
+      <div class="status-pill">${currentStatus.icon} ${escapeHtml(currentStatus.label)}</div>
+      <div class="listing-badge">${escapeHtml(listingTypeLabel)}</div>
+    </div>
+
+    <div class="parties">
+      <div class="party-card">
+        <div class="party-card-header">
+          <span class="party-role-tag">Buyer Details</span>
+          <span class="party-id-badge">${escapeHtml(buyer.student_id ? 'ID: ' + buyer.student_id : 'Student')}</span>
         </div>
-        <table>
-          <thead><tr><th>Item Description</th><th style="text-align:center">Quantity</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody><tr>
-            <td><strong style="color: #0F1111; font-size: 15px;">${escapeHtml(item.name || 'Item')}</strong></td>
-            <td style="text-align:center; color: #565959;">${order.quantity || 1}</td>
-            <td class="amount">₹${escapeHtml(order.total_price)}</td>
-          </tr></tbody>
-        </table>
-        <div class="details-box">
-          <p><strong>Delivery Details:</strong> ${escapeHtml(order.delivery_address || 'Discuss with seller via Messages')}</p>
-          <p><strong>Payment Method:</strong> ${escapeHtml(payment)}</p>
+        <div class="party-name">${escapeHtml(buyer.full_name || 'Buyer')}</div>
+        <div class="party-detail">🎓 ${escapeHtml(buyerDept)}</div>
+        <div class="party-detail">📞 Mobile: ${escapeHtml(buyer.phone || 'In messages')}</div>
+        ${buyer.email ? `<div class="party-detail">✉️ Email: ${escapeHtml(buyer.email)}</div>` : ''}
+      </div>
+
+      <div class="party-card">
+        <div class="party-card-header">
+          <span class="party-role-tag">Seller Details</span>
+          <span class="party-id-badge">${escapeHtml(seller.student_id ? 'ID: ' + seller.student_id : 'Seller')}</span>
         </div>
-        <div class="total-row">
-          <span class="total-label">Total Amount:</span>
-          <span class="total-amount">₹${escapeHtml(order.total_price)}</span>
+        <div class="party-name">${escapeHtml(seller.full_name || 'Seller')}</div>
+        <div class="party-detail">🏷️ ${escapeHtml(sellerDept)}</div>
+        <div class="party-detail">📞 Mobile: ${escapeHtml(seller.phone || 'In messages')}</div>
+        ${seller.email ? `<div class="party-detail">✉️ Email: ${escapeHtml(seller.email)}</div>` : ''}
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px; text-align: center;">#</th>
+            <th>Item Description</th>
+            <th style="text-align: center;">Qty</th>
+            <th style="text-align: right;">Unit Price</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="text-align: center; color: #64748B;">1</td>
+            <td>
+              <div class="item-name">${escapeHtml(item.name || 'Campus Marketplace Item')}</div>
+              <div class="item-subtext">
+                <span class="spec-pill condition">${escapeHtml(conditionText)}</span>
+                <span class="spec-pill ${isRental ? 'rental' : ''}">${escapeHtml(isRental ? 'Campus Rental' : 'Direct Buy')}</span>
+              </div>
+            </td>
+            <td style="text-align: center; font-weight: 600;">${quantity}</td>
+            <td style="text-align: right; color: #475569;">₹${escapeHtml(unitPrice)}</td>
+            <td class="amount">₹${escapeHtml(totalAmount)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-summary-grid">
+      <div class="handover-escrow-card">
+        <div class="card-subtitle">Campus Delivery / Handover</div>
+        <div class="card-body-text">
+          <strong>Meetup Location:</strong> ${escapeHtml(deliveryAddress)}
         </div>
-      </body></html>
-    `;
+
+        <div class="card-subtitle" style="margin-top: 10px;">Payment Security</div>
+        <div class="card-body-text" style="margin-bottom: 8px;">
+          <strong>Mode:</strong> ${escapeHtml(paymentMethodText)}<br>
+          <strong>Status:</strong> ${escapeHtml(paymentStatusText)}
+        </div>
+
+        <div class="escrow-alert">
+          <span>🛡️</span>
+          <div>
+            <strong>CampusMart SafePay Escrow Guarantee:</strong> Payment is safely held until the buyer receives and verifies the item in person.
+          </div>
+        </div>
+      </div>
+
+      <div class="financial-card">
+        <div class="card-subtitle" style="margin-bottom: 8px;">Price Summary</div>
+        <div class="calc-row">
+          <span>Item Subtotal:</span>
+          <span>₹${escapeHtml(totalAmount)}</span>
+        </div>
+        <div class="calc-row">
+          <span>Campus Platform Fee:</span>
+          <span>₹0.00 <span class="free-pill">FREE</span></span>
+        </div>
+        <div class="calc-row">
+          <span>Campus Handover:</span>
+          <span>₹0.00 <span class="free-pill">FREE</span></span>
+        </div>
+        <div class="calc-row">
+          <span>Tax / GST:</span>
+          <span>₹0.00</span>
+        </div>
+        <div class="grand-total-row">
+          <span class="grand-total-label">Total Amount:</span>
+          <span class="grand-total-amount">₹${escapeHtml(totalAmount)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>Issued by CampusMart Student Peer-to-Peer Marketplace &bull; Computer-Generated Tax & Order Invoice &bull; No signature required</div>
+      <div class="footer-support">Need help or dispute resolution? Contact support@campusmart.in or file a report from your order dashboard.</div>
+    </div>
+
+    <div class="invoice-actions no-print">
+      <button class="btn-action btn-primary" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Print / Save PDF
+      </button>
+      <button class="btn-action btn-secondary" onclick="window.close()">
+        Close
+      </button>
+    </div>
+  </div>
+</body>
+</html>`;
   };
 
   const handleInvoice = async (order) => {
@@ -439,13 +970,13 @@ export default function BuyScreen({ navigation }) {
       if (Platform.OS === 'web') {
         const invoiceWindow = window.open('', '_blank');
         if (!invoiceWindow) {
-          throw new Error('Invoice window could not be opened');
+          throw new Error('Invoice window could not be opened. Please enable popups for this site.');
         }
 
         invoiceWindow.document.open();
-        invoiceWindow.document.write(html.replace('</body>', '<div class="invoice-actions"><button onclick="window.print()">Print / Save PDF</button></div></body>'));
+        invoiceWindow.document.write(html);
         invoiceWindow.document.close();
-        invoiceWindow.document.title = `CampusMart Invoice ${orderId}`;
+        invoiceWindow.document.title = `CampusMart_Invoice_${String(orderId).slice(-8).toUpperCase()}`;
       } else {
         const { base64 } = await Print.printToFileAsync({ html, base64: true });
         const fileName = `CampusMart_Invoice_${String(orderId).slice(-8).toUpperCase()}.pdf`;
@@ -595,8 +1126,9 @@ export default function BuyScreen({ navigation }) {
 
     return (
       <Modal visible={true} transparent animationType="slide" onRequestClose={() => setSelectedOrderDetails(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
+            <View style={{ width: 44, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#111827' }}>Order Details</Text>
               <TouchableOpacity onPress={() => setSelectedOrderDetails(null)}>
@@ -1448,7 +1980,7 @@ export default function BuyScreen({ navigation }) {
                     disabled={isUpdating}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.noButtonText}>No</Text>
+                    <Text style={styles.noButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.yesButton, isUpdating && { opacity: 0.7 }]}
@@ -1459,7 +1991,23 @@ export default function BuyScreen({ navigation }) {
                     {isUpdating ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.yesButtonText}>Yes</Text>
+                      <Text style={styles.yesButtonText}>
+                        {isDeliveredAction
+                          ? 'Mark Delivered'
+                          : isConfirmReceiptAction
+                            ? 'Confirm Received'
+                            : isCancelAction
+                              ? 'Cancel Order'
+                              : isReturnRequestAction
+                                ? 'Request Return'
+                                : isApproveReturnAction
+                                  ? 'Approve Return'
+                                  : isRejectReturnAction
+                                    ? 'Reject Return'
+                                    : isRentalStartAction
+                                      ? 'Start Rental'
+                                      : 'Confirm'}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>

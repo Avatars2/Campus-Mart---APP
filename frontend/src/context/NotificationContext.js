@@ -55,7 +55,9 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount(unread);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      if (error?.response?.status !== 401) {
+        console.error('Error fetching notifications:', error);
+      }
     }
   };
 

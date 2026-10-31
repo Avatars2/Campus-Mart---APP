@@ -24,11 +24,12 @@ export default StyleSheet.create({
     width: 108,
     height: 108,
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 54,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    padding: 6,
+    padding: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
@@ -38,7 +39,7 @@ export default StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
+    borderRadius: 54,
   },
   title: {
     fontSize: 28,

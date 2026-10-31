@@ -322,7 +322,7 @@ export default function AdminReportsScreen({ navigation }) {
             <Ionicons
               name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
               size={14}
-              color="#1E3A8A"
+              color="#007185"
             />
           </TouchableOpacity>
         </View>
@@ -337,7 +337,7 @@ export default function AdminReportsScreen({ navigation }) {
             <Ionicons
               name="chevron-back"
               size={18}
-              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
 
@@ -367,7 +367,7 @@ export default function AdminReportsScreen({ navigation }) {
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
         </View>
@@ -378,7 +378,7 @@ export default function AdminReportsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1E3A8A" />
+        <ActivityIndicator size="large" color="#007185" />
       </View>
     );
   }
@@ -469,7 +469,7 @@ export default function AdminReportsScreen({ navigation }) {
         renderItem={renderItem}
         keyExtractor={(item) => item._id || item.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007185']} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="shield-checkmark" size={48} color="#94A3B8" />
@@ -495,7 +495,7 @@ export default function AdminReportsScreen({ navigation }) {
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="settings-outline" size={20} color="#1E3A8A" />
+                <Ionicons name="settings-outline" size={20} color="#007185" />
                 <Text style={styles.modalTitle}>Report Reasons</Text>
               </View>
               <TouchableOpacity
@@ -550,7 +550,7 @@ export default function AdminReportsScreen({ navigation }) {
 
               {reasonsLoading ? (
                 <View style={{ paddingVertical: 20 }}>
-                  <ActivityIndicator size="small" color="#1E3A8A" />
+                  <ActivityIndicator size="small" color="#007185" />
                 </View>
               ) : adminReasons.length === 0 ? (
                 <View style={styles.emptyReasonsBox}>
@@ -687,7 +687,7 @@ export default function AdminReportsScreen({ navigation }) {
                     {size}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                    <Ionicons name="checkmark" size={15} color="#007185" />
                   )}
                 </TouchableOpacity>
               );

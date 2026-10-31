@@ -93,7 +93,7 @@ export default function AdminItemsScreen() {
     // Apply Tab Filter
     if (tab === 'Active') {
       result = result.filter(i => i.is_active);
-    } else if (tab === 'Pending') {
+    } else if (tab === 'Inactive') {
       result = result.filter(i => !i.is_active);
     }
 
@@ -207,7 +207,7 @@ export default function AdminItemsScreen() {
             <Ionicons
               name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
               size={14}
-              color="#1E3A8A"
+              color="#007185"
             />
           </TouchableOpacity>
         </View>
@@ -222,7 +222,7 @@ export default function AdminItemsScreen() {
             <Ionicons
               name="chevron-back"
               size={18}
-              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
 
@@ -252,7 +252,7 @@ export default function AdminItemsScreen() {
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
         </View>
@@ -384,11 +384,11 @@ export default function AdminItemsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.tabBtn, activeTab === 'Pending' && styles.tabBtnActive]} 
-            onPress={() => handleTabPress('Pending')}
+            style={[styles.tabBtn, activeTab === 'Inactive' && styles.tabBtnActive]} 
+            onPress={() => handleTabPress('Inactive')}
           >
-            <View style={[styles.tabDot, { backgroundColor: activeTab === 'Pending' ? '#FFFFFF' : '#F59E0B' }]} />
-            <Text style={[styles.tabText, activeTab === 'Pending' && styles.tabTextActive]}>
+            <View style={[styles.tabDot, { backgroundColor: activeTab === 'Inactive' ? '#FFFFFF' : '#F59E0B' }]} />
+            <Text style={[styles.tabText, activeTab === 'Inactive' && styles.tabTextActive]}>
               Pending ({pendingCount})
             </Text>
           </TouchableOpacity>
@@ -399,7 +399,7 @@ export default function AdminItemsScreen() {
       {/* Content */}
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1E3A8A" />
+          <ActivityIndicator size="large" color="#007185" />
         </View>
       ) : errorMsg && items.length === 0 ? (
         <View style={styles.centerContainer}>
@@ -415,7 +415,7 @@ export default function AdminItemsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007185']} />
           }
           ListEmptyComponent={<Text style={styles.emptyText}>No items found.</Text>}
           showsVerticalScrollIndicator={false}
@@ -466,7 +466,7 @@ export default function AdminItemsScreen() {
                     {size}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                    <Ionicons name="checkmark" size={15} color="#007185" />
                   )}
                 </TouchableOpacity>
               );

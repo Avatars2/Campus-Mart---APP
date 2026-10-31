@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
 import User from '@/models/User';
+import Wishlist from '@/models/Wishlist';
 import { getRazorpayLinkedAccountStatus } from '@/lib/razorpay';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
+import { sendNotification } from '@/utils/notificationHelper';
 
 export async function PUT(request, { params }) {
   try {
@@ -55,6 +57,9 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Please select a rental period' }, { status: 400 });
     }
 
+    const previousPrice = Number(item.price);
+    const wasSoldOut = (item.quantity <= 0) || Boolean(item.marked_sold_at);
+
     if (name) item.name = name;
     if (description) item.description = description;
     if (price) item.price = Number(price);
@@ -68,7 +73,7 @@ export async function PUT(request, { params }) {
     const currentListingType = listing_type || item.listing_type;
 
     if (quantity !== null && quantity !== undefined) {
-      const parsedQty = Number(quantity);
+      const parsedQty = currentListingType === 'rent' ? 1 : Number(quantity);
       item.quantity = parsedQty;
 
       if (currentListingType !== 'rent') {
@@ -127,6 +132,58 @@ export async function PUT(request, { params }) {
     }
 
     await item.save();
+
+    // ── Automatic Wishlist Notifications: Price Drop & Restock ──
+    try {
+      const newPrice = Number(item.price);
+      const isRestocked = wasSoldOut && item.quantity > 0 && item.is_active;
+      const isPriceDropped = price && Number(price) > 0 && newPrice < previousPrice;
+
+      if (isPriceDropped || isRestocked) {
+        const wishlists = await Wishlist.find({ items: item._id }).select('user');
+        const notifiedUserIds = wishlists
+          .map((w) => w.user?.toString())
+          .filter((uid) => uid && uid !== seller_id);
+        const uniqueUserIds = [...new Set(notifiedUserIds)];
+
+        for (const recipientId of uniqueUserIds) {
+          if (isPriceDropped) {
+            const discountPercent = Math.round(((previousPrice - newPrice) / previousPrice) * 100);
+            await sendNotification({
+              recipientId,
+              senderId: seller_id,
+              type: 'WISHLIST',
+              subType: 'PRICE_DROP',
+              title: `🔥 Price Drop: ${item.name}`,
+              body: `Great news! "${item.name}" dropped from ₹${previousPrice} to ₹${newPrice}${discountPercent > 0 ? ` (${discountPercent}% OFF)` : ''}! Grab it before someone else does.`,
+              relatedId: item._id,
+              thumbnail: item.images?.[0] || null,
+              actionUrl: {
+                targetScreen: 'ProductDetail',
+                params: { item: item.toJSON ? item.toJSON() : item },
+              },
+            }).catch((err) => console.error('Wishlist price-drop notification error:', err));
+          } else if (isRestocked) {
+            await sendNotification({
+              recipientId,
+              senderId: seller_id,
+              type: 'WISHLIST',
+              subType: 'BACK_IN_STOCK',
+              title: `📦 Back in Stock: ${item.name}`,
+              body: `"${item.name}" that you added to your wishlist is now back in stock (₹${item.price})! Grab it now.`,
+              relatedId: item._id,
+              thumbnail: item.images?.[0] || null,
+              actionUrl: {
+                targetScreen: 'ProductDetail',
+                params: { item: item.toJSON ? item.toJSON() : item },
+              },
+            }).catch((err) => console.error('Wishlist restock notification error:', err));
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error in wishlist auto-notification triggers:', notifErr);
+    }
 
     return NextResponse.json(item);
   } catch (error) {

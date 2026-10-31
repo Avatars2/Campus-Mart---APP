@@ -320,10 +320,14 @@ const ChatThread = () => {
           const blob = await fileResponse.blob();
           formData.append('attachment', blob, selectedAttachment.name);
         } else {
+          const fileUri = Platform.OS === 'ios'
+            ? selectedAttachment.uri.replace('file://', '')
+            : selectedAttachment.uri;
+
           formData.append('attachment', {
-            uri: selectedAttachment.uri.replace('file://', ''),
-            name: selectedAttachment.name,
-            type: selectedAttachment.type,
+            uri: fileUri,
+            name: selectedAttachment.name || `photo-${Date.now()}.jpg`,
+            type: selectedAttachment.type || 'image/jpeg',
           });
         }
       }
@@ -344,6 +348,7 @@ const ChatThread = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Unable to send', error.response?.data?.message || 'Please try again.');
+      setMessages(prev => prev.filter(m => m.optimisticId !== tempId));
     } finally {
       setSending(false);
     }
@@ -873,16 +878,18 @@ const ChatThread = () => {
       {/* Options Menu Modal */}
       <Modal visible={showOptionsMenu} transparent animationType="fade" onRequestClose={() => setShowOptionsMenu(false)}>
         <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowOptionsMenu(false)} activeOpacity={1}>
-          <View style={{ position: 'absolute', top: 50, right: 10, backgroundColor: '#FFF', borderRadius: 8, padding: 8, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, minWidth: 150 }}>
-            <TouchableOpacity style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#F0F2F2' }} onPress={() => { setShowOptionsMenu(false); setIsSearchMode(true); }}>
-              <Text style={{ fontSize: 16, color: '#0F1111' }}>Search</Text>
+          <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 88 : 58, right: 16, backgroundColor: '#FFF', borderRadius: 12, padding: 6, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, minWidth: 180, borderWidth: 1, borderColor: '#E2E8F0' }}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }} onPress={() => { setShowOptionsMenu(false); setIsSearchMode(true); }}>
+              <Ionicons name="search-outline" size={18} color="#007185" />
+              <Text style={{ fontSize: 14.5, fontWeight: '600', color: '#0F172A' }}>Search Chat</Text>
             </TouchableOpacity>
             {isOwnItem && (
-              <TouchableOpacity style={{ padding: 12 }} onPress={() => { 
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }} onPress={() => { 
                 setShowOptionsMenu(false); 
                 setOfferModalVisible(true);
               }}>
-                <Text style={{ fontSize: 16, color: '#0F1111' }}>Send Custom Offer</Text>
+                <Ionicons name="pricetag-outline" size={18} color="#007185" />
+                <Text style={{ fontSize: 14.5, fontWeight: '600', color: '#0F172A' }}>Send Custom Offer</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -912,7 +919,7 @@ const ChatThread = () => {
                 <Text style={styles.deleteModalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={{ alignSelf: 'flex-end', paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, backgroundColor: '#00A884', borderRadius: 6 }} 
+                style={{ alignSelf: 'flex-end', paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, backgroundColor: '#007185', borderRadius: 6 }} 
                 onPress={handleSendOffer}
               >
                 <Text style={{ fontSize: 14, color: '#FFF', fontWeight: '700', textTransform: 'uppercase' }}>Send Offer</Text>
@@ -1013,7 +1020,7 @@ const ChatThread = () => {
               </View>
             ) : (
               <View style={styles.locFallbackContainer}>
-                <ActivityIndicator size="large" color="#00A884" style={{ marginBottom: 12 }} />
+                <ActivityIndicator size="large" color="#007185" style={{ marginBottom: 12 }} />
                 <Text style={styles.locFallbackTitle}>Fetching your location...</Text>
               </View>
             )}

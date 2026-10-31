@@ -187,7 +187,7 @@ export default function AdminNotificationsScreen({ route }) {
             <Ionicons
               name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
               size={14}
-              color="#1E3A8A"
+              color="#007185"
             />
           </TouchableOpacity>
         </View>
@@ -202,7 +202,7 @@ export default function AdminNotificationsScreen({ route }) {
             <Ionicons
               name="chevron-back"
               size={18}
-              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
 
@@ -232,7 +232,7 @@ export default function AdminNotificationsScreen({ route }) {
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
         </View>
@@ -312,7 +312,7 @@ export default function AdminNotificationsScreen({ route }) {
             <Ionicons
               name={isAll ? 'megaphone' : 'person'}
               size={18}
-              color={isAll ? '#2563EB' : '#7C3AED'}
+              color={isAll ? '#007185' : '#7C3AED'}
             />
           </View>
           <View style={styles.tableInfoCol}>
@@ -326,7 +326,7 @@ export default function AdminNotificationsScreen({ route }) {
                 <Ionicons
                   name={isAll ? 'people' : 'person'}
                   size={11}
-                  color={isAll ? '#2563EB' : '#7C3AED'}
+                  color={isAll ? '#007185' : '#7C3AED'}
                 />
                 <Text
                   style={isAll ? styles.audienceTextAll : styles.audienceTextSpecific}
@@ -428,7 +428,7 @@ export default function AdminNotificationsScreen({ route }) {
       {/* List / Loader */}
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1E3A8A" />
+          <ActivityIndicator size="large" color="#007185" />
         </View>
       ) : (
         <FlatList
@@ -438,7 +438,7 @@ export default function AdminNotificationsScreen({ route }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007185']} />
           }
           ListFooterComponent={renderPagination}
           ListEmptyComponent={
@@ -554,7 +554,7 @@ export default function AdminNotificationsScreen({ route }) {
                     {size}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                    <Ionicons name="checkmark" size={15} color="#007185" />
                   )}
                 </TouchableOpacity>
               );

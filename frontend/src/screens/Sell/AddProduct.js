@@ -255,7 +255,7 @@ export default function AddProductScreen({ navigation }) {
       formData.append('name', name);
       formData.append('description', description);
       formData.append('price', price);
-      formData.append('quantity', quantity);
+      formData.append('quantity', listingType === 'rent' ? '1' : quantity);
       formData.append('listing_type', listingType);
       if (listingType === 'rent') formData.append('rental_period', rentalPeriod);
       formData.append('condition_rating', condition.value);
@@ -474,7 +474,7 @@ export default function AddProductScreen({ navigation }) {
                     borderColor: listingType === 'rent' ? '#007185' : '#E5E9F0', 
                     backgroundColor: listingType === 'rent' ? '#E6F7F9' : '#FFF' }
                 ]}
-                onPress={() => setListingType('rent')}
+                onPress={() => { setListingType('rent'); setQuantity('1'); }}
                 activeOpacity={0.7}
               >
                 <Text style={{ color: listingType === 'rent' ? '#007185' : '#0F1111', fontWeight: '600' }}>For Rent</Text>
@@ -529,20 +529,34 @@ export default function AddProductScreen({ navigation }) {
             </View>
           )}
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Quantity</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="layers-outline" size={20} color="#8792A2" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 1"
-                placeholderTextColor="#A0A8B8"
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="numeric"
-              />
+          {listingType === 'rent' ? (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Quantity</Text>
+              <View style={[styles.inputWrapper, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
+                <Ionicons name="layers-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: '#64748B' }]}
+                  value="1"
+                  editable={false}
+                />
+              </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Quantity</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="layers-outline" size={20} color="#8792A2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., 1"
+                  placeholderTextColor="#A0A8B8"
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          )}
 
           <Text style={styles.sectionTitle}>Details</Text>
 
@@ -610,7 +624,7 @@ export default function AddProductScreen({ navigation }) {
       </KeyboardAvoidingView>
 
       {/* Category Modal */}
-      <Modal visible={categoryModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={categoryModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCategoryModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
@@ -641,7 +655,7 @@ export default function AddProductScreen({ navigation }) {
       </Modal>
 
       {/* Condition Modal */}
-      <Modal visible={conditionModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={conditionModalVisible} animationType="slide" transparent={true} onRequestClose={() => setConditionModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />

@@ -11,6 +11,7 @@ export default function ProfileScreen({ navigation }) {
   const { signOut, userRole } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const loadProfile = useCallback(async () => {
     const response = await client.get('/users/profile');
     return response.data.user;
@@ -33,7 +34,7 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity style={styles.logoutButton} onPress={retry} activeOpacity={0.8}>
           <Text style={styles.logoutButtonText}>Try Again</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => setLogoutModalVisible(true)} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
@@ -206,11 +207,50 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => setLogoutModalVisible(true)} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={logoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <View style={styles.confirmModalBackdrop}>
+          <View style={styles.confirmModalCard}>
+            <View style={styles.confirmModalIconWrap}>
+              <Ionicons name="log-out-outline" size={28} color="#DC2626" />
+            </View>
+            <Text style={styles.confirmModalTitle}>Log Out of CampusMart?</Text>
+            <Text style={styles.confirmModalSubtitle}>
+              Are you sure you want to sign out? You will need to log in again to manage your listings and purchases.
+            </Text>
+            <View style={styles.confirmModalActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => setLogoutModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmLogoutBtn}
+                onPress={() => {
+                  setLogoutModalVisible(false);
+                  signOut();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmLogoutText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     
       {/* Full Screen Photo Viewer */}
       <Modal visible={photoViewerVisible} transparent={true} animationType="fade">

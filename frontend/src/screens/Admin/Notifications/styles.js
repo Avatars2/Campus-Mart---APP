@@ -12,7 +12,7 @@ export default StyleSheet.create({
     padding: 20,
   },
   header: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -86,8 +86,8 @@ export default StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   tabBtnActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#007185',
+    borderColor: '#007185',
   },
   tabText: {
     fontSize: 13,
@@ -139,7 +139,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   tableIconWrapAll: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   tableIconWrapSpecific: {
     backgroundColor: '#FAF5FF',
@@ -211,7 +211,7 @@ export default StyleSheet.create({
     gap: 4,
   },
   audienceBadgeAll: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   audienceBadgeSpecific: {
     backgroundColor: '#FAF5FF',
@@ -219,7 +219,7 @@ export default StyleSheet.create({
   audienceTextAll: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#007185',
   },
   audienceTextSpecific: {
     fontSize: 11,
@@ -247,7 +247,7 @@ export default StyleSheet.create({
   attachmentChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 10,
@@ -265,7 +265,7 @@ export default StyleSheet.create({
   },
   attachmentSizeText: {
     fontSize: 11,
-    color: '#2563EB',
+    color: '#007185',
   },
 
   // Card Footer
@@ -385,7 +385,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 12,
@@ -410,7 +410,7 @@ export default StyleSheet.create({
   detailsOpenPdfBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007185',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -450,7 +450,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
   },
   detailsCloseBtnText: {
     fontSize: 14,
@@ -564,7 +564,7 @@ export default StyleSheet.create({
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007185',
     borderRadius: 28,
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -572,7 +572,7 @@ export default StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 16px rgba(37,99,235,0.35)' },
       default: {
-        shadowColor: '#2563EB',
+        shadowColor: '#007185',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.35,
         shadowRadius: 10,
@@ -625,8 +625,8 @@ export default StyleSheet.create({
     elevation: 1,
   },
   pageSizeDropdownBtnActive: {
-    borderColor: '#1E3A8A',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#007185',
+    backgroundColor: '#E6F4F6',
   },
   pageSizeDropdownText: {
     fontSize: 13,
@@ -661,7 +661,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   dropdownItemText: {
     fontSize: 13,
@@ -669,7 +669,7 @@ export default StyleSheet.create({
     color: '#334155',
   },
   dropdownItemTextActive: {
-    color: '#1E3A8A',
+    color: '#007185',
     fontWeight: '800',
   },
 
@@ -682,7 +682,7 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -698,7 +698,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   pageNumBtnActive: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
   },
   pageNumText: {
     fontSize: 14,

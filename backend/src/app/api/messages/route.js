@@ -2,15 +2,21 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Message from '@/models/Message';
 import Conversation from '@/models/Conversation';
+import User from '@/models/User';
+import Item from '@/models/Item';
 import { pusherServer } from '@/lib/pusher';
 import { cloudinary } from '@/lib/cloudinary';
+import { sendNotification } from '@/utils/notificationHelper';
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
   'image/gif',
+  'image/heic',
+  'image/heif',
   'application/pdf',
   'text/plain',
   'text/csv',
@@ -41,7 +47,8 @@ export async function POST(req) {
 
       for (const file of files) {
         if (!file || typeof file.arrayBuffer !== 'function' || file.size <= 0) continue;
-        const mimeType = file.type || 'application/octet-stream';
+        let mimeType = file.type || 'application/octet-stream';
+        if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
         if (file.size > MAX_ATTACHMENT_BYTES || !ALLOWED_MIME_TYPES.has(mimeType)) {
           return NextResponse.json({ success: false, message: 'Unsupported file type or file larger than 10 MB' }, { status: 400 });
         }
@@ -176,6 +183,47 @@ export async function POST(req) {
       });
     } catch (pusherError) {
       console.warn('Pusher trigger failed (likely due to fake credentials), but message was saved:', pusherError.message);
+    }
+
+    // Dispatch push & in-app notification to the message receiver so offline users are notified
+    try {
+      const [senderUser, itemObj] = await Promise.all([
+        User.findById(senderId).select('full_name profile_photo_url'),
+        Item.findById(itemId).select('name images'),
+      ]);
+
+      const senderName = senderUser?.full_name || 'Someone';
+      const itemName = itemObj?.name || 'Item';
+      const previewText = content
+        ? (content.length > 80 ? `${content.slice(0, 80)}...` : content)
+        : attachments?.length > 0
+        ? 'Sent an attachment 📎'
+        : location
+        ? 'Shared a location 📍'
+        : 'New message';
+
+      await sendNotification({
+        recipientId: receiverId.toString(),
+        senderId: senderId.toString(),
+        type: 'MESSAGE',
+        subType: 'NEW_CHAT_MESSAGE',
+        title: `💬 ${senderName}`,
+        body: previewText,
+        relatedId: conversation?._id || itemId,
+        thumbnail: senderUser?.profile_photo_url || itemObj?.images?.[0] || null,
+        actionUrl: {
+          targetScreen: 'ChatThread',
+          params: {
+            itemId: itemId.toString(),
+            otherUserId: senderId.toString(),
+            itemName,
+            otherUserName: senderName,
+            otherUserPhoto: senderUser?.profile_photo_url || null,
+          },
+        },
+      });
+    } catch (notifErr) {
+      console.warn('Chat notification trigger warning:', notifErr.message);
     }
 
     return NextResponse.json({ success: true, message: savedMessage }, { status: 201 });

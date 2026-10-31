@@ -175,9 +175,9 @@ export default StyleSheet.create({
     flex: 1, 
     justifyContent: 'flex-start' 
   },
-  moveToCartButton: { 
-    backgroundColor: '#FFD814', 
-    borderRadius: 100, 
+  moveToCartButton: {
+    backgroundColor: '#007185',
+    borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 16,
     alignItems: 'center',
@@ -185,10 +185,10 @@ export default StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 8,
   },
-  moveToCartText: { 
-    color: '#0F1111', 
-    fontSize: 13, 
-    fontWeight: '400',
+  moveToCartText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   // Footer / Checkout Area
@@ -208,26 +208,26 @@ export default StyleSheet.create({
     color: '#0F1111',
     marginRight: 8,
   },
-  totalAmount: { 
-    fontSize: 22, 
-    fontWeight: '700', 
-    color: '#B12704', 
+  totalAmount: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#007185',
   },
-  checkoutBtn: { 
-    backgroundColor: '#FFD814', 
-    paddingVertical: 14, 
-    borderRadius: 100, 
+  checkoutBtn: {
+    backgroundColor: '#007185',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    elevation: 3,
+    shadowColor: '#007185',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
-  checkoutBtnText: { 
-    color: '#0F1111', 
-    fontSize: 16, 
-    fontWeight: '400', 
+  checkoutBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 
   // Empty State
@@ -279,26 +279,33 @@ export default StyleSheet.create({
   },
   noButton: {
     flex: 1,
-    backgroundColor: '#F0F2F2',
-    paddingVertical: 12,
-    borderRadius: 100,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 13,
+    borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D5D9D9',
+    borderColor: '#E2E8F0',
   },
   noButtonText: {
-    color: '#0F1111',
-    fontSize: 14,
+    color: '#475569',
+    fontSize: 14.5,
+    fontWeight: '700',
   },
   removeYesButton: {
     flex: 1,
-    backgroundColor: '#B12704',
-    paddingVertical: 12,
-    borderRadius: 100,
+    backgroundColor: '#DC2626',
+    paddingVertical: 13,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   removeYesButtonText: {
-    color: '#FFF',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '700',
   },
 });

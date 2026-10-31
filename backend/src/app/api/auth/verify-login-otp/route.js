@@ -26,11 +26,11 @@ export async function POST(request) {
     user.failed_login_attempts = 0;
     user.lock_until = null;
 
-    // Short-lived Access Token (15 minutes)
+    // Access Token (7 days for smooth mobile experience)
     const accessToken = jwt.sign(
       { id: user._id, email: user.email, name: user.full_name, role: user.role },
       getJwtSecret(),
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     // Long-lived Refresh Token (30 days)

@@ -30,7 +30,9 @@ export const CartWishlistProvider = ({ children }) => {
         )));
       }
     } catch (error) {
-      console.error('Error fetching cart/wishlist counts:', error);
+      if (error?.response?.status !== 401) {
+        console.error('Error fetching cart/wishlist counts:', error);
+      }
     }
   };
 

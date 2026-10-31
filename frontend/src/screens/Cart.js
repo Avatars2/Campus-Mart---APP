@@ -177,16 +177,16 @@ export default function Cart({ navigation }) {
               <TouchableOpacity
                 style={styles.noButton}
                 onPress={() => setRemovePromptItem(null)}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.noButtonText}>No</Text>
+                <Text style={styles.noButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.removeYesButton}
                 onPress={confirmRemove}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.yesButtonText}>Yes</Text>
+                <Text style={styles.removeYesButtonText}>Remove</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -244,25 +244,31 @@ export default function Cart({ navigation }) {
                 )}
 
                 <View style={styles.itemActionsRow}>
-                  <View style={styles.quantityControl}>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => updateQuantity(ci, ci.quantity - 1)}
-                      disabled={ci.quantity <= 1 || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
-                      accessibilityLabel="Decrease quantity"
-                    >
-                      <Ionicons name="remove" size={16} color={ci.quantity <= 1 ? '#D5D9D9' : '#0F1111'} />
-                    </TouchableOpacity>
-                    <Text style={styles.quantityValue}>{ci.quantity}</Text>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => updateQuantity(ci, ci.quantity + 1)}
-                      disabled={ci.quantity >= ci.item.quantity || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
-                      accessibilityLabel="Increase quantity"
-                    >
-                      <Ionicons name="add" size={16} color={ci.quantity >= ci.item.quantity ? '#D5D9D9' : '#0F1111'} />
-                    </TouchableOpacity>
-                  </View>
+                  {ci.item.listing_type === 'rent' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E6F4F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#007185' }}>Qty: 1 (Rental)</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.quantityControl}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => updateQuantity(ci, ci.quantity - 1)}
+                        disabled={ci.quantity <= 1 || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
+                        accessibilityLabel="Decrease quantity"
+                      >
+                        <Ionicons name="remove" size={16} color={ci.quantity <= 1 ? '#D5D9D9' : '#0F1111'} />
+                      </TouchableOpacity>
+                      <Text style={styles.quantityValue}>{ci.quantity}</Text>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => updateQuantity(ci, ci.quantity + 1)}
+                        disabled={ci.quantity >= ci.item.quantity || updatingItemId === (ci.item.id || ci.item._id) || !ci.item.is_active}
+                        accessibilityLabel="Increase quantity"
+                      >
+                        <Ionicons name="add" size={16} color={ci.quantity >= ci.item.quantity ? '#D5D9D9' : '#0F1111'} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.secondaryActions}>

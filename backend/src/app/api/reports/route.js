@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Report from '@/models/Report';
+import User from '@/models/User';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
+import { sendNotification } from '@/utils/notificationHelper';
 
 export async function POST(request) {
   try {
@@ -61,6 +63,32 @@ export async function POST(request) {
     });
 
     await report.save();
+
+    // Notify admins of new pending report for immediate moderation
+    try {
+      const adminUsers = await User.find({ role: 'admin' }).select('_id');
+      const reporterUser = await User.findById(authResult.user.id).select('full_name');
+      const reporterName = reporterUser?.full_name || 'A student';
+
+      for (const admin of adminUsers) {
+        sendNotification({
+          recipientId: admin._id.toString(),
+          senderId: authResult.user.id.toString(),
+          type: 'REPORT',
+          subType: 'ADMIN_REPORT_ALERT',
+          title: `⚠️ New Report: ${reason}`,
+          body: `${reporterName} submitted a report against a ${target_type}. Review in Admin Reports.`,
+          relatedId: report._id,
+          thumbnail: proof_url || null,
+          actionUrl: {
+            targetScreen: 'AdminReports',
+            params: { reportId: report._id.toString() },
+          },
+        }).catch((err) => console.error('Admin report notification failed:', err));
+      }
+    } catch (adminNotifErr) {
+      console.warn('Failed to notify admins of new report:', adminNotifErr.message);
+    }
 
     return NextResponse.json({ message: 'Report submitted successfully', report }, { status: 201 });
   } catch (error) {

@@ -30,14 +30,14 @@ export default function AdminNavigator() {
                   width: 5,
                   height: 5,
                   borderRadius: 2.5,
-                  backgroundColor: '#0052CC',
+                  backgroundColor: '#007185',
                   marginTop: 4,
                 }} />
               )}
             </View>
           );
         },
-        tabBarActiveTintColor: '#0052CC',
+        tabBarActiveTintColor: '#007185',
         tabBarInactiveTintColor: '#B0B7C3',
         tabBarShowLabel: true,
         tabBarLabelStyle: {

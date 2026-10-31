@@ -283,15 +283,21 @@ export default StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   showResultsBtn: {
-    backgroundColor: '#FFD814', // Amazon Yellow
+    backgroundColor: '#007185', // CampusMart Teal
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#007185',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   showResultsText: {
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
-    color: '#0F1111',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
 
 

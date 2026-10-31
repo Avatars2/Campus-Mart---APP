@@ -20,12 +20,14 @@ export default StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 40 : 60,
-    paddingBottom: 40, // Increased bottom padding to prevent overlap
+    paddingBottom: 40,
   },
   logoContainer: {
     width: 110,
     height: 110,
-    backgroundColor: 'transparent', // Removing white background so the icon itself acts as the logo
+    backgroundColor: 'transparent',
+    borderRadius: 55,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -38,7 +40,7 @@ export default StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 28, // Matches typical icon radius
+    borderRadius: 55,
   },
   title: {
     fontSize: 40,

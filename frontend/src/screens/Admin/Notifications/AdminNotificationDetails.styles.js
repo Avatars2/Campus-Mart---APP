@@ -8,7 +8,7 @@ const styles = StyleSheet.create({
 
   // ── Header ──
   header: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 14px rgba(30, 58, 138, 0.25)' },
       default: {
-        shadowColor: '#1E3A8A',
+        shadowColor: '#007185',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 10,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#93C5FD',
+    color: '#E0F2FE',
     marginTop: 2,
     fontWeight: '500',
   },
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   audienceBadgeAll: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   audienceTextAll: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#007185',
   },
   audienceTextSpecific: {
     fontSize: 12,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   audienceIconCircleAll: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   audienceIconCircleSpecific: {
     backgroundColor: '#FAF5FF',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 14,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   openPdfBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007185',
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 10,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 2px 6px rgba(37, 99, 235, 0.3)' },
       default: {
-        shadowColor: '#2563EB',
+        shadowColor: '#007185',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,

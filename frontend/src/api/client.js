@@ -83,6 +83,9 @@ client.interceptors.response.use(
 
       try {
         const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
+        if (!storedRefreshToken) {
+          throw new Error('No refresh token stored');
+        }
 
         // Request a fresh access token using the rotating refresh token
         const refreshResponse = await axios.post(

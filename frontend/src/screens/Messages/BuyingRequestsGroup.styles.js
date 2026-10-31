@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions, Platform } from 'react-native';
+import { StyleSheet, Dimensions, Platform, StatusBar } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -12,7 +12,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 16,
+    paddingTop: Platform.OS === 'ios' ? 52 : ((StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 44)),
     paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -24,17 +24,20 @@ export default StyleSheet.create({
     gap: 12,
   },
   backButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 1,
+    marginTop: 2,
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',

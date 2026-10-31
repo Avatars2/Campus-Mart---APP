@@ -43,7 +43,7 @@ export default function AdminHomeScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1E3A8A" />
+        <ActivityIndicator size="large" color="#007185" />
       </View>
     );
   }
@@ -96,7 +96,7 @@ export default function AdminHomeScreen() {
         {/* Hero Banner */}
         <View style={styles.heroBanner}>
           <View style={{ flex: 1, zIndex: 2 }}>
-            <Text style={styles.heroGreeting}>Welcome back,</Text>
+            <Text style={styles.heroGreeting}>Welcome back, {user?.full_name ? user.full_name.split(' ')[0] : 'Admin'} 👋</Text>
             <Text style={styles.heroSubtitle}>Here's what's happening on CampusMart today.</Text>
             <View style={styles.heroDateContainer}>
               <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
@@ -124,13 +124,48 @@ export default function AdminHomeScreen() {
           <Ionicons name="desktop-outline" size={100} color="#3B82F6" style={{ position: 'absolute', right: -10, bottom: -20, opacity: 0.15 }} />
         </View>
 
+        
+        {/* Quick Management Shortcuts */}
+        <View style={styles.quickSection}>
+          <Text style={styles.sectionTitle}>Quick Management</Text>
+          <View style={styles.quickRow}>
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('AdminCreateNotification')} activeOpacity={0.7}>
+              <View style={[styles.quickIconWrap, { backgroundColor: '#E6F4F6' }]}>
+                <Ionicons name="megaphone" size={20} color="#007185" />
+              </View>
+              <Text style={styles.quickBtnText}>Broadcast</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('AdminCategories')} activeOpacity={0.7}>
+              <View style={[styles.quickIconWrap, { backgroundColor: '#F1F5F9' }]}>
+                <Ionicons name="grid" size={20} color="#0F172A" />
+              </View>
+              <Text style={styles.quickBtnText}>Categories</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('AdminReports')} activeOpacity={0.7}>
+              <View style={[styles.quickIconWrap, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="alert-circle" size={20} color="#DC2626" />
+              </View>
+              <Text style={styles.quickBtnText}>Reports</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('AdminAnalytics')} activeOpacity={0.7}>
+              <View style={[styles.quickIconWrap, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="stats-chart" size={20} color="#0284C7" />
+              </View>
+              <Text style={styles.quickBtnText}>Analytics</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           {renderStatCard('Pending User Reports', stats?.pendingReports, stats?.pendingReports > 0 ? 'Needs attention' : 'All clear', 'alert-circle', '#FEE2E2', '#DC2626', stats?.pendingReports > 0 ? '#DC2626' : '#10B981', 'AdminReports')}
-          {renderStatCard('Total Platform Users', stats?.totalUsers, trends?.users, 'people', '#E0E7FF', '#4338CA', '#10B981', 'AdminUsers')}
-          {renderStatCard('Active Items', stats?.activeItems, trends?.items, 'pricetag', '#FCE7F3', '#DB2777', '#10B981', 'AdminItems')}
-          {renderStatCard('Categories', stats?.totalCategories, trends?.categories, 'grid', '#F3E8FF', '#7E22CE', '#10B981', 'AdminCategories')}
-          {renderStatCard('Total Orders', stats?.totalOrders, trends?.orders, 'cart', '#E0F2FE', '#0284C7', '#10B981', 'AdminOrders')}
+          {renderStatCard('Total Platform Users', stats?.totalUsers, trends?.users, 'people', '#E6F4F6', '#007185', '#10B981', 'AdminUsers')}
+          {renderStatCard('Active Items', stats?.activeItems, trends?.items, 'pricetag', '#E0F2FE', '#0284C7', '#10B981', 'AdminItems')}
+          {renderStatCard('Categories', stats?.totalCategories, trends?.categories, 'grid', '#F1F5F9', '#0F172A', '#10B981', 'AdminCategories')}
+          {renderStatCard('Total Orders', stats?.totalOrders, trends?.orders, 'cart', '#ECFDF5', '#059669', '#10B981', 'AdminOrders')}
           {renderStatCard('Notifications', stats?.totalNotifications, 'Broadcasts & Alerts', 'notifications', '#FEF3C7', '#D97706', '#D97706', 'AdminNotifications')}
         </View>
 

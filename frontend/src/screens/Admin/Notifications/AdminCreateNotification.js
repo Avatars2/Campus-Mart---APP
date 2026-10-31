@@ -201,7 +201,7 @@ export default function AdminCreateNotificationScreen() {
             <Ionicons
               name="people"
               size={24}
-              color={targetType === 'ALL' ? '#2563EB' : '#94A3B8'}
+              color={targetType === 'ALL' ? '#007185' : '#94A3B8'}
             />
             <Text
               style={[
@@ -230,7 +230,7 @@ export default function AdminCreateNotificationScreen() {
             <Ionicons
               name="person"
               size={24}
-              color={targetType === 'SPECIFIC' ? '#2563EB' : '#94A3B8'}
+              color={targetType === 'SPECIFIC' ? '#007185' : '#94A3B8'}
             />
             <Text
               style={[
@@ -276,8 +276,8 @@ export default function AdminCreateNotificationScreen() {
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 8 }}
                 onPress={() => setStudentPickerVisible(true)}
               >
-                <Ionicons name="search" size={18} color="#2563EB" />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#2563EB' }}>
+                <Ionicons name="search" size={18} color="#007185" />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#007185' }}>
                   Select Student
                 </Text>
               </TouchableOpacity>
@@ -316,7 +316,7 @@ export default function AdminCreateNotificationScreen() {
         {attachedFile ? (
           <View style={styles.fileCard}>
             <View style={styles.fileCardLeft}>
-              <Ionicons name="document-text" size={30} color="#2563EB" />
+              <Ionicons name="document-text" size={30} color="#007185" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.fileName} numberOfLines={1}>
                   {decodeURIComponent(attachedFile.name)}
@@ -332,7 +332,7 @@ export default function AdminCreateNotificationScreen() {
           </View>
         ) : (
           <TouchableOpacity style={styles.attachBox} onPress={handlePickDocument} activeOpacity={0.7}>
-            <Ionicons name="cloud-upload-outline" size={28} color="#2563EB" />
+            <Ionicons name="cloud-upload-outline" size={28} color="#007185" />
             <Text style={styles.attachBoxText}>Select PDF File</Text>
             <Text style={styles.attachBoxHint}>Supports PDF files up to 10 MB</Text>
           </TouchableOpacity>
@@ -395,7 +395,7 @@ export default function AdminCreateNotificationScreen() {
             {/* Student List */}
             {loadingStudents ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#1E3A8A" />
+                <ActivityIndicator size="large" color="#007185" />
               </View>
             ) : (
               <FlatList

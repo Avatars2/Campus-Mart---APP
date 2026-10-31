@@ -100,10 +100,16 @@ export async function POST(request, { params }) {
         await sendNotification({
           recipientId,
           senderId: sellerId,
-          type: 'SYSTEM',
+          type: 'WISHLIST',
+          subType: 'PRICE_DROP',
           title: `🔥 Price Drop: ${item.name}`,
           body: `Great news! "${item.name}" is now ${discountPercent}% OFF! Dropped from ₹${basePrice} to ₹${newPrice}. Grab it before someone else does!`,
           relatedId: item._id,
+          thumbnail: item.images?.[0] || null,
+          actionUrl: {
+            targetScreen: 'ProductDetail',
+            params: { item: item.toJSON ? item.toJSON() : item },
+          },
         });
       } catch (err) {
         console.error(`Failed to notify wishlist user ${recipientId} for price drop:`, err);

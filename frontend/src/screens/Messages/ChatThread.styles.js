@@ -235,7 +235,7 @@ export default StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#00A884',
+    backgroundColor: '#007185',
     ...Platform.select({
       web: { boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.15)' },
       default: {
@@ -536,7 +536,7 @@ export default StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#00A884',
+    backgroundColor: '#007185',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -635,7 +635,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00A884',
+    backgroundColor: '#007185',
     paddingVertical: 14,
     paddingHorizontal: 24,
     gap: 10,
@@ -705,7 +705,7 @@ export default StyleSheet.create({
   },
   locationTapHint: {
     fontSize: 11,
-    color: '#00A884',
+    color: '#007185',
     fontWeight: '600',
   },
   imageDownloadBadge: {

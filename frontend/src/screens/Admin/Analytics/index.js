@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,18 @@ import {
   TextInput,
   Platform,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 import client from '../../../api/client';
 import styles from './styles';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function AdminAnalyticsScreen() {
   const navigation = useNavigation();
@@ -26,6 +31,13 @@ export default function AdminAnalyticsScreen() {
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [activePreset, setActivePreset] = useState('today');
   const [activeTab, setActiveTab] = useState('items');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 80, right: 16 });
+  const dropdownBtnRef = useRef(null);
 
   // Custom date modal state
   const [customModalVisible, setCustomModalVisible] = useState(false);
@@ -244,7 +256,7 @@ export default function AdminAnalyticsScreen() {
               transition: all 0.2s;
             }
             .btn-primary {
-              background-color: #2563EB;
+              background-color: #007185;
               color: #FFFFFF;
             }
             .btn-secondary {
@@ -274,7 +286,7 @@ export default function AdminAnalyticsScreen() {
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
-              border-bottom: 3px solid #1E3A8A;
+              border-bottom: 3px solid #007185;
               padding-bottom: 18px;
               margin-bottom: 20px;
             }
@@ -285,7 +297,7 @@ export default function AdminAnalyticsScreen() {
               font-size: 24px;
               font-weight: 900;
               letter-spacing: 0.5px;
-              color: #1E3A8A;
+              color: #007185;
               margin: 0 0 2px 0;
             }
             .org-sub {
@@ -341,7 +353,7 @@ export default function AdminAnalyticsScreen() {
             /* ── Scope Box ── */
             .scope-banner {
               background-color: #F1F5F9;
-              border-left: 4px solid #2563EB;
+              border-left: 4px solid #007185;
               border-radius: 0 6px 6px 0;
               padding: 10px 14px;
               margin-bottom: 22px;
@@ -378,7 +390,7 @@ export default function AdminAnalyticsScreen() {
               padding: 10px 12px;
               border-top: 3px solid #64748B;
             }
-            .kpi-card.blue { border-top-color: #2563EB; }
+            .kpi-card.blue { border-top-color: #007185; }
             .kpi-card.green { border-top-color: #16A34A; }
             .kpi-card.amber { border-top-color: #D97706; }
             .kpi-card.red { border-top-color: #DC2626; }
@@ -424,7 +436,7 @@ export default function AdminAnalyticsScreen() {
             .section-title {
               font-size: 13.5px;
               font-weight: 800;
-              color: #1E3A8A;
+              color: #007185;
               text-transform: uppercase;
               letter-spacing: 0.5px;
             }
@@ -848,12 +860,38 @@ export default function AdminAnalyticsScreen() {
           }, 600);
         }
       } else {
-        const { uri } = await Print.printToFileAsync({ html });
+        const { base64 } = await Print.printToFileAsync({ html, base64: true });
+        const fileName = `CampusMart_Analytics_${Date.now()}.pdf`;
+        const targetUri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(targetUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            UTI: '.pdf',
-            mimeType: 'application/pdf',
-            dialogTitle: 'Share CampusMart Report',
+          try {
+            await Sharing.shareAsync(targetUri, {
+              UTI: '.pdf',
+              mimeType: 'application/pdf',
+              dialogTitle: 'Share CampusMart Report',
+            });
+          } catch (shareErr) {
+            if (Platform.OS === 'android') {
+              const contentUri = await FileSystem.getContentUriAsync(targetUri);
+              await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                data: contentUri,
+                flags: 1,
+                type: 'application/pdf',
+              });
+            } else {
+              throw shareErr;
+            }
+          }
+        } else if (Platform.OS === 'android') {
+          const contentUri = await FileSystem.getContentUriAsync(targetUri);
+          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+            data: contentUri,
+            flags: 1,
+            type: 'application/pdf',
           });
         }
       }
@@ -865,7 +903,148 @@ export default function AdminAnalyticsScreen() {
     }
   };
 
-  const { summary, items, orders, users, reports } = analyticsData;
+  const { summary, items = [], orders = [], users = [], reports = [] } = analyticsData;
+
+  // Reset pagination on timeframe or tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activePreset, customDate, customStartDate, customEndDate, activeTab, pageSize]);
+
+  const activeList = useMemo(() => {
+    if (activeTab === 'items') return items;
+    if (activeTab === 'orders') return orders;
+    if (activeTab === 'users') return users;
+    if (activeTab === 'reports') return reports;
+    return [];
+  }, [activeTab, items, orders, users, reports]);
+
+  const totalPages = Math.max(1, Math.ceil(activeList.length / pageSize));
+
+  const pagedList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return activeList.slice(start, start + pageSize);
+  }, [activeList, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const toggleDropdown = () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+    } else {
+      dropdownBtnRef.current?.measure((fx, fy, width, height, px, py) => {
+        const screenHeight = Dimensions.get('window').height;
+        const screenWidth = Dimensions.get('window').width;
+        const calculatedBottom = screenHeight - py;
+        const calculatedRight = Math.max(16, screenWidth - (px + width));
+        setDropdownPos({
+          bottom: calculatedBottom,
+          right: calculatedRight,
+        });
+        setDropdownVisible(true);
+      });
+    }
+  };
+
+  const renderPagination = () => {
+    if (activeList.length === 0) return null;
+
+    const startIdx = (currentPage - 1) * pageSize + 1;
+    const endIdx = Math.min(currentPage * pageSize, activeList.length);
+
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages = [1, 2, 3, 4, '...', totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      }
+    }
+
+    const labelMap = {
+      items: 'items',
+      orders: 'orders',
+      users: 'users',
+      reports: 'reports',
+    };
+
+    return (
+      <View style={styles.pagination}>
+        {/* Results Info & Page Size Dropdown */}
+        <View style={styles.paginationHeaderRow}>
+          <Text style={styles.pageInfo}>
+            Showing {startIdx} to {endIdx} of {activeList.length} {labelMap[activeTab] || 'records'}
+          </Text>
+
+          <TouchableOpacity
+            ref={dropdownBtnRef}
+            style={[styles.pageSizeDropdownBtn, dropdownVisible && styles.pageSizeDropdownBtnActive]}
+            onPress={toggleDropdown}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pageSizeDropdownText}>Page: {pageSize}</Text>
+            <Ionicons
+              name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#007185"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Page Controls (Prev, Numbers, Next) */}
+        <View style={styles.pageControls}>
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            disabled={currentPage === 1}
+            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
+            />
+          </TouchableOpacity>
+
+          {pages.map((p, i) =>
+            p === '...' ? (
+              <Text key={`dot-${i}`} style={styles.pageDots}>
+                ...
+              </Text>
+            ) : (
+              <TouchableOpacity
+                key={p}
+                style={[styles.pageNumBtn, currentPage === p && styles.pageNumBtnActive]}
+                onPress={() => setCurrentPage(p)}
+              >
+                <Text style={[styles.pageNumText, currentPage === p && styles.pageNumTextActive]}>
+                  {p}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+            disabled={currentPage === totalPages}
+            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -912,7 +1091,7 @@ export default function AdminAnalyticsScreen() {
           <View style={styles.filterCardHeader}>
             <Text style={styles.filterCardTitle}>Select Timeframe</Text>
             <View style={styles.activeDateBadge}>
-              <Ionicons name="calendar-outline" size={13} color="#1E3A8A" />
+              <Ionicons name="calendar-outline" size={13} color="#007185" />
               <Text style={styles.activeDateText}>{formatPeriodLabel()}</Text>
             </View>
           </View>
@@ -945,7 +1124,7 @@ export default function AdminAnalyticsScreen() {
 
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#1E3A8A" />
+            <ActivityIndicator size="large" color="#007185" />
             <Text style={{ marginTop: 12, color: '#6B7280', fontSize: 13 }}>Fetching activity details...</Text>
           </View>
         ) : (
@@ -954,7 +1133,7 @@ export default function AdminAnalyticsScreen() {
             <View style={styles.kpiGrid}>
               <View style={styles.kpiCard}>
                 <View style={[styles.kpiIconWrapper, { backgroundColor: '#DBEAFE' }]}>
-                  <Ionicons name="people" size={18} color="#2563EB" />
+                  <Ionicons name="people" size={18} color="#007185" />
                 </View>
                 <Text style={styles.kpiTitle}>New Users</Text>
                 <Text style={styles.kpiValue}>{summary.totalNewUsers}</Text>
@@ -1033,7 +1212,10 @@ export default function AdminAnalyticsScreen() {
             <View style={styles.tabNav}>
               <TouchableOpacity
                 style={[styles.tabNavItem, activeTab === 'items' && styles.tabNavItemActive]}
-                onPress={() => setActiveTab('items')}
+                onPress={() => {
+                  setActiveTab('items');
+                  setCurrentPage(1);
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabNavText, activeTab === 'items' && styles.tabNavTextActive]}>
@@ -1043,7 +1225,10 @@ export default function AdminAnalyticsScreen() {
 
               <TouchableOpacity
                 style={[styles.tabNavItem, activeTab === 'orders' && styles.tabNavItemActive]}
-                onPress={() => setActiveTab('orders')}
+                onPress={() => {
+                  setActiveTab('orders');
+                  setCurrentPage(1);
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabNavText, activeTab === 'orders' && styles.tabNavTextActive]}>
@@ -1053,7 +1238,10 @@ export default function AdminAnalyticsScreen() {
 
               <TouchableOpacity
                 style={[styles.tabNavItem, activeTab === 'users' && styles.tabNavItemActive]}
-                onPress={() => setActiveTab('users')}
+                onPress={() => {
+                  setActiveTab('users');
+                  setCurrentPage(1);
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabNavText, activeTab === 'users' && styles.tabNavTextActive]}>
@@ -1063,7 +1251,10 @@ export default function AdminAnalyticsScreen() {
 
               <TouchableOpacity
                 style={[styles.tabNavItem, activeTab === 'reports' && styles.tabNavItemActive]}
-                onPress={() => setActiveTab('reports')}
+                onPress={() => {
+                  setActiveTab('reports');
+                  setCurrentPage(1);
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabNavText, activeTab === 'reports' && styles.tabNavTextActive]}>
@@ -1082,7 +1273,7 @@ export default function AdminAnalyticsScreen() {
                     <Text style={styles.emptyStateText}>No items were added during this timeframe.</Text>
                   </View>
                 ) : (
-                  items.map((item) => (
+                  pagedList.map((item) => (
                     <View key={item._id} style={styles.listItemCard}>
                       <View style={styles.listItemRow}>
                         <Text style={styles.listItemTitle} numberOfLines={1}>
@@ -1095,7 +1286,7 @@ export default function AdminAnalyticsScreen() {
                       </Text>
                       <View style={styles.badgeRow}>
                         <View style={[styles.badge, { backgroundColor: '#EFF6FF' }]}>
-                          <Text style={[styles.badgeText, { color: '#2563EB' }]}>
+                          <Text style={[styles.badgeText, { color: '#007185' }]}>
                             {item.listing_type.toUpperCase()}
                           </Text>
                         </View>
@@ -1119,7 +1310,7 @@ export default function AdminAnalyticsScreen() {
                     <Text style={styles.emptyStateText}>No orders were placed during this timeframe.</Text>
                   </View>
                 ) : (
-                  orders.map((order) => {
+                  pagedList.map((order) => {
                     const badge = getStatusBadge(order.status);
                     return (
                       <View key={order._id} style={styles.listItemCard}>
@@ -1164,12 +1355,12 @@ export default function AdminAnalyticsScreen() {
                     <Text style={styles.emptyStateText}>No users registered during this timeframe.</Text>
                   </View>
                 ) : (
-                  users.map((u) => (
+                  pagedList.map((u) => (
                     <View key={u._id} style={styles.listItemCard}>
                       <View style={styles.listItemRow}>
                         <Text style={styles.listItemTitle}>{u.full_name}</Text>
                         <View style={[styles.badge, { backgroundColor: u.role === 'admin' ? '#FCE7F3' : '#DBEAFE' }]}>
-                          <Text style={[styles.badgeText, { color: u.role === 'admin' ? '#DB2777' : '#2563EB' }]}>
+                          <Text style={[styles.badgeText, { color: u.role === 'admin' ? '#DC2626' : '#007185' }]}>
                             {u.role.toUpperCase()}
                           </Text>
                         </View>
@@ -1194,7 +1385,7 @@ export default function AdminAnalyticsScreen() {
                     <Text style={styles.emptyStateText}>No reports filed during this timeframe.</Text>
                   </View>
                 ) : (
-                  reports.map((r) => (
+                  pagedList.map((r) => (
                     <View key={r._id} style={styles.listItemCard}>
                       <View style={styles.listItemRow}>
                         <Text style={styles.listItemTitle}>{r.reason}</Text>
@@ -1213,6 +1404,9 @@ export default function AdminAnalyticsScreen() {
                 )}
               </View>
             )}
+
+            {/* Pagination Controls */}
+            {renderPagination()}
           </>
         )}
       </ScrollView>
@@ -1314,6 +1508,42 @@ export default function AdminAnalyticsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Anchored Page Size Dropdown Modal */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={[styles.anchoredDropdownMenu, { bottom: dropdownPos.bottom, right: dropdownPos.right }]}>
+            {PAGE_SIZE_OPTIONS.map((size) => {
+              const isSelected = pageSize === size;
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                  onPress={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]}>
+                    {size}
+                  </Text>
+                  {isSelected && <Ionicons name="checkmark" size={14} color="#007185" />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

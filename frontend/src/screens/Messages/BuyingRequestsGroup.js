@@ -342,6 +342,7 @@ export default function BuyingRequestsGroup() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="chevron-back" size={26} color="#0F172A" />
           </TouchableOpacity>

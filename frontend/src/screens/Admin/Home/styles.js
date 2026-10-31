@@ -13,7 +13,7 @@ export default StyleSheet.create({
     paddingBottom: 40,
   },
   heroBanner: {
-    backgroundColor: '#1E3A8A', // Deep blue
+    backgroundColor: '#007185', // CampusMart Teal
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
@@ -36,7 +36,7 @@ export default StyleSheet.create({
     marginBottom: 8,
   },
   heroSubtitle: {
-    color: '#DBEAFE',
+    color: '#E0F2FE',
     fontSize: 14,
     marginBottom: 16,
   },
@@ -69,7 +69,7 @@ export default StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     borderWidth: 2,
-    borderColor: '#60A5FA',
+    borderColor: '#38BDF8',
     overflow: 'hidden',
   },
   heroLogoImage: {
@@ -80,7 +80,7 @@ export default StyleSheet.create({
     position: 'absolute',
     bottom: -4,
     right: -4,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -392,5 +392,45 @@ export default StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Quick Management
+  quickSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  quickBtn: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  quickBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
   },
 });

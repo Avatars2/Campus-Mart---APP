@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
+import AdminNotification from '@/models/AdminNotification';
 import { verifyAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
 
@@ -26,21 +27,44 @@ export async function POST(request) {
 
     // Get all users
     const users = await User.find({ _id: { $ne: adminUser._id } }).select('_id');
+
+    // Create an AdminNotification record so it's tracked in the admin dashboard history
+    const savedAdminNotification = await AdminNotification.create({
+      sender: adminUser._id,
+      title: title.trim(),
+      body: body.trim(),
+      targetType: 'ALL',
+      recipientCount: users.length,
+      attachment: null,
+    });
     
-    // Send notification to all users (In a real production app, this should be a background job/queue)
-    const promises = users.map(user => 
-      sendNotification({
-        recipientId: user._id.toString(),
-        senderId: adminUser._id.toString(),
-        type: 'SYSTEM',
-        title,
-        body,
-      }).catch(e => console.error(`Failed to send to ${user._id}:`, e)) // catch individual errors so loop doesn't break
-    );
+    // Send notification in chunked batches
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map((user) =>
+          sendNotification({
+            recipientId: user._id.toString(),
+            senderId: adminUser._id.toString(),
+            type: 'SYSTEM',
+            subType: 'ADMIN_ANNOUNCEMENT',
+            title: title.trim(),
+            body: body.trim(),
+            relatedId: savedAdminNotification._id,
+            actionUrl: {
+              targetScreen: 'NotificationDetail',
+              params: { notificationId: savedAdminNotification._id.toString() },
+            },
+          }).catch((e) => console.error(`Failed to send to ${user._id}:`, e))
+        )
+      );
+    }
 
-    await Promise.all(promises);
-
-    return NextResponse.json({ message: `System alert sent to ${users.length} users` });
+    return NextResponse.json({
+      message: `System alert sent to ${users.length} users`,
+      notification: savedAdminNotification,
+    });
   } catch (error) {
     console.error('Send System Alert Error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });

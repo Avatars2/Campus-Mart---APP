@@ -163,22 +163,31 @@ export async function POST(request) {
     });
     const savedAdminNotification = await adminNotification.save();
 
-    // Dispatch notifications in background promises
-    const promises = recipientUsers.map((recipient) =>
-      sendNotification({
-        recipientId: recipient._id.toString(),
-        senderId: adminUser._id.toString(),
-        type: 'SYSTEM',
-        title: title.trim(),
-        body: body.trim(),
-        relatedId: savedAdminNotification._id,
-        attachment: attachmentData,
-      }).catch((err) => {
-        console.error(`Failed to send notification to recipient ${recipient._id}:`, err);
-      })
-    );
-
-    await Promise.all(promises);
+    // Dispatch notifications in chunked batches (50 at a time) to prevent memory & timeout spikes
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < recipientUsers.length; i += BATCH_SIZE) {
+      const batch = recipientUsers.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map((recipient) =>
+          sendNotification({
+            recipientId: recipient._id.toString(),
+            senderId: adminUser._id.toString(),
+            type: 'SYSTEM',
+            subType: 'ADMIN_ANNOUNCEMENT',
+            title: title.trim(),
+            body: body.trim(),
+            relatedId: savedAdminNotification._id,
+            attachment: attachmentData,
+            actionUrl: {
+              targetScreen: 'NotificationDetail',
+              params: { notificationId: savedAdminNotification._id.toString() },
+            },
+          }).catch((err) => {
+            console.error(`Failed to send notification to recipient ${recipient._id}:`, err);
+          })
+        )
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -120,7 +120,7 @@ export default function AdminReportDetails({ route, navigation }) {
               </View>
               <Text style={styles.infoValue}>{reporterName}</Text>
               <View style={[styles.roleBadge, { backgroundColor: reporterRole === 'admin' ? '#FCE7F3' : '#DBEAFE' }]}>
-                <Text style={[styles.roleBadgeText, { color: reporterRole === 'admin' ? '#DB2777' : '#2563EB' }]}>
+                <Text style={[styles.roleBadgeText, { color: reporterRole === 'admin' ? '#DB2777' : '#007185' }]}>
                   {reporterRole.charAt(0).toUpperCase() + reporterRole.slice(1)}
                 </Text>
               </View>
@@ -178,7 +178,7 @@ export default function AdminReportDetails({ route, navigation }) {
         {isPending && (
           <View style={styles.moderationCard}>
             <View style={styles.modHeader}>
-              <View style={[styles.modIconWrapper, { backgroundColor: '#EFF6FF' }]}>
+              <View style={[styles.modIconWrapper, { backgroundColor: '#E6F4F6' }]}>
                 <Ionicons name="shield-checkmark" size={20} color="#3B82F6" />
               </View>
               <View style={{ flex: 1 }}>

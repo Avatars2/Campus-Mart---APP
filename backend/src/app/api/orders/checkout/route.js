@@ -19,7 +19,7 @@ import { expirePaymentIfNeeded } from '@/lib/paymentLifecycle';
 export const runtime = 'nodejs';
 
 const orderPopulate = [
-  { path: 'item_id', select: 'name price images listing_type rental_period' },
+  { path: 'item_id', select: 'name price images listing_type rental_period condition_rating' },
   { path: 'seller_id', select: 'full_name email phone student_id department year_semester' },
   { path: 'buyer_id', select: 'full_name email phone student_id department year_semester' },
 ];

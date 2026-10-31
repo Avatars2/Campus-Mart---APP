@@ -247,7 +247,7 @@ export default function EditProfileScreen({ route, navigation }) {
       </KeyboardAvoidingView>
 
       {/* Department Modal */}
-      <Modal visible={departmentModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={departmentModalVisible} animationType="slide" transparent={true} onRequestClose={() => setDepartmentModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
@@ -278,7 +278,7 @@ export default function EditProfileScreen({ route, navigation }) {
       </Modal>
 
       {/* Year Modal */}
-      <Modal visible={yearModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={yearModalVisible} animationType="slide" transparent={true} onRequestClose={() => setYearModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />

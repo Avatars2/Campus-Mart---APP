@@ -8,7 +8,7 @@ export default StyleSheet.create({
     backgroundColor: '#F7F9FC',
   },
   header: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -46,7 +46,7 @@ export default StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#93C5FD',
+    color: '#E0F2FE',
     marginTop: 2,
     textAlign: 'center',
   },
@@ -100,7 +100,7 @@ export default StyleSheet.create({
   tabBtnActive: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007185',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -282,8 +282,8 @@ export default StyleSheet.create({
     elevation: 1,
   },
   pageSizeDropdownBtnActive: {
-    borderColor: '#1E3A8A',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#007185',
+    backgroundColor: '#E6F4F6',
   },
   pageSizeDropdownText: {
     fontSize: 13,
@@ -318,7 +318,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   dropdownItemText: {
     fontSize: 13,
@@ -326,7 +326,7 @@ export default StyleSheet.create({
     color: '#334155',
   },
   dropdownItemTextActive: {
-    color: '#1E3A8A',
+    color: '#007185',
     fontWeight: '800',
   },
 
@@ -339,7 +339,7 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -355,7 +355,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   pageNumBtnActive: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
   },
   pageNumText: {
     fontSize: 14,

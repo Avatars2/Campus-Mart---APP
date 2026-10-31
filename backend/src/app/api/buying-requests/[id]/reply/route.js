@@ -109,11 +109,18 @@ export async function POST(request, { params }) {
     // Notify the student who created the request (if someone else replied)
     if (String(buyingReq.user_id) !== String(authResult.user.id)) {
       sendNotification({
-        userId: buyingReq.user_id,
+        recipientId: buyingReq.user_id.toString(),
+        senderId: authResult.user.id.toString(),
+        type: 'BUYING_REQUEST',
+        subType: 'BUYING_REQUEST_OFFER',
         title: 'New Offer on Your Request! 🛍️',
-        message: `${populatedReply.sender_id?.full_name || 'A seller'} replied to your request: "${buyingReq.title}".`,
-        type: 'buying_request',
-        link: `/messages`,
+        body: `${populatedReply.sender_id?.full_name || 'A seller'} replied to your request: "${buyingReq.title}".`,
+        relatedId: id,
+        thumbnail: populatedReply.item_id?.images?.[0] || null,
+        actionUrl: {
+          targetScreen: 'BuyingRequestsGroup',
+          params: { requestId: id },
+        },
       }).catch(err => console.error('Error sending request notification:', err));
     }
 

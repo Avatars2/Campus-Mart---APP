@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true,
   },
   sender: {
     type: mongoose.Schema.Types.ObjectId,
@@ -13,8 +14,12 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['MESSAGE', 'ORDER', 'SYSTEM'],
+    enum: ['MESSAGE', 'ORDER', 'SYSTEM', 'WISHLIST', 'REPORT', 'BUYING_REQUEST'],
     required: true,
+  },
+  subType: {
+    type: String,
+    default: null,
   },
   title: {
     type: String,
@@ -27,10 +32,19 @@ const notificationSchema = new mongoose.Schema({
   read: {
     type: Boolean,
     default: false,
+    index: true,
   },
   relatedId: {
     type: mongoose.Schema.Types.ObjectId,
     default: null,
+  },
+  thumbnail: {
+    type: String,
+    default: null,
+  },
+  actionUrl: {
+    targetScreen: { type: String, default: null },
+    params: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   attachment: {
     url: { type: String, default: null },
@@ -39,6 +53,8 @@ const notificationSchema = new mongoose.Schema({
     size: { type: Number, default: null },
   }
 }, { timestamps: true });
+
+notificationSchema.index({ recipient: 1, createdAt: -1 });
 
 notificationSchema.set('toJSON', {
   virtuals: true,

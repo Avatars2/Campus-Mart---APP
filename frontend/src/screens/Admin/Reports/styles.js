@@ -11,7 +11,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -79,8 +79,8 @@ export default StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   tabBtnActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#007185',
+    borderColor: '#007185',
   },
   tabDot: {
     width: 8,
@@ -230,8 +230,8 @@ export default StyleSheet.create({
     elevation: 1,
   },
   pageSizeDropdownBtnActive: {
-    borderColor: '#1E3A8A',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#007185',
+    backgroundColor: '#E6F4F6',
   },
   pageSizeDropdownText: {
     fontSize: 13,
@@ -266,7 +266,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
   },
   dropdownItemText: {
     fontSize: 13,
@@ -274,7 +274,7 @@ export default StyleSheet.create({
     color: '#334155',
   },
   dropdownItemTextActive: {
-    color: '#1E3A8A',
+    color: '#007185',
     fontWeight: '800',
   },
 
@@ -287,7 +287,7 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -303,7 +303,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   pageNumBtnActive: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
   },
   pageNumText: {
     fontSize: 14,
@@ -386,7 +386,7 @@ export default StyleSheet.create({
     color: '#1E293B',
   },
   submitReasonBtn: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',

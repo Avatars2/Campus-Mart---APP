@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Image } from 'react-native';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import AdminNavigator from './AdminNavigator';
@@ -10,8 +10,9 @@ export default function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0052CC" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <Image source={require('../../assets/logo.png')} style={{ width: 140, height: 140, borderRadius: 70, marginBottom: 20 }} resizeMode="contain" />
+        <ActivityIndicator size="large" color="#007185" />
       </View>
     );
   }

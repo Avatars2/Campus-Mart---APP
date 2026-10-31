@@ -108,11 +108,11 @@ export async function POST(request) {
     // Reset IP failed attempts upon successful login
     await LoginAttempt.deleteOne({ identifier: `ip:${ip}` });
 
-    // 5. Short-lived Access Token (15 minutes)
+    // 5. Access Token (7 days for smooth mobile experience)
     const accessToken = jwt.sign(
       { id: user._id, email: user.email, name: user.full_name, role: user.role },
       getJwtSecret(),
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     // 6. Long-lived Refresh Token (30 days) with token version

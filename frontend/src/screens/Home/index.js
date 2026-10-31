@@ -351,7 +351,14 @@ export default function HomeScreen({ route, navigation }) {
       {/* 1. Fixed Top Bar */}
       <View style={styles.headerArea}>
         <View style={styles.topBar}>
-          <Text style={styles.logoText}>Campus<Text style={{ color: '#007185' }}>Mart</Text></Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={{ width: 28, height: 28, borderRadius: 14 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.logoText}>Campus<Text style={{ color: '#007185' }}>Mart</Text></Text>
+          </View>
           <View style={styles.topIconsContainer}>
             <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Wishlist')}>
               <Ionicons name="heart-outline" size={26} color="#0F1111" />

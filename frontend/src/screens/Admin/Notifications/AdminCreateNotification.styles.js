@@ -6,7 +6,7 @@ export default StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#007185',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -64,8 +64,8 @@ export default StyleSheet.create({
     gap: 6,
   },
   audienceOptionActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#007185',
+    backgroundColor: '#E6F4F6',
   },
   audienceOptionTitle: {
     fontSize: 14,
@@ -73,7 +73,7 @@ export default StyleSheet.create({
     color: '#64748B',
   },
   audienceOptionTitleActive: {
-    color: '#2563EB',
+    color: '#007185',
   },
   audienceOptionDesc: {
     fontSize: 11,
@@ -133,7 +133,7 @@ export default StyleSheet.create({
   changeStudentText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#007185',
   },
 
   // Text Inputs
@@ -172,7 +172,7 @@ export default StyleSheet.create({
   attachBoxText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#007185',
   },
   attachBoxHint: {
     fontSize: 12,
@@ -188,7 +188,7 @@ export default StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E6F4F6',
     marginBottom: 16,
   },
   fileCardLeft: {
@@ -200,7 +200,7 @@ export default StyleSheet.create({
   fileName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1E3A8A',
+    color: '#007185',
     maxWidth: 200,
   },
   fileMeta: {
@@ -214,7 +214,7 @@ export default StyleSheet.create({
 
   // Submit Button
   submitButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#007185',
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -225,7 +225,7 @@ export default StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 12px rgba(37,99,235,0.3)' },
       default: {
-        shadowColor: '#2563EB',
+        shadowColor: '#007185',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -234,7 +234,7 @@ export default StyleSheet.create({
     }),
   },
   submitButtonDisabled: {
-    backgroundColor: '#93C5FD',
+    backgroundColor: '#7DD3FC',
   },
   submitButtonText: {
     color: '#FFFFFF',

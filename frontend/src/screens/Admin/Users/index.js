@@ -235,7 +235,7 @@ export default function AdminUsersScreen() {
             <Ionicons
               name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
               size={14}
-              color="#1E3A8A"
+              color="#007185"
             />
           </TouchableOpacity>
         </View>
@@ -250,7 +250,7 @@ export default function AdminUsersScreen() {
             <Ionicons
               name="chevron-back"
               size={18}
-              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
 
@@ -280,7 +280,7 @@ export default function AdminUsersScreen() {
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
         </View>
@@ -309,7 +309,7 @@ export default function AdminUsersScreen() {
         <Ionicons name="search" size={20} color="#9CA3AF" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name, email or ID..."
+          placeholder="Search users by name, email, or student ID..."
           value={searchQuery}
           onChangeText={handleSearch}
           placeholderTextColor="#9CA3AF"
@@ -426,7 +426,7 @@ export default function AdminUsersScreen() {
                     {size}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                    <Ionicons name="checkmark" size={15} color="#007185" />
                   )}
                 </TouchableOpacity>
               );

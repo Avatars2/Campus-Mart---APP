@@ -14,6 +14,16 @@ import client from '../../api/client';
 import { FAQ_CATEGORIES, FAQ_ITEMS } from '../../constants/faqData';
 import styles from './Help.styles';
 
+const CATEGORY_THEMES = {
+  buyer: { bg: '#E6F7F9', text: '#007185', label: 'Buyer' },
+  seller: { bg: '#ECFDF5', text: '#059669', label: 'Seller' },
+  payment: { bg: '#F5F3FF', text: '#7C3AED', label: 'Payment' },
+  orders: { bg: '#FEF3C7', text: '#D97706', label: 'Orders' },
+  requests: { bg: '#E0F2FE', text: '#0284C7', label: 'Requests' },
+  account: { bg: '#EEF2FF', text: '#4F46E5', label: 'Account' },
+  safety: { bg: '#FEE2E2', text: '#DC2626', label: 'Safety' },
+};
+
 const DEFAULT_ADMIN_EMAIL = process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'avatars2610@gmail.com';
 const DEFAULT_ADMIN_PHONE = '1234567890';
 
@@ -128,10 +138,13 @@ export default function HelpScreen({ navigation }) {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={24} color="#0F1111" />
+          <Ionicons name="chevron-back" size={24} color="#0F172A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & FAQs</Text>
+        <Text style={styles.headerTitle}>
+          Help & <Text style={{ color: '#007185' }}>FAQs</Text>
+        </Text>
       </View>
 
       <ScrollView
@@ -250,17 +263,18 @@ export default function HelpScreen({ navigation }) {
           ) : (
             filteredFaqs.map((faq) => {
               const isExpanded = expandedId === faq.id;
+              const theme = CATEGORY_THEMES[faq.category] || { bg: '#F1F5F9', text: '#64748B', label: faq.category };
               return (
-                <View key={faq.id} style={styles.faqCard}>
+                <View key={faq.id} style={[styles.faqCard, isExpanded && styles.faqCardExpanded]}>
                   <TouchableOpacity
                     style={styles.faqQuestionRow}
                     onPress={() => toggleAccordion(faq.id)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.faqQuestionLeft}>
-                      <View style={styles.faqCategoryBadge}>
-                        <Text style={styles.faqCategoryBadgeText}>
-                          {faq.category}
+                      <View style={[styles.faqCategoryBadge, { backgroundColor: theme.bg }]}>
+                        <Text style={[styles.faqCategoryBadgeText, { color: theme.text }]}>
+                          {theme.label}
                         </Text>
                       </View>
                       <Text style={styles.faqQuestionText}>{faq.question}</Text>
@@ -268,13 +282,17 @@ export default function HelpScreen({ navigation }) {
                     <Ionicons
                       name={isExpanded ? 'chevron-up' : 'chevron-down'}
                       size={18}
-                      color={isExpanded ? '#007185' : '#9CA3AF'}
+                      color={isExpanded ? '#007185' : '#94A3B8'}
                     />
                   </TouchableOpacity>
 
                   {isExpanded && (
                     <View style={styles.faqAnswerContainer}>
                       <Text style={styles.faqAnswerText}>{faq.answer}</Text>
+                      <View style={styles.faqHelpfulBox}>
+                        <Ionicons name="information-circle-outline" size={15} color="#007185" />
+                        <Text style={styles.faqHelpfulText}>Need more details? Call or email Admin above.</Text>
+                      </View>
                     </View>
                   )}
                 </View>

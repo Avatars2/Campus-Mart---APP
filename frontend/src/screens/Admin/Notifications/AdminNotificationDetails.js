@@ -116,7 +116,7 @@ export default function AdminNotificationDetails({ route, navigation }) {
               <Ionicons
                 name={isAll ? 'people' : 'person'}
                 size={14}
-                color={isAll ? '#2563EB' : '#7C3AED'}
+                color={isAll ? '#007185' : '#7C3AED'}
               />
               <Text style={isAll ? styles.audienceTextAll : styles.audienceTextSpecific}>
                 {isAll
@@ -140,7 +140,7 @@ export default function AdminNotificationDetails({ route, navigation }) {
         {/* ── Audience / Recipient Details Card ── */}
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={16} color="#1E3A8A" />
+            <Ionicons name="people-outline" size={16} color="#007185" />
             <Text style={styles.sectionHeaderTitle}>Recipient Information</Text>
           </View>
 
@@ -155,7 +155,7 @@ export default function AdminNotificationDetails({ route, navigation }) {
                 <Ionicons
                   name={isAll ? 'megaphone' : 'person'}
                   size={22}
-                  color={isAll ? '#2563EB' : '#7C3AED'}
+                  color={isAll ? '#007185' : '#7C3AED'}
                 />
               </View>
               <View style={styles.audienceDetailsCol}>
@@ -179,7 +179,7 @@ export default function AdminNotificationDetails({ route, navigation }) {
         {/* ── Message Content Card ── */}
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="mail-outline" size={16} color="#1E3A8A" />
+            <Ionicons name="mail-outline" size={16} color="#007185" />
             <Text style={styles.sectionHeaderTitle}>Message Content</Text>
           </View>
 
@@ -194,14 +194,14 @@ export default function AdminNotificationDetails({ route, navigation }) {
         {hasAttachment && (
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document-attach-outline" size={16} color="#1E3A8A" />
+              <Ionicons name="document-attach-outline" size={16} color="#007185" />
               <Text style={styles.sectionHeaderTitle}>Attached Document</Text>
             </View>
 
             <View style={styles.attachmentCard}>
               <View style={styles.attachmentLeft}>
                 <View style={styles.attachmentIconWrap}>
-                  <Ionicons name="document-text" size={22} color="#2563EB" />
+                  <Ionicons name="document-text" size={22} color="#007185" />
                 </View>
                 <View style={styles.attachmentDetails}>
                   <Text style={styles.attachmentNameText} numberOfLines={1}>

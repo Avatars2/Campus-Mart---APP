@@ -36,9 +36,9 @@ export async function GET(request) {
     }
 
     const orders = await Order.find(query)
-      .populate('item_id', 'name price images listing_type rental_period')
-      .populate('seller_id', 'full_name email phone student_id profile_photo_url')
-      .populate('buyer_id', 'full_name email phone student_id profile_photo_url')
+      .populate('item_id', 'name price images listing_type rental_period condition_rating')
+      .populate('seller_id', 'full_name email phone student_id department year_semester profile_photo_url')
+      .populate('buyer_id', 'full_name email phone student_id department year_semester profile_photo_url')
       .sort({ createdAt: -1 });
 
     for (const order of orders) {
@@ -162,7 +162,7 @@ export async function PATCH(request) {
 
     await connectDB();
     const order = await Order.findOne({ _id: order_id })
-      .populate('item_id', 'name price images listing_type rental_period')
+      .populate('item_id', 'name price images listing_type rental_period condition_rating')
       .populate('seller_id', 'full_name email phone student_id department year_semester profile_photo_url')
       .populate('buyer_id', 'full_name email phone student_id department year_semester profile_photo_url');
 
@@ -307,6 +307,22 @@ export async function PATCH(request) {
         try {
           const result = await transferSellerFunds(payment);
           payoutMessage = result.message;
+
+          // Notify seller that escrow payout has been disbursed
+          await sendNotification({
+            recipientId: sellerId.toString(),
+            senderId: buyerId.toString(),
+            type: 'ORDER',
+            subType: 'PAYOUT_DISBURSED',
+            title: '💰 Payout Initiated!',
+            body: `Buyer confirmed receipt of "${order.item_id.name}". Payout for this order has been initiated to your payout account.`,
+            relatedId: order._id,
+            thumbnail: order.item_id?.images?.[0] || null,
+            actionUrl: {
+              targetScreen: 'Payment',
+              params: {},
+            },
+          }).catch(err => console.error('Payout notification failed:', err));
         } catch (error) {
           console.error('Seller payout transfer failed after delivery confirmation:', error);
           payoutMessage = 'Order completed; seller payout is delayed and will be retried.';
@@ -314,42 +330,50 @@ export async function PATCH(request) {
       }
     }
 
+    const sellerName = order.seller_id?.full_name || 'Seller';
+    const buyerName = order.buyer_id?.full_name || 'Buyer';
+    const itemName = order.item_id?.name || 'Item';
+
     let notificationTitle = 'Order Update';
     let notificationBody = 'Your order has been updated.';
     
     if (status === 'delivered') {
-      notificationTitle = 'Item delivered';
-      notificationBody = `${order.item_id.name} was marked delivered. Please confirm that you received it.`;
+      notificationTitle = `📦 Item Delivered: ${itemName}`;
+      notificationBody = `${sellerName} marked "${itemName}" as delivered. Please confirm receipt to complete the transaction.`;
     } else if (status === 'rental_active') {
-      notificationTitle = 'Rental started';
-      notificationBody = `${order.item_id.name} rental started. Please return it by ${order.rental_due_at.toLocaleString()}.`;
+      notificationTitle = `⏱️ Rental Started: ${itemName}`;
+      notificationBody = `${buyerName} confirmed receipt! "${itemName}" rental is now active. Return due by: ${order.rental_due_at ? new Date(order.rental_due_at).toLocaleString() : 'agreed time'}.`;
     } else if (status === 'return_requested') {
-      notificationTitle = isRental ? 'Rental return requested' : 'Item return requested';
-      notificationBody = isRental ? `${order.item_id.name} is ready to be returned. Please discuss the handover in Messages.` : `The buyer wants to return ${order.item_id.name}. Please discuss in Messages and approve the return.`;
+      notificationTitle = isRental ? `🔄 Rental Return: ${itemName}` : `🔄 Return Requested: ${itemName}`;
+      notificationBody = isRental
+        ? `${buyerName} is ready to return "${itemName}". Please coordinate the return handover in Messages.`
+        : `${buyerName} requested to return "${itemName}". Please review and coordinate in Messages.`;
     } else if (status === 'returned') {
-      notificationTitle = 'Item returned & refund initiated';
+      notificationTitle = `✅ Return Confirmed: ${itemName}`;
       notificationBody = ['UPI', 'Razorpay'].includes(order.payment_method)
-        ? `The return for ${order.item_id.name} was confirmed by the seller. A full refund has been initiated to your original payment method.`
-        : `The return for ${order.item_id.name} was confirmed by the seller.`;
+        ? `${sellerName} confirmed return of "${itemName}". A full refund of ₹${order.total_price} has been initiated to your original payment method.`
+        : `${sellerName} confirmed the return of "${itemName}".`;
     } else if (status === 'completed') {
       if (isSeller && !isRental) {
-        notificationTitle = 'Return request rejected';
-        notificationBody = `The seller declined your return request for ${order.item_id.name}.`;
+        notificationTitle = `❌ Return Request Declined`;
+        notificationBody = `${sellerName} declined your return request for "${itemName}". Order remains completed.`;
       } else {
-        notificationTitle = isRental ? 'Rental completed' : 'Transaction successful';
-        notificationBody = isRental ? `${order.item_id.name} was returned and the rental is complete.` : `${order.item_id.name} has been confirmed as received by the buyer.`;
+        notificationTitle = isRental ? `✅ Rental Completed: ${itemName}` : `🎉 Order Completed: ${itemName}`;
+        notificationBody = isRental
+          ? `"${itemName}" was returned safely and the rental is complete.`
+          : `${buyerName} confirmed receipt of "${itemName}". Transaction is now complete.`;
       }
     } else if (status === 'cancel_requested') {
-      notificationTitle = 'Order cancellation requested';
-      notificationBody = `The buyer wants to cancel the order for ${order.item_id.name}. Please approve or reject.`;
+      notificationTitle = `Order Cancellation Requested`;
+      notificationBody = `${buyerName} requested to cancel the order for "${itemName}". Please approve or reject.`;
     } else if (status === 'cancelled') {
-      notificationTitle = 'Order cancelled';
+      notificationTitle = `❌ Order Cancelled: ${itemName}`;
       notificationBody = isBuyer
-        ? `The order for ${order.item_id.name} was cancelled by the buyer.`
-        : `The order for ${order.item_id.name} has been cancelled.`;
+        ? `The order for "${itemName}" was cancelled by ${buyerName}. Any online payment is refunded.`
+        : `The order for "${itemName}" has been cancelled.`;
     } else if (status === 'pending') {
-      notificationTitle = 'Cancellation rejected';
-      notificationBody = `The seller declined to cancel the order for ${order.item_id.name}.`;
+      notificationTitle = `Cancellation Rejected`;
+      notificationBody = `${sellerName} declined to cancel the order for "${itemName}".`;
     }
 
     const recipientId = isSeller ? buyerId : sellerId;
@@ -358,9 +382,15 @@ export async function PATCH(request) {
       recipientId: recipientId.toString(),
       senderId: authResult.user.id,
       type: 'ORDER',
+      subType: `ORDER_${status.toUpperCase()}`,
       title: notificationTitle,
       body: notificationBody,
-      relatedId: order._id
+      relatedId: order._id,
+      thumbnail: order.item_id?.images?.[0] || null,
+      actionUrl: {
+        targetScreen: 'NotificationDetail',
+        params: { orderId: order._id.toString() },
+      },
     }).catch((error) => console.error('Completion notification failed:', error));
 
     // Real-time WebSocket sync via Pusher to both buyer and seller

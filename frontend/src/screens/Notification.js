@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import styles from './Notification.styles';
 import { useNotifications } from '../context/NotificationContext';
@@ -100,14 +101,87 @@ const Notification = () => {
       markAsRead(notification.id || notification._id);
     }
 
-    // Navigation based on type
-    if (notification.type === 'MESSAGE' && notification.relatedId) {
-      navigation.navigate('Chat', { conversationId: notification.relatedId });
-    } else if (notification.type === 'ORDER' && notification.relatedId) {
-      navigation.navigate('NotificationDetail', { notification });
-    } else if (notification.type === 'SYSTEM') {
-      navigation.navigate('NotificationDetail', { notification });
+    // 1. If explicit actionUrl exists, navigate according to route target:
+    if (notification.actionUrl?.targetScreen) {
+      const { targetScreen, params } = notification.actionUrl;
+      if (targetScreen === 'ProductDetail') {
+        navigation.navigate('MainTabs', {
+          screen: 'Home',
+          params: { screen: 'ProductDetail', params },
+        });
+        return;
+      }
+      if (targetScreen === 'ChatThread') {
+        navigation.navigate('MainTabs', {
+          screen: 'Messages',
+          params: { screen: 'ChatThread', params },
+        });
+        return;
+      }
+      if (targetScreen === 'BuyingRequestsGroup') {
+        navigation.navigate('MainTabs', {
+          screen: 'Messages',
+          params: { screen: 'BuyingRequestsGroup', params },
+        });
+        return;
+      }
+      if (targetScreen === 'AdminReports') {
+        navigation.navigate('AdminNavigator', { screen: 'AdminReports' });
+        return;
+      }
+      if (targetScreen === 'MyReports') {
+        navigation.navigate('Profile', { screen: 'MyReports' });
+        return;
+      }
+      if (targetScreen === 'Payment') {
+        navigation.navigate('Profile', { screen: 'Payment' });
+        return;
+      }
     }
+
+    // 2. Wishlist Price Drop & Restock -> ProductDetail
+    if (
+      notification.type === 'WISHLIST' ||
+      notification.subType === 'PRICE_DROP' ||
+      notification.subType === 'BACK_IN_STOCK' ||
+      notification.title?.includes('Price Drop') ||
+      notification.title?.includes('Back in Stock')
+    ) {
+      if (notification.relatedId) {
+        navigation.navigate('MainTabs', {
+          screen: 'Home',
+          params: {
+            screen: 'ProductDetail',
+            params: { item: { _id: notification.relatedId, id: notification.relatedId } },
+          },
+        });
+        return;
+      }
+    }
+
+    // 3. Buying Request Offer
+    if (notification.type === 'BUYING_REQUEST') {
+      navigation.navigate('MainTabs', {
+        screen: 'Messages',
+        params: { screen: 'BuyingRequestsGroup' },
+      });
+      return;
+    }
+
+    // 4. Report Updates
+    if (notification.type === 'REPORT') {
+      navigation.navigate('Profile', { screen: 'MyReports' });
+      return;
+    }
+
+    // 5. Messages
+    if (notification.type === 'MESSAGE') {
+      navigation.navigate('MainTabs', { screen: 'Messages' });
+      return;
+    }
+
+    // 6. Orders or Announcements
+    navigation.navigate('NotificationDetail', { notification });
   };
 
   const promptDeleteOne = (item) => {
@@ -145,49 +219,138 @@ const Notification = () => {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.notificationCard, !item.read && styles.unreadCard]}
-      onPress={() => handleNotificationPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.iconContainer}>
-        {item.type === 'MESSAGE' && <Ionicons name="chatbubble-outline" size={24} color="#007185" />}
-        {item.type === 'ORDER' && <Ionicons name="cart-outline" size={24} color="#007185" />}
-        {item.type === 'SYSTEM' && <Ionicons name="megaphone-outline" size={24} color="#2563EB" />}
-      </View>
+  const getNotificationBadge = (item) => {
+    const titleLower = (item.title || '').toLowerCase();
+    const subType = item.subType || '';
 
-      <View style={styles.textContainer}>
-        <Text style={[styles.title, !item.read && styles.unreadText]}>{item.title}</Text>
-        <Text style={styles.body} numberOfLines={2}>
-          {item.body}
-        </Text>
-        {Boolean(item.attachment?.url) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
-            <Ionicons name="document-text" size={13} color="#2563EB" />
-            <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '700' }} numberOfLines={1}>
-              {decodeURIComponent(item.attachment.name || 'PDF Document Attached')}
-            </Text>
+    if (subType === 'PRICE_DROP' || titleLower.includes('price drop')) {
+      return { label: 'PRICE DROP', bg: '#FEF2F2', text: '#DC2626', icon: 'flame' };
+    }
+    if (subType === 'BACK_IN_STOCK' || titleLower.includes('back in stock')) {
+      return { label: 'RESTOCKED', bg: '#ECFDF5', text: '#059669', icon: 'cube' };
+    }
+    if (titleLower.includes('delivered')) {
+      return { label: 'DELIVERED', bg: '#ECFDF5', text: '#059669', icon: 'checkmark-circle' };
+    }
+    if (titleLower.includes('refund') || titleLower.includes('returned')) {
+      return { label: 'REFUNDED', bg: '#FEF2F2', text: '#DC2626', icon: 'arrow-undo' };
+    }
+    if (titleLower.includes('declined') || titleLower.includes('rejected')) {
+      return { label: 'DECLINED', bg: '#F1F5F9', text: '#64748B', icon: 'close-circle' };
+    }
+    if (titleLower.includes('payout')) {
+      return { label: 'PAYOUT', bg: '#ECFDF5', text: '#047857', icon: 'cash' };
+    }
+    if (titleLower.includes('rental started') || titleLower.includes('rental extended') || titleLower.includes('rental')) {
+      return { label: 'RENTAL', bg: '#FEF3C7', text: '#D97706', icon: 'timer-outline' };
+    }
+    if (item.type === 'ORDER') {
+      return { label: 'ORDER', bg: '#E0F2FE', text: '#0284C7', icon: 'cart' };
+    }
+    if (item.type === 'BUYING_REQUEST') {
+      return { label: 'BUY REQUEST', bg: '#F5F3FF', text: '#7C3AED', icon: 'pricetag' };
+    }
+    if (item.type === 'REPORT') {
+      return { label: 'REPORT', bg: '#FFF7ED', text: '#EA580C', icon: 'alert-circle' };
+    }
+    if (item.type === 'MESSAGE') {
+      return { label: 'CHAT', bg: '#ECFEFF', text: '#0891B2', icon: 'chatbubble' };
+    }
+    return { label: 'CAMPUS NOTICE', bg: '#EFF6FF', text: '#2563EB', icon: 'megaphone' };
+  };
+
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffSec < 3600) return `${Math.max(1, Math.floor(diffSec / 60))}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    if (diffSec < 172800) {
+      return `Yesterday, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const renderNotificationIcon = (item, badge) => {
+    if (item.thumbnail) {
+      return (
+        <View style={styles.thumbnailWrap}>
+          <Image
+            source={{ uri: item.thumbnail }}
+            style={styles.cardThumbnail}
+            resizeMode="cover"
+          />
+          <View style={[styles.thumbnailBadge, { backgroundColor: badge.text }]}>
+            <Ionicons name={badge.icon} size={10} color="#FFFFFF" />
           </View>
-        )}
-        <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.iconCircle, { backgroundColor: badge.bg }]}>
+        <Ionicons name={badge.icon} size={22} color={badge.text} />
       </View>
+    );
+  };
 
-      <View style={styles.actionColumn}>
-        {!item.read && <View style={styles.unreadDot} />}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={(e) => {
-            promptDeleteOne(item);
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="trash-outline" size={18} color="#94A3B8" />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }) => {
+    const badge = getNotificationBadge(item);
+    const timeLabel = formatRelativeTime(item.createdAt);
+
+    return (
+      <TouchableOpacity
+        style={[styles.notificationCard, !item.read && styles.unreadCard]}
+        onPress={() => handleNotificationPress(item)}
+        activeOpacity={0.7}
+      >
+        {renderNotificationIcon(item, badge)}
+
+        <View style={styles.textContainer}>
+          <View style={styles.cardTopRow}>
+            <View style={[styles.statusPill, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.statusPillText, { color: badge.text }]}>{badge.label}</Text>
+            </View>
+            <Text style={styles.time}>{timeLabel}</Text>
+          </View>
+
+          <Text style={[styles.title, !item.read && styles.unreadText]}>{item.title}</Text>
+          <Text style={styles.body} numberOfLines={2}>
+            {item.body}
+          </Text>
+          {Boolean(item.attachment?.url) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+              <Ionicons name="document-text" size={13} color="#2563EB" />
+              <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '700' }} numberOfLines={1}>
+                {decodeURIComponent(item.attachment.name || 'PDF Document Attached')}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actionColumn}>
+          {!item.read && <View style={styles.unreadDot} />}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={(e) => {
+              promptDeleteOne(item);
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   // Sliced notifications based on current page and selected page size
   const pagedNotifications = useMemo(() => {

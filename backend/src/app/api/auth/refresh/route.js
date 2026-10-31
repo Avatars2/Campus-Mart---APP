@@ -52,11 +52,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Session has been invalidated. Please sign in again.' }, { status: 401 });
     }
 
-    // Refresh Token Rotation: issue a new access token and a new refresh token
+    // Refresh Token Rotation: issue a new access token (7 days) and a new refresh token (30 days)
     const newAccessToken = jwt.sign(
       { id: user._id, email: user.email, name: user.full_name, role: user.role },
       getJwtSecret(),
-      { expiresIn: '15m' } // 15 minutes
+      { expiresIn: '7d' } // 7 days
     );
 
     const tokenVersion = (user.token_version || 0);

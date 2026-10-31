@@ -117,8 +117,8 @@ export default function Wishlist({ navigation }) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.confirmationModal}>
-            <View style={styles.confirmationIcon}>
-              <Ionicons name="cart" size={32} color="#0052CC" />
+            <View style={[styles.confirmationIcon, { backgroundColor: '#E6F7F9' }]}>
+              <Ionicons name="cart-outline" size={30} color="#007185" />
             </View>
             <Text style={styles.confirmationTitle}>Add to Cart?</Text>
             <Text style={styles.confirmationMessage}>
@@ -128,16 +128,16 @@ export default function Wishlist({ navigation }) {
               <TouchableOpacity
                 style={styles.noButton}
                 onPress={() => setCartPromptItem(null)}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.noButtonText}>No</Text>
+                <Text style={styles.noButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.yesButton}
                 onPress={() => handleMoveToCart(cartPromptItem)}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.yesButtonText}>Yes</Text>
+                <Text style={styles.yesButtonText}>Add to Cart</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -152,7 +152,7 @@ export default function Wishlist({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.confirmationModal}>
             <View style={styles.removeConfirmationIcon}>
-              <Ionicons name="trash-outline" size={32} color="#DC2626" />
+              <Ionicons name="trash-outline" size={30} color="#DC2626" />
             </View>
             <Text style={styles.confirmationTitle}>Remove from Wishlist?</Text>
             <Text style={styles.confirmationMessage}>
@@ -162,16 +162,16 @@ export default function Wishlist({ navigation }) {
               <TouchableOpacity
                 style={styles.noButton}
                 onPress={() => setRemovePromptItem(null)}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.noButtonText}>No</Text>
+                <Text style={styles.noButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.removeYesButton}
                 onPress={confirmRemove}
-                activeOpacity={0.85}
+                activeOpacity={0.7}
               >
-                <Text style={styles.yesButtonText}>Yes</Text>
+                <Text style={styles.removeYesButtonText}>Remove</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -153,7 +153,7 @@ export default function AdminOrdersScreen({ navigation }) {
             <Ionicons
               name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
               size={14}
-              color="#1E3A8A"
+              color="#007185"
             />
           </TouchableOpacity>
         </View>
@@ -168,7 +168,7 @@ export default function AdminOrdersScreen({ navigation }) {
             <Ionicons
               name="chevron-back"
               size={18}
-              color={currentPage === 1 ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === 1 ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
 
@@ -198,7 +198,7 @@ export default function AdminOrdersScreen({ navigation }) {
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={currentPage === totalPages ? '#94A3B8' : '#1E3A8A'}
+              color={currentPage === totalPages ? '#94A3B8' : '#007185'}
             />
           </TouchableOpacity>
         </View>
@@ -221,7 +221,7 @@ export default function AdminOrdersScreen({ navigation }) {
     const statDef = getStatusDisplay(order.status);
 
     return (
-      <View style={styles.orderCard}>
+      <View style={[styles.orderCard, { borderLeftColor: statDef.color }]}>
         <View style={styles.orderHeader}>
           <Text style={styles.itemTitle}>{order.item_id?.name || 'Unknown Item'}</Text>
           <Text style={styles.price}>₹{order.total_price}</Text>
@@ -332,7 +332,7 @@ export default function AdminOrdersScreen({ navigation }) {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1E3A8A" />
+          <ActivityIndicator size="large" color="#007185" />
         </View>
       ) : (
         <FlatList
@@ -340,7 +340,7 @@ export default function AdminOrdersScreen({ navigation }) {
           keyExtractor={(item) => (item.id || item._id).toString()}
           renderItem={renderOrder}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A8A']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007185']} />}
           ListFooterComponent={renderPagination}
           ListEmptyComponent={<Text style={styles.emptyState}>No orders found.</Text>}
         />
@@ -389,7 +389,7 @@ export default function AdminOrdersScreen({ navigation }) {
                     {size}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={15} color="#1E3A8A" />
+                    <Ionicons name="checkmark" size={15} color="#007185" />
                   )}
                 </TouchableOpacity>
               );

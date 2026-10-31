@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
+import ReportModal from '../../components/ReportModal';
 import styles from './MyReports.styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -27,6 +28,7 @@ export default function MyReports({ navigation }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'pending', 'resolved', 'dismissed'
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5); // 5, 10, 20, 50, 100
@@ -372,6 +374,14 @@ export default function MyReports({ navigation }) {
         <Text style={styles.headerTitle}>
           Re<Text style={{ color: '#007185' }}>ports</Text>
         </Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setReportModalVisible(true)}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="add" size={24} color="#007185" />
+        </TouchableOpacity>
       </View>
 
       {/* Filter Tabs */}
@@ -444,6 +454,27 @@ export default function MyReports({ navigation }) {
                 ? 'Help keep Campus Mart safe by reporting suspicious activity.'
                 : `There are currently no reports with status "${activeFilter}".`}
             </Text>
+            {reports.length === 0 && (
+              <TouchableOpacity
+                style={{
+                  marginTop: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#007185',
+                  paddingVertical: 10,
+                  paddingHorizontal: 18,
+                  borderRadius: 20,
+                  gap: 6,
+                }}
+                onPress={() => setReportModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                  Submit a Report
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -499,6 +530,15 @@ export default function MyReports({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── Submit Report Modal ── */}
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        targetType="user"
+        allowSelectUser={true}
+        onReportSubmitted={fetchReports}
+      />
     </View>
   );
 }

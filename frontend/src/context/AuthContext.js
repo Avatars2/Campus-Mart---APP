@@ -32,8 +32,13 @@ export const AuthProvider = ({ children }) => {
     checkToken();
 
     // Global listener for forced logouts (suspensions or invalid tokens)
+    let isHandlingAuthError = false;
     const { DeviceEventEmitter, Alert } = require('react-native');
     const authListener = DeviceEventEmitter.addListener('AUTH_ERROR', async (data) => {
+      if (isHandlingAuthError) return;
+      isHandlingAuthError = true;
+      setTimeout(() => { isHandlingAuthError = false; }, 3000);
+
       if (data?.isSuspended) {
         Alert.alert('Account Suspended', 'Your account has been suspended by the administrator.');
       } else {

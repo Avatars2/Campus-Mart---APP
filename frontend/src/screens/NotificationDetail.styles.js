@@ -59,7 +59,48 @@ export default StyleSheet.create({
   
   amount: { color: '#B12704', fontSize: 18, fontWeight: '700', marginTop: 8 },
   
+  // Role-Based Person Card & Contact Buttons
+  personHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  personAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E2E8F0', marginRight: 12 },
+  personInfoWrap: { flex: 1 },
+  contactRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  contactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  callBtn: { backgroundColor: '#007185' },
+  chatBtn: { backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD' },
+  callBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  chatBtnText: { color: '#0369A1', fontWeight: '700', fontSize: 14 },
+
+  // Enhanced Item Tags & Badges
+  badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4, marginBottom: 6 },
+  typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#EFF6FF' },
+  typeBadgeText: { fontSize: 12, fontWeight: '700', color: '#1D4ED8' },
+  conditionBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#FEF3C7' },
+  conditionBadgeText: { fontSize: 12, fontWeight: '600', color: '#B45309' },
+
+  // Dashboard Navigation Button
+  actionSecondaryBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#007185',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  actionSecondaryBtnText: { color: '#007185', fontWeight: '700', fontSize: 14 },
+
   errorText: { color: '#565959', textAlign: 'center', fontSize: 15, marginTop: 12, marginBottom: 20 },
-  backButton: { backgroundColor: '#FFD814', borderRadius: 8, paddingHorizontal: 22, paddingVertical: 12, borderWidth: 1, borderColor: '#FCD200' },
-  backButtonText: { color: '#0F1111', fontWeight: '400', fontSize: 15 },
+  backButton: { backgroundColor: '#007185', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12, shadowColor: '#007185', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
+  backButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
 });
