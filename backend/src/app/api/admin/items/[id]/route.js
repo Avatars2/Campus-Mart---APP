@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
 import { verifyAdminAuth } from '@/lib/auth';
+import { pusherServer } from '@/lib/pusher';
 
 // Delete an item (Moderation)
 export async function DELETE(request, { params }) {
@@ -23,6 +24,16 @@ export async function DELETE(request, { params }) {
 
     // Fully delete the item from the DB
     await Item.findByIdAndDelete(id);
+
+    try {
+      await pusherServer.trigger('market-items', 'item:deleted', { itemId: id.toString() });
+      await pusherServer.trigger('admin-channel', 'item:deleted', { itemId: id.toString() });
+      if (item.seller_id) {
+        await pusherServer.trigger(`user-${item.seller_id}`, 'item:deleted', { itemId: id.toString() });
+      }
+    } catch (pErr) {
+      console.warn('[Pusher] admin delete item error:', pErr.message);
+    }
 
     return NextResponse.json({ 
       message: 'Item deleted successfully by admin'
@@ -60,6 +71,17 @@ export async function PUT(request, { params }) {
     item.is_active = is_active;
     item.is_suspended = !is_active; // If not active, it's suspended by admin
     await item.save();
+
+    try {
+      const itemPayload = item.toJSON ? item.toJSON() : item;
+      await pusherServer.trigger('market-items', 'item:updated', { itemId: item._id.toString(), item: itemPayload });
+      await pusherServer.trigger('admin-channel', 'item:updated', { itemId: item._id.toString(), item: itemPayload });
+      if (item.seller_id) {
+        await pusherServer.trigger(`user-${item.seller_id}`, 'item:updated', { itemId: item._id.toString(), item: itemPayload });
+      }
+    } catch (pErr) {
+      console.warn('[Pusher] admin update item error:', pErr.message);
+    }
 
     return NextResponse.json({ 
       message: `Item ${is_active ? 're-published' : 'unpublished'} successfully`, 

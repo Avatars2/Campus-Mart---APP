@@ -3,6 +3,7 @@ import { View, Text, ScrollView, FlatList, TouchableOpacity, ActivityIndicator, 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -50,6 +51,23 @@ export default function AdminCategoriesScreen({ navigation }) {
       fetchCategories();
     }, [])
   );
+
+  // Real-time synchronization for Admin Categories
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleCategoryChange = () => {
+      fetchCategories();
+    };
+
+    channel.bind('category:updated', handleCategoryChange);
+
+    return () => {
+      channel.unbind('category:updated', handleCategoryChange);
+    };
+  }, []);
 
   const openAddModal = () => {
     setEditingCatId(null);

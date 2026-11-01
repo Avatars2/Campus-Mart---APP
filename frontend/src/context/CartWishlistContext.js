@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import client from '../api/client';
 import { AuthContext } from './AuthContext';
+import getPusherClient from '../utils/pusher';
 
 const CartWishlistContext = createContext();
 
@@ -45,6 +46,37 @@ export const CartWishlistProvider = ({ children }) => {
       setWishlistItemIds([]);
     }
   }, [user?.id]);
+
+  // Real-time sync for cart & wishlist counts
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const onSync = () => {
+      if (user?.id) fetchCounts();
+    };
+
+    const marketChannel = pusher.subscribe('market-items');
+    marketChannel.bind('item:updated', onSync);
+    marketChannel.bind('item:deleted', onSync);
+
+    let userChannel = null;
+    const userId = user?.id || user?._id;
+    if (userId) {
+      userChannel = pusher.subscribe(`user-${userId}`);
+      userChannel.bind('order:created', onSync);
+      userChannel.bind('order:updated', onSync);
+    }
+
+    return () => {
+      marketChannel.unbind('item:updated', onSync);
+      marketChannel.unbind('item:deleted', onSync);
+      if (userChannel) {
+        userChannel.unbind('order:created', onSync);
+        userChannel.unbind('order:updated', onSync);
+      }
+    };
+  }, [user?.id, user?._id]);
 
   const addToCart = async (item, quantity = 1) => {
     const itemId = item.id || item._id;

@@ -90,9 +90,27 @@ function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeNavigator} options={{ title: 'Home', headerShown: false }} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeNavigator} 
+        options={{ title: 'Home', headerShown: false }} 
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('Home', { screen: 'HomeMain' });
+          },
+        })}
+      />
       <Tab.Screen name="Buy" component={BuyScreen} options={{ title: 'Buy', headerShown: false }} />
-      <Tab.Screen name="Sell" component={SellNavigator} options={{ title: 'Sell', headerShown: false }} />
+      <Tab.Screen 
+        name="Sell" 
+        component={SellNavigator} 
+        options={{ title: 'Sell', headerShown: false }} 
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('Sell', { screen: 'SellMain' });
+          },
+        })}
+      />
       <Tab.Screen 
         name="Messages" 
         component={MessageNavigator} 
@@ -102,8 +120,22 @@ function TabNavigator() {
           tabBarBadge: messageCount > 0 ? messageCount : null,
           tabBarBadgeStyle: { backgroundColor: '#FF3B30' }
         }} 
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('Messages', { screen: 'MessageList' });
+          },
+        })}
       />
-      <Tab.Screen name="Profile" component={ProfileNavigator} options={{ title: 'Profile', headerShown: false }} />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileNavigator} 
+        options={{ title: 'Profile', headerShown: false }} 
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('Profile', { screen: 'ProfileMain' });
+          },
+        })}
+      />
     </Tab.Navigator>
   );
 }

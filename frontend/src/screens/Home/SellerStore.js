@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Image, RefreshControl, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { AuthContext } from '../../context/AuthContext';
-import { useContext } from 'react';
+import getPusherClient from '../../utils/pusher';
 import ReportModal from '../../components/ReportModal';
 import RatingStars from '../../components/commerce/RatingStars';
 import storeStyles from './SellerStore.styles';
@@ -25,6 +25,30 @@ export default function SellerStore({ route, navigation }) {
       title: `${sellerName}'s Store`,
     });
     fetchSellerItems();
+  }, [sellerId]);
+
+  // Real-time updates for seller store items
+  useEffect(() => {
+    if (!sellerId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const silentFetch = () => {
+      client.get(`/items?seller_id=${sellerId}`).then(res => {
+        setItems(res.data || []);
+      }).catch(() => {});
+    };
+
+    const marketChannel = pusher.subscribe('market-items');
+    marketChannel.bind('item:created', silentFetch);
+    marketChannel.bind('item:updated', silentFetch);
+    marketChannel.bind('item:deleted', silentFetch);
+
+    return () => {
+      marketChannel.unbind('item:created', silentFetch);
+      marketChannel.unbind('item:updated', silentFetch);
+      marketChannel.unbind('item:deleted', silentFetch);
+    };
   }, [sellerId]);
 
   const fetchSellerItems = async () => {

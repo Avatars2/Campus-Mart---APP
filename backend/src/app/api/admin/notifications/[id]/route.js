@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import AdminNotification from '@/models/AdminNotification';
 import Notification from '@/models/Notification';
 import { verifyAdminAuth } from '@/lib/auth';
+import { pusherServer } from '@/lib/pusher';
 
 export async function DELETE(request, { params }) {
   try {
@@ -26,6 +27,12 @@ export async function DELETE(request, { params }) {
 
     // Also remove all associated user inbox notifications dispatched with this notification
     await Notification.deleteMany({ relatedId: id });
+
+    try {
+      await pusherServer.trigger('admin-channel', 'notification:deleted', { id });
+    } catch (pErr) {
+      console.warn('[Pusher] admin notification:deleted error:', pErr.message);
+    }
 
     return NextResponse.json({ success: true, message: 'Notification deleted successfully.' });
   } catch (error) {

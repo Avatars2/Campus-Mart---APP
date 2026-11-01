@@ -19,6 +19,13 @@ export async function GET(request) {
       .populate('category_id', 'name')
       .sort({ createdAt: -1 });
 
+    const allItemIds = items.map(item => item._id);
+    const activeOrderItemIds = await Order.find({
+      item_id: { $in: allItemIds },
+      status: { $in: ['pending', 'paid', 'delivered', 'rental_active', 'return_requested'] },
+    }).distinct('item_id');
+    const activeOrderItemIdSet = new Set(activeOrderItemIds.map(id => id.toString()));
+
     const rentalItemIds = items.filter(item => item.listing_type === 'rent').map(item => item._id);
     const rentedItemIds = await Order.find({
       item_id: { $in: rentalItemIds },
@@ -35,6 +42,7 @@ export async function GET(request) {
         ...item.toJSON(),
         category_name: item.category_id?.name,
         is_currently_rented: item.listing_type === 'rent' && rentedItemIdSet.has(item._id.toString()),
+        has_active_order: activeOrderItemIdSet.has(item._id.toString()),
         is_newly_added: isNewlyAdded,
       };
     });

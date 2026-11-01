@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const AVATAR_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#EC4899', '#06B6D4', '#F59E0B'];
@@ -85,6 +86,25 @@ export default function AdminUsersScreen() {
   };
 
   useEffect(() => { fetchUsers(); }, []);
+
+  // Real-time synchronization for Admin Users
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleUserChange = () => {
+      fetchUsers();
+    };
+
+    channel.bind('user:new', handleUserChange);
+    channel.bind('user:updated', handleUserChange);
+
+    return () => {
+      channel.unbind('user:new', handleUserChange);
+      channel.unbind('user:updated', handleUserChange);
+    };
+  }, []);
 
   const onRefresh = () => { setRefreshing(true); fetchUsers(); };
 

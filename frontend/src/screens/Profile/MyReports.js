@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
+import { AuthContext } from '../../context/AuthContext';
+import getPusherClient from '../../utils/pusher';
 import ReportModal from '../../components/ReportModal';
 import styles from './MyReports.styles';
 
@@ -25,6 +27,8 @@ const FILTER_OPTIONS = [
 ];
 
 export default function MyReports({ navigation }) {
+  const { user } = useContext(AuthContext);
+  const userId = user?.id || user?._id;
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,6 +60,24 @@ export default function MyReports({ navigation }) {
       setRefreshing(false);
     }
   };
+
+  // Real-time listener for report moderation decisions
+  useEffect(() => {
+    if (!userId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe(`user-${userId}`);
+
+    const handleReportUpdated = (data) => {
+      fetchReports();
+    };
+
+    channel.bind('report:updated', handleReportUpdated);
+
+    return () => {
+      channel.unbind('report:updated', handleReportUpdated);
+    };
+  }, [userId]);
 
   const toggleDropdown = () => {
     if (dropdownVisible) {

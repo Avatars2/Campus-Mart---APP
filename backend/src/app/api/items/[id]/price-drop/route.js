@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
+import Order from '@/models/Order';
 import Wishlist from '@/models/Wishlist';
+import Notification from '@/models/Notification';
 import { verifyAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +29,19 @@ export async function POST(request, { params }) {
 
     if (!item) {
       return NextResponse.json({ error: 'Item not found or you are not authorized to update this listing.' }, { status: 404 });
+    }
+
+    // Block price drops on items currently rented
+    const activeRental = await Order.findOne({
+      item_id: id,
+      status: { $in: ['rental_active', 'return_requested'] },
+    });
+
+    if (activeRental) {
+      return NextResponse.json(
+        { error: 'Cannot apply a price drop on an item that is currently rented out.' },
+        { status: 400 }
+      );
     }
 
     // ── Action: Remove / Reset Discount Offer ──
@@ -94,9 +110,16 @@ export async function POST(request, { params }) {
 
     const uniqueUserIds = [...new Set(notifiedUserIds)];
 
-    // Send notifications to each wishlisting user
+    // Send notifications to each wishlisting user (deduplicating previous unread price drops)
     for (const recipientId of uniqueUserIds) {
       try {
+        await Notification.deleteMany({
+          recipient: recipientId,
+          relatedId: item._id,
+          subType: 'PRICE_DROP',
+          read: false,
+        });
+
         await sendNotification({
           recipientId,
           senderId: sellerId,
@@ -114,6 +137,24 @@ export async function POST(request, { params }) {
       } catch (err) {
         console.error(`Failed to notify wishlist user ${recipientId} for price drop:`, err);
       }
+    }
+
+    try {
+      const itemPayload = item.toJSON();
+      await pusherServer.trigger('market-items', 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+        isPriceDrop: true,
+        newPrice,
+        discountPercent,
+        originalPrice: item.original_price,
+      });
+      await pusherServer.trigger(`user-${sellerId}`, 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] price drop trigger warning:', pusherErr.message);
     }
 
     return NextResponse.json({
@@ -159,6 +200,22 @@ export async function DELETE(request, { params }) {
     item.price = restoredPrice;
     item.original_price = null;
     await item.save();
+
+    try {
+      const itemPayload = item.toJSON();
+      await pusherServer.trigger('market-items', 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+        isRestored: true,
+        restoredPrice,
+      });
+      await pusherServer.trigger(`user-${sellerId}`, 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] restore price trigger warning:', pusherErr.message);
+    }
 
     return NextResponse.json({
       success: true,

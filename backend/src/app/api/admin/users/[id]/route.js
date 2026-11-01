@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { verifyAdminAuth } from '@/lib/auth';
+import { pusherServer } from '@/lib/pusher';
 
 // Suspend or ban a user
 export async function PUT(request, { params }) {
@@ -34,6 +35,18 @@ export async function PUT(request, { params }) {
 
     user.is_suspended = is_suspended;
     await user.save();
+
+    try {
+      await pusherServer.trigger('admin-channel', 'user:updated', {
+        userId: user._id.toString(),
+        is_suspended: user.is_suspended,
+      });
+      await pusherServer.trigger(`user-${user._id}`, 'profile:updated', {
+        is_suspended: user.is_suspended,
+      });
+    } catch (pErr) {
+      console.warn('[Pusher] user:updated trigger error:', pErr.message);
+    }
 
     return NextResponse.json({ 
       message: `User ${is_suspended ? 'suspended' : 'reactivated'} successfully`, 

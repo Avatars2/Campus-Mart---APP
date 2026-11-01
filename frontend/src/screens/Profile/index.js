@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import client from '../../api/client';
+import getPusherClient from '../../utils/pusher';
 import styles from './styles';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
 
@@ -18,6 +19,27 @@ export default function ProfileScreen({ navigation }) {
   }, []);
   const saveProfile = useCallback((value) => setProfile(value), []);
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadProfile, saveProfile);
+
+  // Real-time listener for profile changes and payout account status updates
+  useEffect(() => {
+    const userId = profile?._id || profile?.id;
+    if (!userId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe(`user-${userId}`);
+
+    const syncProfile = () => {
+      loadProfile().then(saveProfile).catch(() => {});
+    };
+
+    channel.bind('payment:updated', syncProfile);
+    channel.bind('profile:updated', syncProfile);
+
+    return () => {
+      channel.unbind('payment:updated', syncProfile);
+      channel.unbind('profile:updated', syncProfile);
+    };
+  }, [profile?._id, profile?.id, loadProfile, saveProfile]);
 
   if (loading) {
     return (

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -15,13 +16,18 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
+import { AuthContext } from '../../context/AuthContext';
+import getPusherClient from '../../utils/pusher';
 import styles from './Payment.styles';
 
 const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
-export default function Payment({ navigation }) {
+export default function Payment({ navigation, route }) {
+  const { user } = useContext(AuthContext);
+  const userId = user?.id || user?._id;
   const [payoutMethod, setPayoutMethod] = useState('bank_account');
   const [accountStatus, setAccountStatus] = useState('not_started');
   const [transfers, setTransfers] = useState([]);
@@ -29,6 +35,7 @@ export default function Payment({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [confirmChangeModalVisible, setConfirmChangeModalVisible] = useState(false);
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all', 'pending', 'successful'
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5); // 5, 10, 20, 50, 100
@@ -98,6 +105,29 @@ export default function Payment({ navigation }) {
   useEffect(() => {
     loadPaymentInfo();
   }, [loadPaymentInfo]);
+
+  // Real-time listener for orders, online payment confirmations, and escrow payout updates
+  useEffect(() => {
+    if (!userId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channelName = `user-${userId}`;
+    const channel = pusher.subscribe(channelName);
+
+    const onPaymentUpdate = () => {
+      loadPaymentInfo();
+    };
+
+    channel.bind('payment:updated', onPaymentUpdate);
+    channel.bind('order:updated', onPaymentUpdate);
+    channel.bind('new:notification', onPaymentUpdate);
+
+    return () => {
+      channel.unbind('payment:updated', onPaymentUpdate);
+      channel.unbind('order:updated', onPaymentUpdate);
+      channel.unbind('new:notification', onPaymentUpdate);
+    };
+  }, [userId, loadPaymentInfo]);
 
   // Reset to page 1 whenever history filter or page size changes
   useEffect(() => {
@@ -222,9 +252,8 @@ export default function Payment({ navigation }) {
         payout_method: payoutMethod,
         ...(payoutMethod === 'bank_account' ? bankDetails : { upi_id: upiId.trim() }),
       };
-      const response = await client.post('/users/payment-account', payload);
+      await client.post('/users/payment-account', payload);
       setAccountStatus('activated');
-      Alert.alert('Success', response.data.message || 'Payout details saved successfully!');
       setModalVisible(false);
       loadPaymentInfo();
     } catch (error) {
@@ -436,11 +465,36 @@ export default function Payment({ navigation }) {
     );
   };
 
+  const handleBack = useCallback(() => {
+    if (route?.params?.from === 'Sell') {
+      navigation.navigate('ProfileMain');
+      navigation.navigate('MainTabs', { screen: 'Sell' });
+      return;
+    }
+    if (navigation.canGoBack() && navigation.getState()?.routes?.length > 1) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('ProfileMain');
+    }
+  }, [navigation, route?.params?.from]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleBack();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [handleBack])
+  );
+
   return (
     <View style={styles.container}>
       {/* ── Top Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={24} color="#0F1111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pay<Text style={{ color: '#007185' }}>ment</Text></Text>
@@ -489,7 +543,7 @@ export default function Payment({ navigation }) {
 
               <TouchableOpacity
                 style={styles.cardEditBtn}
-                onPress={() => setModalVisible(true)}
+                onPress={() => setConfirmChangeModalVisible(true)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="create-outline" size={14} color="#007185" />
@@ -738,6 +792,45 @@ export default function Payment({ navigation }) {
         {/* ── Pagination Controls ── */}
         {renderPagination()}
       </ScrollView>
+
+      {/* ── Change Confirmation Pop-up Modal ── */}
+      <Modal
+        visible={confirmChangeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmChangeModalVisible(false)}
+      >
+        <View style={styles.confirmModalBackdrop}>
+          <View style={styles.confirmModalCard}>
+            <View style={styles.confirmModalIconWrap}>
+              <Ionicons name="create-outline" size={30} color="#007185" />
+            </View>
+            <Text style={styles.confirmModalTitle}>Change Payout Details?</Text>
+            <Text style={styles.confirmModalSubtitle}>
+              Are you sure you want to change your payout details?
+            </Text>
+            <View style={styles.confirmModalActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => setConfirmChangeModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmActionBtn}
+                onPress={() => {
+                  setConfirmChangeModalVisible(false);
+                  setModalVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmActionText}>Yes, Change</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Bank & UPI Payout Details Modal ── */}
       <Modal

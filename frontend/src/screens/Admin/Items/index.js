@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshContr
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -80,6 +81,34 @@ export default function AdminItemsScreen() {
 
   useEffect(() => {
     fetchItems();
+  }, []);
+
+  // Real-time synchronization for Admin Items
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const handleItemChange = () => {
+      fetchItems();
+    };
+
+    const marketChannel = pusher.subscribe('market-items');
+    marketChannel.bind('item:created', handleItemChange);
+    marketChannel.bind('item:updated', handleItemChange);
+    marketChannel.bind('item:deleted', handleItemChange);
+
+    const adminChannel = pusher.subscribe('admin-channel');
+    adminChannel.bind('item:updated', handleItemChange);
+    adminChannel.bind('item:deleted', handleItemChange);
+
+    return () => {
+      marketChannel.unbind('item:created', handleItemChange);
+      marketChannel.unbind('item:updated', handleItemChange);
+      marketChannel.unbind('item:deleted', handleItemChange);
+
+      adminChannel.unbind('item:updated', handleItemChange);
+      adminChannel.unbind('item:deleted', handleItemChange);
+    };
   }, []);
 
   const onRefresh = () => {

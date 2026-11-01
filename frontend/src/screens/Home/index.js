@@ -1,8 +1,9 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, ActivityIndicator, TouchableOpacity, Image, RefreshControl, ScrollView, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
+import getPusherClient from '../../utils/pusher';
 import styles from './styles';
 import { useNotifications } from '../../context/NotificationContext';
 import { useCartWishlist } from '../../context/CartWishlistContext';
@@ -143,6 +144,64 @@ export default function HomeScreen({ route, navigation }) {
       }
     }, [fetchItems, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating, sortOption, route.params?.searchQuery, handleSearch])
   );
+
+  // ── Real-time Market Items Sync (Live price drops, new listings, and stock updates) ──
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('market-items');
+
+    const handleItemCreated = () => {
+      fetchItems(searchQueryRef.current, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating, sortOption);
+      fetchTrendingItems();
+    };
+
+    const handleItemUpdated = (data) => {
+      if (!data) return;
+      const targetId = String(data.itemId || data.item?._id || data.item?.id || '');
+      setItems((prevItems) => {
+        const idx = prevItems.findIndex((it) => String(it._id || it.id) === targetId);
+        if (idx !== -1) {
+          if (data.item?.is_active === false || (data.item?.listing_type !== 'rent' && data.item?.quantity <= 0)) {
+            return prevItems.filter((_, i) => i !== idx);
+          }
+          const updated = [...prevItems];
+          updated[idx] = { ...updated[idx], ...data.item };
+          return updated;
+        }
+        return prevItems;
+      });
+      setTrendingItems((prevTrending) => {
+        const idx = prevTrending.findIndex((it) => String(it._id || it.id) === targetId);
+        if (idx !== -1) {
+          if (data.item?.is_active === false || (data.item?.listing_type !== 'rent' && data.item?.quantity <= 0)) {
+            return prevTrending.filter((_, i) => i !== idx);
+          }
+          const updated = [...prevTrending];
+          updated[idx] = { ...updated[idx], ...data.item };
+          return updated;
+        }
+        return prevTrending;
+      });
+    };
+
+    const handleItemDeleted = (data) => {
+      if (!data?.itemId) return;
+      const targetId = String(data.itemId);
+      setItems((prev) => prev.filter((it) => String(it._id || it.id) !== targetId));
+      setTrendingItems((prev) => prev.filter((it) => String(it._id || it.id) !== targetId));
+    };
+
+    channel.bind('item:created', handleItemCreated);
+    channel.bind('item:updated', handleItemUpdated);
+    channel.bind('item:deleted', handleItemDeleted);
+
+    return () => {
+      channel.unbind('item:created', handleItemCreated);
+      channel.unbind('item:updated', handleItemUpdated);
+      channel.unbind('item:deleted', handleItemDeleted);
+    };
+  }, [fetchItems, activeListingType, activeCategory, minPrice, maxPrice, conditionFilter, minRating, sortOption]);
 
   const onRefresh = () => {
     setRefreshing(true);

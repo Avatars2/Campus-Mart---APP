@@ -14,7 +14,7 @@ export async function PUT(request) {
     const userId = authResult.user.id;
 
     await Notification.updateMany(
-      { recipient: userId, read: false },
+      { recipient: userId, type: { $ne: 'MESSAGE' }, read: false },
       { $set: { read: true } }
     );
 

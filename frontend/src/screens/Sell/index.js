@@ -1,16 +1,20 @@
-import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useRef, useEffect, useContext } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator,
   TouchableOpacity, Image, RefreshControl, Modal, Pressable, Alert, TextInput, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
+import { AuthContext } from '../../context/AuthContext';
+import getPusherClient from '../../utils/pusher';
 import styles from './styles';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 export default function SellScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
+  const userId = user?.id || user?._id;
   const [items, setItems] = useState([]);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'sale', 'rent', 'sold'
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,6 +37,13 @@ export default function SellScreen({ navigation }) {
   const [priceDropping, setPriceDropping] = useState(false);
 
   const openPriceDropModal = (item) => {
+    if (item.is_currently_rented) {
+      Alert.alert(
+        'Cannot Drop Price',
+        'You cannot apply a price drop on an item that is currently rented out.'
+      );
+      return;
+    }
     const hasOffer = Boolean(item.original_price && item.original_price > item.price);
     const base = Number(item.original_price || item.price);
     const initialPercent = hasOffer ? String(Math.round(((base - item.price) / base) * 100)) : '';
@@ -135,10 +146,6 @@ export default function SellScreen({ navigation }) {
         return i;
       }));
       closePriceDropModal();
-      Alert.alert(
-        '🏷️ Price Drop Alert Sent!',
-        `Price updated to ₹${updatedNewPrice} (${res.data.discount_percent}% OFF)!\n\n${res.data.notified_count} student(s) who wishlisted this item have been alerted in real-time.`
-      );
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to update price drop.';
       Alert.alert('Price Drop Error', msg);
@@ -169,10 +176,6 @@ export default function SellScreen({ navigation }) {
         return i;
       }));
       closePriceDropModal();
-      Alert.alert(
-        '✅ Offer Removed',
-        `Discount offer removed. The item is now restored to its original price of ₹${restoredPrice}.`
-      );
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to remove discount offer.';
       Alert.alert('Error', msg);
@@ -208,7 +211,7 @@ export default function SellScreen({ navigation }) {
     setPaymentRequired(false);
     navigation.getParent()?.navigate('Profile', {
       screen: 'Payment',
-      params: { profile: paymentProfile },
+      params: { profile: paymentProfile, from: 'Sell' },
     });
   };
 
@@ -228,6 +231,45 @@ export default function SellScreen({ navigation }) {
   }, []);
 
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadItems, saveItems);
+
+  // Real-time listener for seller item additions, edits, sales, and order updates
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const silentSync = () => {
+      loadItems().then(saveItems).catch(() => {});
+    };
+
+    const marketChannel = pusher.subscribe('market-items');
+    marketChannel.bind('item:created', silentSync);
+    marketChannel.bind('item:updated', silentSync);
+    marketChannel.bind('item:deleted', silentSync);
+
+    let userChannel = null;
+    if (userId) {
+      userChannel = pusher.subscribe(`user-${userId}`);
+      userChannel.bind('order:created', silentSync);
+      userChannel.bind('order:updated', silentSync);
+      userChannel.bind('item:created', silentSync);
+      userChannel.bind('item:updated', silentSync);
+      userChannel.bind('item:deleted', silentSync);
+    }
+
+    return () => {
+      marketChannel.unbind('item:created', silentSync);
+      marketChannel.unbind('item:updated', silentSync);
+      marketChannel.unbind('item:deleted', silentSync);
+
+      if (userChannel) {
+        userChannel.unbind('order:created', silentSync);
+        userChannel.unbind('order:updated', silentSync);
+        userChannel.unbind('item:created', silentSync);
+        userChannel.unbind('item:updated', silentSync);
+        userChannel.unbind('item:deleted', silentSync);
+      }
+    };
+  }, [userId, loadItems, saveItems]);
 
   // ── Filter & Pagination Logic ──
   const isItemSold = (item) => Boolean(
@@ -310,9 +352,34 @@ export default function SellScreen({ navigation }) {
   const goToPrev = () => setCurrentPage(p => Math.max(1, p - 1));
   const goToNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
 
+  const handleEditPress = (item) => {
+    if (item.is_currently_rented) {
+      Alert.alert(
+        'Cannot Edit Rented Item',
+        'This item is currently rented out to a student with an active countdown timer. You cannot modify price, description, or details until the rental is returned.'
+      );
+      return;
+    }
+    navigation.navigate('EditProduct', { item });
+  };
+
   // ── Delete Handlers ──
-  const openDeleteModal = (itemId) => {
-    setDeleteModal({ visible: true, itemId });
+  const openDeleteModal = (item) => {
+    if (item?.is_currently_rented) {
+      Alert.alert(
+        'Cannot Delete Item',
+        'This item is currently rented out to a student with an active rental. You cannot delete an item until the rental period is completed and the item is returned.'
+      );
+      return;
+    }
+    if (item?.has_active_order) {
+      Alert.alert(
+        'Cannot Delete Item',
+        'This item has an active order in progress. You cannot delete an item until the transaction is completed or cancelled.'
+      );
+      return;
+    }
+    setDeleteModal({ visible: true, itemId: item.id || item._id });
   };
 
   const closeDeleteModal = () => {
@@ -337,6 +404,8 @@ export default function SellScreen({ navigation }) {
     } catch (err) {
       console.error('Delete failed:', err);
       closeDeleteModal();
+      const msg = err.response?.data?.error || 'Failed to delete listing.';
+      Alert.alert('Unable to Delete', msg);
     } finally {
       setDeleting(false);
     }
@@ -417,21 +486,21 @@ export default function SellScreen({ navigation }) {
         <View style={styles.cardActions}>
           {!item.is_suspended && (
             <Pressable
-              style={styles.editBtn}
-              onPress={() => {
-                navigation.navigate('EditProduct', { item });
-              }}
+              style={[styles.editBtn, item.is_currently_rented && { opacity: 0.55, backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}
+              onPress={() => handleEditPress(item)}
               android_ripple={{ color: '#E0F2FE' }}
             >
               <Ionicons
-                name="pencil-outline"
+                name={item.is_currently_rented ? "lock-closed-outline" : "pencil-outline"}
                 size={16}
-                color="#007185"
+                color={item.is_currently_rented ? "#6B7280" : "#007185"}
               />
-              <Text style={styles.editBtnText}>Edit</Text>
+              <Text style={[styles.editBtnText, item.is_currently_rented && { color: '#6B7280' }]}>
+                {item.is_currently_rented ? 'Locked' : 'Edit'}
+              </Text>
             </Pressable>
           )}
-          {statusText === 'Active' && !item.is_suspended && (
+          {statusText === 'Active' && !item.is_suspended && !item.is_currently_rented && (
             <Pressable
               style={[styles.dropPriceBtn, hasOffer && { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}
               onPress={() => openPriceDropModal(item)}
@@ -444,11 +513,17 @@ export default function SellScreen({ navigation }) {
             </Pressable>
           )}
           <Pressable
-            style={styles.deleteBtn}
-            onPress={() => openDeleteModal(itemId)}
+            style={[styles.deleteBtn, (item.is_currently_rented || item.has_active_order) && { opacity: 0.55, backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}
+            onPress={() => openDeleteModal(item)}
           >
-            <Ionicons name="trash-outline" size={16} color="#DC2626" />
-            <Text style={styles.deleteBtnText}>Delete</Text>
+            <Ionicons
+              name={(item.is_currently_rented || item.has_active_order) ? "lock-closed-outline" : "trash-outline"}
+              size={16}
+              color={(item.is_currently_rented || item.has_active_order) ? "#6B7280" : "#DC2626"}
+            />
+            <Text style={[styles.deleteBtnText, (item.is_currently_rented || item.has_active_order) && { color: '#6B7280' }]}>
+              {item.is_currently_rented ? "Rented" : item.has_active_order ? "In Order" : "Delete"}
+            </Text>
           </Pressable>
         </View>
       </View>

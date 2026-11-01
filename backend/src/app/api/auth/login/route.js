@@ -5,7 +5,6 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import LoginAttempt from '@/models/LoginAttempt';
 import { getJwtSecret, getRefreshSecret, isAllowedCollegeEmail, normalizeEmail } from '@/lib/authValidation';
-import { sendAccountLockoutEmail } from '@/lib/emailService';
 
 export async function POST(request) {
   try {
@@ -31,16 +30,6 @@ export async function POST(request) {
     }
 
     const user = await User.findOne({ email: normalizedEmail });
-
-    // 2. Account Lockout Check
-    if (user && user.lock_until && user.lock_until > new Date()) {
-      const minutesRemaining = Math.max(1, Math.ceil((user.lock_until.getTime() - Date.now()) / (60 * 1000)));
-      return NextResponse.json({
-        error: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute(s).`,
-        isLocked: true,
-        lockUntil: user.lock_until,
-      }, { status: 429 });
-    }
 
     if (!user) {
       // Record failed attempt against IP
@@ -71,34 +60,7 @@ export async function POST(request) {
         { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
 
-      const failedAttempts = (user.failed_login_attempts || 0) + 1;
-
-      // Lock account after 5 consecutive failed attempts
-      if (failedAttempts >= 5) {
-        user.lock_until = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
-        user.failed_login_attempts = 0;
-        await user.save();
-
-        // Dispatch security notification email asynchronously
-        sendAccountLockoutEmail(user.email, user.full_name, 15).catch(err => {
-          console.error('Failed to send lockout alert email:', err);
-        });
-
-        return NextResponse.json({
-          error: 'Account locked for 15 minutes due to 5 consecutive failed login attempts. A security alert has been sent to your college email.',
-          isLocked: true,
-          lockUntil: user.lock_until,
-        }, { status: 429 });
-      }
-
-      user.failed_login_attempts = failedAttempts;
-      await user.save();
-
-      const remainingAttempts = 5 - failedAttempts;
-      return NextResponse.json({
-        error: `Invalid email or password. You have ${remainingAttempts} attempt(s) remaining before account lockout.`,
-        remainingAttempts,
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid email or password.' }, { status: 400 });
     }
 
     // 4. Successful Login - Reset Lockout & Counters

@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import Report from '@/models/Report';
 import { verifyAdminAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 export async function PUT(request, { params }) {
   try {
@@ -49,9 +50,21 @@ export async function PUT(request, { params }) {
           body: bodyMsg,
           relatedId: report._id,
           actionUrl: {
-            targetScreen: 'MyReports',
+            targetScreen: 'ReportDetails',
             params: { reportId: report._id.toString() },
           },
+        });
+
+        await pusherServer.trigger(`user-${report.reporter_id}`, 'report:updated', {
+          reportId: report._id.toString(),
+          status,
+          report: report.toJSON ? report.toJSON() : report,
+        });
+
+        await pusherServer.trigger('admin-channel', 'report:updated', {
+          reportId: report._id.toString(),
+          status,
+          report: report.toJSON ? report.toJSON() : report,
         });
       }
     } catch (reporterNotifErr) {

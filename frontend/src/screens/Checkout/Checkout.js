@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, Image, Modal } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import styles from './Checkout.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ export default function Checkout({ route, navigation }) {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [errorMessage, setErrorMessage] = useState(null);
   const [checkoutRequestKey, setCheckoutRequestKey] = useState(createCheckoutRequestKey);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [rentalDurations, setRentalDurations] = useState(() => (
     checkoutItems.reduce((durations, item, index) => {
       if (item.listing_type === 'rent') durations[item.id || item._id || index] = 1;
@@ -408,7 +409,7 @@ export default function Checkout({ route, navigation }) {
       <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.confirmButton}
-          onPress={handleConfirmOrder}
+          onPress={() => setConfirmModalVisible(true)}
           disabled={loading}
         >
           {loading ? (
@@ -418,6 +419,52 @@ export default function Checkout({ route, navigation }) {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* ── Order Confirmation Pop-up Modal ── */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmModalVisible(false)}
+      >
+        <View style={styles.confirmModalBackdrop}>
+          <View style={styles.confirmModalCard}>
+            <View style={styles.confirmModalIconWrap}>
+              <Ionicons
+                name={paymentMethod === 'Razorpay' ? 'card-outline' : 'cash-outline'}
+                size={30}
+                color="#007185"
+              />
+            </View>
+
+            <Text style={styles.confirmModalTitle}>Confirm Your Order?</Text>
+            <Text style={styles.confirmModalSubtitle}>
+              Are you sure you want to proceed and place this order?
+            </Text>
+
+            <View style={styles.confirmModalActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => setConfirmModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmActionBtn}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  handleConfirmOrder();
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmActionText}>Yes, Proceed</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

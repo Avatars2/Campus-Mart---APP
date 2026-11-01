@@ -207,14 +207,25 @@ export async function POST(request) {
         ? (rentalPeriod === 'hour' ? 'Hour' : rentalPeriod === 'month' ? 'Month' : 'Day')
         : (rentalPeriod === 'hour' ? 'Hours' : rentalPeriod === 'month' ? 'Months' : 'Days');
 
+      const buyerUser = await User.findById(buyerId).select('full_name').lean();
+      const buyerName = buyerUser?.full_name || 'Buyer';
+
       // Notify seller
       await sendNotification({
         recipientId: sellerId,
         senderId: buyerId,
         type: 'ORDER',
-        title: 'Rental Extended & Paid!',
-        body: `Buyer paid ₹${extensionCost} via Razorpay to extend "${item.name}" by +${durationNum} ${periodLabel}. New due date: ${newDueAt.toLocaleString()}.`,
+        subType: 'RENTAL_EXTENDED',
+        title: `⏱️ Rental Extended: ${item.name}`,
+        body: `${buyerName} paid ₹${extensionCost} via Razorpay to extend "${item.name}" by +${durationNum} ${periodLabel}. New due date: ${newDueAt.toLocaleDateString()}.`,
         relatedId: order._id,
+        thumbnail: item.images?.[0] || null,
+        actionUrl: {
+          targetScreen: 'Buy',
+          params: {
+            tab: 'sales',
+          },
+        },
       }).catch(err => console.error('Seller rental extension notification failed:', err));
 
       return NextResponse.json({

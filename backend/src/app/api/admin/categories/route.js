@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import Category from '@/models/Category';
 import User from '@/models/User';
 import { verifyAuth } from '@/lib/auth';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request) {
   try {
@@ -40,6 +41,12 @@ export async function POST(request) {
     });
 
     await newCategory.save();
+
+    try {
+      await pusherServer.trigger('admin-channel', 'category:updated', { category: newCategory });
+    } catch (pErr) {
+      console.warn('[Pusher] category created error:', pErr.message);
+    }
 
     return NextResponse.json(
       { message: 'Category created successfully.', category: newCategory },

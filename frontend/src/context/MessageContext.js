@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Pusher } from 'pusher-js/react-native';
 import client from '../api/client';
 import { AuthContext } from './AuthContext';
+import getPusherClient from '../utils/pusher';
 
 const MessageContext = createContext();
 
@@ -36,13 +36,12 @@ export const MessageProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) return;
 
-    const pusher = new Pusher(process.env.EXPO_PUBLIC_PUSHER_KEY || 'fake_key', {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER || 'mt1',
-    });
+    const pusher = getPusherClient();
+    if (!pusher) return;
 
     const channel = pusher.subscribe(`user-${userId}`);
     
-    channel.bind('conversation-update', async function(data) {
+    const handleConversationUpdate = async function(data) {
       // Whenever there's a new message or messages are read, refresh count
       fetchUnreadCount(userId);
       
@@ -53,10 +52,12 @@ export const MessageProvider = ({ children }) => {
           console.error('Error marking message as delivered:', error);
         }
       }
-    });
+    };
+
+    channel.bind('conversation-update', handleConversationUpdate);
 
     return () => {
-      pusher.unsubscribe(`user-${userId}`);
+      channel.unbind('conversation-update', handleConversationUpdate);
     };
   }, [userId]);
 

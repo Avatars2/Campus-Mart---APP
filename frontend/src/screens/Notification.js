@@ -96,12 +96,132 @@ const Notification = () => {
     }
   };
 
+  const isSalesNotification = (notification) => {
+    if (!notification) return false;
+    if (notification.actionUrl?.params?.tab === 'sales') return true;
+    if (notification.actionUrl?.params?.tab === 'purchases') return false;
+
+    const subType = (notification.subType || '').toUpperCase();
+    if (
+      subType === 'NEW_ORDER_RECEIVED' ||
+      subType === 'PAID_ORDER_RECEIVED' ||
+      subType === 'RENTAL_EXTENDED' ||
+      subType === 'PAYOUT_DISBURSED' ||
+      subType.includes('SELLER')
+    ) {
+      return true;
+    }
+
+    const titleLower = (notification.title || '').toLowerCase();
+    const bodyLower = (notification.body || '').toLowerCase();
+    const text = `${titleLower} ${bodyLower}`;
+
+    // Buyer-specific signals (always purchases tab)
+    if (
+      subType === 'PAYMENT_CONFIRMED' ||
+      subType === 'PAYMENT_REVIEW' ||
+      subType === 'ORDER_DELIVERED' ||
+      subType === 'ORDER_CANCELLED' ||
+      subType === 'ORDER_RETURNED' ||
+      subType === 'ORDER_PENDING' ||
+      titleLower.includes('payment confirmed') ||
+      titleLower.includes('item delivered') ||
+      titleLower.includes('rental started') ||
+      titleLower.includes('cancellation rejected') ||
+      titleLower.includes('return request declined') ||
+      text.includes('seller has been notified to arrange delivery') ||
+      text.includes('marked as delivered. please confirm receipt')
+    ) {
+      return false;
+    }
+
+    // Seller-specific signals (sales tab)
+    if (
+      titleLower.includes('new order') ||
+      titleLower.includes('new rental request') ||
+      titleLower.includes('new paid order') ||
+      titleLower.includes('payout initiated') ||
+      titleLower.includes('cancellation requested') ||
+      titleLower.includes('return requested') ||
+      titleLower.includes('rental return') ||
+      text.includes('bought your item') ||
+      text.includes('bought "') ||
+      text.includes('requested to rent') ||
+      text.includes('arrange delivery with the buyer') ||
+      text.includes('arrange delivery') ||
+      text.includes('arrange handover') ||
+      text.includes('confirmed receipt of') ||
+      text.includes('ready to return') ||
+      text.includes('requested to return') ||
+      text.includes('requested to cancel')
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const isOrderNotification = (notification) => {
+    if (!notification) return false;
+    if (notification.type === 'ORDER') return true;
+    const subType = (notification.subType || '').toUpperCase();
+    if (
+      subType.includes('ORDER') ||
+      subType === 'RENTAL_EXTENDED' ||
+      subType === 'PAYOUT_DISBURSED' ||
+      subType === 'PAYMENT_CONFIRMED' ||
+      subType === 'PAYMENT_REVIEW'
+    ) {
+      return true;
+    }
+    const targetScreen = notification.actionUrl?.targetScreen;
+    if (
+      targetScreen === 'Buy' ||
+      targetScreen === 'Orders' ||
+      targetScreen === 'OrderDetail' ||
+      targetScreen === 'OrderDetails'
+    ) {
+      return true;
+    }
+    const text = `${notification.title || ''} ${notification.body || ''}`.toLowerCase();
+    if (
+      text.includes('order') ||
+      text.includes('rental') ||
+      text.includes('payout') ||
+      text.includes('bought your item') ||
+      text.includes('bought "') ||
+      text.includes('payment confirmed') ||
+      text.includes('item delivered') ||
+      text.includes('confirmed receipt') ||
+      text.includes('arrange delivery') ||
+      text.includes('return request') ||
+      text.includes('return confirmed')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   const handleNotificationPress = (notification) => {
+    if (!notification) return;
+
     if (!notification.read) {
       markAsRead(notification.id || notification._id);
     }
 
-    // 1. If explicit actionUrl exists, navigate according to route target:
+    // 1. Order notifications -> Navigate directly to Buy page on Purchases or Sales tab
+    // (Never navigate to order details modal or NotificationDetail)
+    if (isOrderNotification(notification)) {
+      const isSales = isSalesNotification(notification);
+      const tab = isSales ? 'sales' : 'purchases';
+      navigation.navigate('MainTabs', {
+        screen: 'Buy',
+        params: { tab },
+      });
+      return;
+    }
+
+    // 2. If explicit actionUrl exists, navigate according to route target:
     if (notification.actionUrl?.targetScreen) {
       const { targetScreen, params } = notification.actionUrl;
       if (targetScreen === 'ProductDetail') {
@@ -130,16 +250,29 @@ const Notification = () => {
         return;
       }
       if (targetScreen === 'MyReports') {
-        navigation.navigate('Profile', { screen: 'MyReports' });
+        navigation.navigate('MainTabs', {
+          screen: 'Profile',
+          params: { screen: 'MyReports', params },
+        });
+        return;
+      }
+      if (targetScreen === 'ReportDetails' || targetScreen === 'ReportDetail') {
+        navigation.navigate('MainTabs', {
+          screen: 'Profile',
+          params: { screen: 'ReportDetails', params },
+        });
         return;
       }
       if (targetScreen === 'Payment') {
-        navigation.navigate('Profile', { screen: 'Payment' });
+        navigation.navigate('MainTabs', {
+          screen: 'Profile',
+          params: { screen: 'Payment', params },
+        });
         return;
       }
     }
 
-    // 2. Wishlist Price Drop & Restock -> ProductDetail
+    // 3. Wishlist Price Drop & Restock -> ProductDetail
     if (
       notification.type === 'WISHLIST' ||
       notification.subType === 'PRICE_DROP' ||
@@ -159,7 +292,7 @@ const Notification = () => {
       }
     }
 
-    // 3. Buying Request Offer
+    // 4. Buying Request Offer
     if (notification.type === 'BUYING_REQUEST') {
       navigation.navigate('MainTabs', {
         screen: 'Messages',
@@ -168,19 +301,29 @@ const Notification = () => {
       return;
     }
 
-    // 4. Report Updates
+    // 5. Report Updates
     if (notification.type === 'REPORT') {
-      navigation.navigate('Profile', { screen: 'MyReports' });
+      const reportId =
+        notification.actionUrl?.params?.reportId ||
+        notification.relatedId?.toString?.() ||
+        notification.relatedId;
+      navigation.navigate('MainTabs', {
+        screen: 'Profile',
+        params: {
+          screen: 'ReportDetails',
+          params: { reportId },
+        },
+      });
       return;
     }
 
-    // 5. Messages
+    // 6. Messages
     if (notification.type === 'MESSAGE') {
       navigation.navigate('MainTabs', { screen: 'Messages' });
       return;
     }
 
-    // 6. Orders or Announcements
+    // 7. Campus Notices & Announcements
     navigation.navigate('NotificationDetail', { notification });
   };
 
@@ -301,9 +444,28 @@ const Notification = () => {
     );
   };
 
+  const formatNotificationTitle = (title, badge) => {
+    if (!title) return '';
+    let clean = title;
+    if (badge.label === 'PRICE DROP') {
+      clean = clean.replace(/^[🔥\s]*price\s*drop:\s*/i, '🔥 ');
+    } else if (badge.label === 'DELIVERED') {
+      clean = clean.replace(/^[📦\s]*item\s*delivered:\s*/i, '📦 ');
+    } else if (badge.label === 'REPORT') {
+      clean = clean.replace(/^[📋\s]*report\s*/i, '📋 ');
+    } else if (badge.label === 'ORDER') {
+      clean = clean.replace(/^[❌\s]*order\s*cancelled:\s*/i, '❌ Cancelled: ');
+    }
+    return clean;
+  };
+
   const renderItem = ({ item }) => {
     const badge = getNotificationBadge(item);
     const timeLabel = formatRelativeTime(item.createdAt);
+    const isCampusNotice =
+      badge.label === 'CAMPUS NOTICE' ||
+      item.type === 'SYSTEM' ||
+      item.subType === 'ADMIN_ANNOUNCEMENT';
 
     return (
       <TouchableOpacity
@@ -321,17 +483,26 @@ const Notification = () => {
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
 
-          <Text style={[styles.title, !item.read && styles.unreadText]}>{item.title}</Text>
-          <Text style={styles.body} numberOfLines={2}>
-            {item.body}
+          <Text style={[styles.title, !item.read && styles.unreadText]}>
+            {formatNotificationTitle(item.title, badge)}
           </Text>
-          {Boolean(item.attachment?.url) && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
-              <Ionicons name="document-text" size={13} color="#2563EB" />
-              <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '700' }} numberOfLines={1}>
-                {decodeURIComponent(item.attachment.name || 'PDF Document Attached')}
-              </Text>
-            </View>
+
+          {!isCampusNotice && (
+            <>
+              {Boolean(item.body) && (
+                <Text style={styles.body}>
+                  {item.body}
+                </Text>
+              )}
+              {Boolean(item.attachment?.url) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+                  <Ionicons name="document-text" size={13} color="#2563EB" />
+                  <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '700' }} numberOfLines={1}>
+                    {decodeURIComponent(item.attachment.name || 'PDF Document Attached')}
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -32,6 +33,25 @@ export default function AdminReportsScreen({ navigation }) {
 
   useEffect(() => {
     fetchReports();
+  }, []);
+
+  // Real-time synchronization for new and updated reports
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleReportChange = () => {
+      fetchReports();
+    };
+
+    channel.bind('report:new', handleReportChange);
+    channel.bind('report:updated', handleReportChange);
+
+    return () => {
+      channel.unbind('report:new', handleReportChange);
+      channel.unbind('report:updated', handleReportChange);
+    };
   }, []);
 
   const fetchReports = async () => {

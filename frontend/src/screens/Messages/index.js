@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Refre
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
-import { Pusher } from 'pusher-js/react-native';
+import getPusherClient from '../../utils/pusher';
 import styles from './styles';
 import { AuthContext } from '../../context/AuthContext';
 import useScreenRefresh from '../../hooks/useScreenRefresh';
@@ -62,44 +62,45 @@ const MessageList = () => {
   useEffect(() => {
     if (!userId) return;
 
-    // Initialize Pusher
-    const pusher = new Pusher(process.env.EXPO_PUBLIC_PUSHER_KEY || 'fake_key', {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER || 'mt1',
-    });
+    const pusher = getPusherClient();
+    if (!pusher) return;
 
     const channel = pusher.subscribe(`user-${userId}`);
-    channel.bind('conversation-update', function(data) {
-      // Fetch latest conversations when an update comes in
+    const handleUpdate = function(data) {
       refresh();
-    });
+    };
+    channel.bind('conversation-update', handleUpdate);
 
     const requestsChannel = pusher.subscribe('group-buying-requests');
-    requestsChannel.bind('buying-request:new', () => {
+    const handleReqUpdate = () => {
       fetchRequestsCount();
-    });
-    requestsChannel.bind('buying-request:deleted', () => {
-      fetchRequestsCount();
-    });
-    requestsChannel.bind('buying-request:updated', () => {
-      fetchRequestsCount();
-    });
+    };
+    requestsChannel.bind('buying-request:new', handleReqUpdate);
+    requestsChannel.bind('buying-request:deleted', handleReqUpdate);
+    requestsChannel.bind('buying-request:updated', handleReqUpdate);
 
     return () => {
-      pusher.unsubscribe(`user-${userId}`);
-      pusher.unsubscribe('group-buying-requests');
+      channel.unbind('conversation-update', handleUpdate);
+      requestsChannel.unbind('buying-request:new', handleReqUpdate);
+      requestsChannel.unbind('buying-request:deleted', handleReqUpdate);
+      requestsChannel.unbind('buying-request:updated', handleReqUpdate);
     };
   }, [userId, refresh]);
 
   const filteredConversations = conversations.filter(item => {
-    const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
-    const matchesSearch = otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const otherParticipant = item.participants?.find(p => (p._id || p.id) !== userId) || item.participants?.[0];
+    const isMatchedSearch = !searchQuery || 
+      otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.item?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
+    if (!isMatchedSearch) return false;
+
     // The owner can be an object (if populated) or string ID. We'll check its ID just in case.
     const ownerId = item.item?.seller_id?._id || item.item?.seller_id?.id || item.item?.seller_id;
-    const isOwner = ownerId === userId;
+    const isOwner = String(ownerId) === String(userId);
     
     const matchesTab = activeTab === 'Selling' ? isOwner : !isOwner;
-    return matchesSearch && matchesTab;
+    return matchesTab;
   });
 
   const handleLongPress = (item) => {
@@ -113,8 +114,8 @@ const MessageList = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const itemId = item.item?._id || item.item?.id;
-              const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
+              const itemId = item.item?._id || item.item?.id || item.item;
+              const otherParticipant = item.participants?.find(p => (p._id || p.id) !== userId) || item.participants?.[0];
               const otherUserId = otherParticipant?._id || otherParticipant?.id;
               
               const response = await client.delete(`/messages/thread/${itemId}/${otherUserId}?userId=${userId}`);
@@ -134,7 +135,7 @@ const MessageList = () => {
   };
 
   const renderItem = ({ item }) => {
-    const otherParticipant = item.participants.find(p => (p._id || p.id) !== userId) || item.participants[0];
+    const otherParticipant = item.participants?.find(p => (p._id || p.id) !== userId) || item.participants?.[0];
     const lastMessage = item.lastMessage;
     const attachmentCount = lastMessage?.attachments?.length || (lastMessage?.attachment?.url ? 1 : 0);
     const previewText = (lastMessage?.content ? lastMessage.content.replace(/â,¹/g, '₹').replace(/â‚¹/g, '₹').replace(/,1/g, '₹') : '')
@@ -144,6 +145,8 @@ const MessageList = () => {
     const isMyMessage = Boolean(userId && (lastMessage?.sender === userId || lastMessage?.sender?._id === userId));
     const isUnread = Boolean(!isMyMessage && lastMessage && !lastMessage.read);
 
+    const displayName = item.item?.name?.startsWith('Request:') ? item.item.name : `Item: ${item.item?.name || 'Item'}`;
+
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
@@ -151,10 +154,11 @@ const MessageList = () => {
         activeOpacity={0.8}
         onPress={() => {
           const ownerId = item.item?.seller_id?._id || item.item?.seller_id?.id || item.item?.seller_id;
+          const itemId = item.item?._id || item.item?.id || item.item;
           navigation.navigate('ChatThread', {
-            itemId: item.item?._id || item.item?.id,
+            itemId: String(itemId),
             otherUserId: otherParticipant?._id || otherParticipant?.id,
-            itemName: item.item?.name,
+            itemName: item.item?.name || 'Chat',
             otherUserName: otherParticipant?.full_name,
             otherUserPhoto: otherParticipant?.profile_photo_url || null,
             isOwnItem: String(ownerId) === String(userId)
@@ -172,7 +176,7 @@ const MessageList = () => {
               <Text style={styles.time}>{new Date(item.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
             )}
           </View>
-          <Text style={styles.itemName}>Item: {item.item?.name}</Text>
+          <Text style={styles.itemName}>{displayName}</Text>
           
           <View style={styles.previewRow}>
             {isMyMessage && !!lastMessage && (

@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import client from '../../../api/client';
 import { AuthContext } from '../../../context/AuthContext';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 export default function AdminHomeScreen() {
@@ -34,6 +35,52 @@ export default function AdminHomeScreen() {
       fetchDashboardData();
     }, [])
   );
+
+  // Real-time synchronization for Admin Dashboard metrics
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const silentSync = () => {
+      fetchDashboardData();
+    };
+
+    const adminChannel = pusher.subscribe('admin-channel');
+    adminChannel.bind('report:new', silentSync);
+    adminChannel.bind('report:updated', silentSync);
+    adminChannel.bind('order:new', silentSync);
+    adminChannel.bind('order:updated', silentSync);
+    adminChannel.bind('user:new', silentSync);
+    adminChannel.bind('user:updated', silentSync);
+    adminChannel.bind('category:updated', silentSync);
+    adminChannel.bind('notification:new', silentSync);
+    adminChannel.bind('notification:deleted', silentSync);
+    adminChannel.bind('item:updated', silentSync);
+    adminChannel.bind('item:deleted', silentSync);
+
+    const marketChannel = pusher.subscribe('market-items');
+    marketChannel.bind('item:created', silentSync);
+    marketChannel.bind('item:updated', silentSync);
+    marketChannel.bind('item:deleted', silentSync);
+
+    return () => {
+      adminChannel.unbind('report:new', silentSync);
+      adminChannel.unbind('report:updated', silentSync);
+      adminChannel.unbind('order:new', silentSync);
+      adminChannel.unbind('order:updated', silentSync);
+      adminChannel.unbind('user:new', silentSync);
+      adminChannel.unbind('user:updated', silentSync);
+      adminChannel.unbind('category:updated', silentSync);
+      adminChannel.unbind('notification:new', silentSync);
+      adminChannel.unbind('notification:deleted', silentSync);
+      adminChannel.unbind('item:updated', silentSync);
+      adminChannel.unbind('item:deleted', silentSync);
+
+      marketChannel.unbind('item:created', silentSync);
+      marketChannel.unbind('item:updated', silentSync);
+      marketChannel.unbind('item:deleted', silentSync);
+    };
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);

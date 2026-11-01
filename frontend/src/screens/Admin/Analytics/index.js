@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -95,6 +96,37 @@ export default function AdminAnalyticsScreen() {
   useEffect(() => {
     fetchAnalytics({ preset: activePreset });
   }, [activePreset, fetchAnalytics]);
+
+  // Real-time synchronization for Admin Analytics metrics
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleDataChange = () => {
+      if (activePreset === 'custom') {
+        if (customMode === 'single') {
+          fetchAnalytics({ date: customDate });
+        } else {
+          fetchAnalytics({ startDate: customStartDate, endDate: customEndDate });
+        }
+      } else {
+        fetchAnalytics({ preset: activePreset });
+      }
+    };
+
+    channel.bind('order:new', handleDataChange);
+    channel.bind('order:updated', handleDataChange);
+    channel.bind('user:new', handleDataChange);
+    channel.bind('report:new', handleDataChange);
+
+    return () => {
+      channel.unbind('order:new', handleDataChange);
+      channel.unbind('order:updated', handleDataChange);
+      channel.unbind('user:new', handleDataChange);
+      channel.unbind('report:new', handleDataChange);
+    };
+  }, [activePreset, customMode, customDate, customStartDate, customEndDate, fetchAnalytics]);
 
   const onRefresh = () => {
     setRefreshing(true);

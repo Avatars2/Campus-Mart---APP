@@ -423,7 +423,7 @@ export default function NotificationDetail({ route, navigation }) {
             onPress={() =>
               navigation.navigate('MainTabs', {
                 screen: 'Buy',
-                params: { initialTab: isBuyer ? 'purchases' : 'sales' },
+                params: { tab: isBuyer ? 'purchases' : 'sales' },
               })
             }
             activeOpacity={0.8}

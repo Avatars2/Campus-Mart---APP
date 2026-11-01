@@ -1,14 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, Dimensions } from 'react-native';
 import styles from './AdminReportDetails.styles';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 
 export default function AdminReportDetails({ route, navigation }) {
   const { report: initialReport, onStatusUpdate } = route.params;
   const [report, setReport] = useState(initialReport);
   const [loading, setLoading] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
+
+  const reportId = String(report?._id || report?.id || '');
+
+  // Real-time synchronization for report updates
+  useEffect(() => {
+    if (!reportId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleReportUpdate = (data) => {
+      if (data && String(data.reportId) === reportId) {
+        if (data.report) {
+          setReport(data.report);
+        } else if (data.status) {
+          setReport((prev) => ({ ...prev, status: data.status }));
+        }
+      }
+    };
+
+    channel.bind('report:updated', handleReportUpdate);
+
+    return () => {
+      channel.unbind('report:updated', handleReportUpdate);
+    };
+  }, [reportId]);
 
   const targetName = report.target_info?.full_name || report.target_info?.name || 'Unknown Target';
   const reporterName = report.reporter_id?.full_name || 'Unknown User';

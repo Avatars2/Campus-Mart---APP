@@ -175,6 +175,14 @@ export default function EditProductScreen({ route, navigation }) {
   const handleUpdateItem = async () => {
     setErrorMsg('');
 
+    if (item.is_currently_rented) {
+      Alert.alert(
+        'Cannot Edit Rented Item',
+        'This item is currently rented out with an active countdown timer. You cannot modify details until the item is returned.'
+      );
+      return;
+    }
+
     if (!name.trim()) return setErrorMsg('Item Name cannot be empty.');
     if (!description.trim()) return setErrorMsg('Description cannot be empty.');
     if (!price || isNaN(price)) return setErrorMsg('Please enter a valid price.');
@@ -256,6 +264,30 @@ export default function EditProductScreen({ route, navigation }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
+          {item.is_currently_rented && (
+            <View style={{
+              backgroundColor: '#FEF3C7',
+              borderColor: '#F59E0B',
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <Ionicons name="lock-closed" size={24} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>
+                  Item Currently Rented (Editing Locked)
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B45309', marginTop: 2, lineHeight: 16 }}>
+                  This item is currently rented out to a student with an active countdown timer. Item details and pricing are locked until the rental is returned and completed.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {isSoldItem && (
             <View style={{
               backgroundColor: '#FEF3C7',
@@ -532,12 +564,18 @@ export default function EditProductScreen({ route, navigation }) {
         {/* Sticky Bottom Bar */}
         <View style={styles.bottomBar}>
           <TouchableOpacity 
-            style={styles.primaryButton} 
+            style={[styles.primaryButton, item.is_currently_rented && { opacity: 0.5, backgroundColor: '#9CA3AF' }]} 
             onPress={handleUpdateItem}
-            disabled={loading}
+            disabled={loading || Boolean(item.is_currently_rented)}
             activeOpacity={0.85}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Update</Text>}
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {item.is_currently_rented ? 'Locked (Currently Rented)' : 'Update'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

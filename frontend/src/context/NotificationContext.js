@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import { Pusher } from 'pusher-js/react-native';
+import getPusherClient from '../utils/pusher';
 import client from '../api/client';
 import { AuthContext } from './AuthContext';
 
@@ -50,8 +50,19 @@ export const NotificationProvider = ({ children }) => {
       // Assuming a GET /notifications route in backend
       const response = await client.get('/notifications');
       if (response.data && response.data.notifications) {
-        setNotifications(response.data.notifications);
-        const unread = response.data.notifications.filter(n => !n.read).length;
+        const filtered = (response.data.notifications || []).filter(n => n.type !== 'MESSAGE');
+        const unique = [];
+        const seen = new Set();
+        for (const n of filtered) {
+          const id = String(n._id || n.id || '');
+          const key = id || `${n.type}-${n.subType || ''}-${n.relatedId || ''}-${n.title || ''}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(n);
+          }
+        }
+        setNotifications(unique);
+        const unread = unique.filter(n => !n.read).length;
         setUnreadCount(unread);
       }
     } catch (error) {
@@ -156,20 +167,33 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) return;
 
-    const pusher = new Pusher(process.env.EXPO_PUBLIC_PUSHER_KEY || 'fake_key', {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER || 'mt1',
-    });
+    const pusher = getPusherClient();
+    if (!pusher) return;
 
     const channel = pusher.subscribe(`user-${userId}`);
     
-    channel.bind('new:notification', function(data) {
+    const handleNewNotification = function(data) {
+      if (!data || data.type === 'MESSAGE') return;
       console.log('New real-time notification via Pusher:', data);
-      setNotifications(prev => [data, ...prev]);
+      const incomingId = String(data._id || data.id || '');
+      const incomingKey = incomingId || `${data.type}-${data.subType || ''}-${data.relatedId || ''}-${data.title || ''}`;
+      setNotifications(prev => {
+        if (prev.some(n => {
+          const id = String(n._id || n.id || '');
+          const key = id || `${n.type}-${n.subType || ''}-${n.relatedId || ''}-${n.title || ''}`;
+          return key === incomingKey;
+        })) {
+          return prev;
+        }
+        return [data, ...prev];
+      });
       setUnreadCount(prev => prev + 1);
-    });
+    };
+
+    channel.bind('new:notification', handleNewNotification);
 
     return () => {
-      pusher.unsubscribe(`user-${userId}`);
+      channel.unbind('new:notification', handleNewNotification);
     };
   }, [userId]);
 

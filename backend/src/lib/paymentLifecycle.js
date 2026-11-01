@@ -5,6 +5,7 @@ import User from '@/models/User';
 import Cart from '@/models/Cart';
 import { getRazorpayLinkedAccountStatus, razorpayRequest } from '@/lib/razorpay';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 const pendingPaymentStatuses = ['created', 'processing', 'pending_verification'];
 
@@ -52,33 +53,98 @@ async function finalizeReservations(payment) {
       item.marked_sold_at = new Date();
       await item.save();
     }
+    if (item) {
+      try {
+        const itemPayload = item.toJSON ? item.toJSON() : item;
+        await pusherServer.trigger('market-items', 'item:updated', {
+          itemId: item._id.toString(),
+          item: itemPayload,
+        });
+        await pusherServer.trigger(`user-${item.seller_id}`, 'item:updated', {
+          itemId: item._id.toString(),
+          item: itemPayload,
+        });
+      } catch (pusherErr) {
+        console.warn('[Pusher] reservation finalization item update warning:', pusherErr.message);
+      }
+    }
   }
 }
 
 async function notifyPaymentParties(payment, lateCapture) {
   const orders = await Order.find({ payment_id: payment._id });
   for (const order of orders) {
-    const item = await Item.findById(order.item_id).select('name');
-    const message = lateCapture
-      ? `Your payment for ${item?.name || 'an item'} was received after the payment window expired and needs review. The order is not confirmed.`
-      : `Payment confirmed for ${item?.name || 'your order'}. The seller will arrange delivery.`;
+    const [item, buyer, seller] = await Promise.all([
+      Item.findById(order.item_id).select('name images'),
+      User.findById(order.buyer_id).select('full_name'),
+      User.findById(order.seller_id).select('full_name'),
+    ]);
+
+    const buyerName = buyer?.full_name || 'Buyer';
+    const sellerName = seller?.full_name || 'Seller';
+    const itemName = item?.name || 'Item';
+    const itemImg = item?.images?.[0] || null;
+
+    const buyerMessage = lateCapture
+      ? `Your payment for "${itemName}" was received after the payment window expired and needs review. The order is not confirmed.`
+      : `Payment confirmed for "${itemName}". Seller ${sellerName} has been notified to arrange delivery.`;
+
     await sendNotification({
       recipientId: order.buyer_id.toString(),
       senderId: order.seller_id.toString(),
       type: 'ORDER',
-      title: lateCapture ? 'Payment needs review' : 'Payment confirmed',
-      body: message,
+      subType: lateCapture ? 'PAYMENT_REVIEW' : 'PAYMENT_CONFIRMED',
+      title: lateCapture ? '⚠️ Payment Needs Review' : `✅ Payment Confirmed: ${itemName}`,
+      body: buyerMessage,
       relatedId: order._id,
+      thumbnail: itemImg,
+      actionUrl: {
+        targetScreen: 'Buy',
+        params: {
+          tab: 'purchases',
+        },
+      },
     }).catch((error) => console.error('Payment notification failed:', error));
+
     if (!lateCapture) {
       await sendNotification({
         recipientId: order.seller_id.toString(),
         senderId: order.buyer_id.toString(),
         type: 'ORDER',
-        title: 'New paid order',
-        body: `Payment confirmed for ${item?.name || 'your item'}. Arrange delivery with the buyer.`,
+        subType: 'PAID_ORDER_RECEIVED',
+        title: `💰 New Paid Order: ${itemName}`,
+        body: `Payment confirmed for "${itemName}" from ${buyerName}. Total: ₹${order.total_price}. Please arrange handover/delivery.`,
         relatedId: order._id,
+        thumbnail: itemImg,
+        actionUrl: {
+          targetScreen: 'Buy',
+          params: {
+            tab: 'sales',
+          },
+        },
       }).catch((error) => console.error('Seller payment notification failed:', error));
+    }
+
+    try {
+      await pusherServer.trigger(`user-${order.seller_id}`, 'payment:updated', {
+        orderId: order._id.toString(),
+        paymentId: payment._id.toString(),
+        status: lateCapture ? 'needs_review' : 'captured',
+      });
+      await pusherServer.trigger(`user-${order.seller_id}`, 'order:updated', {
+        orderId: order._id.toString(),
+        status: order.status,
+      });
+      await pusherServer.trigger(`user-${order.buyer_id}`, 'order:updated', {
+        orderId: order._id.toString(),
+        status: order.status,
+      });
+      await pusherServer.trigger('admin-channel', 'order:updated', {
+        orderId: order._id.toString(),
+        status: order.status,
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] payment parties notification warning:', pusherErr.message);
     }
   }
 }
@@ -328,6 +394,15 @@ export async function transferSellerFunds(payment) {
       settlement.error = 'Seller has not set up payout bank details or UPI ID yet';
       await payment.save();
     }
+
+    try {
+      await pusherServer.trigger(`user-${settlement.seller_id}`, 'payment:updated', {
+        paymentId: payment._id.toString(),
+        status: settlement.status,
+      });
+    } catch (pErr) {
+      console.warn('[Pusher] settlement payment:updated warning:', pErr.message);
+    }
   }
   return { payment, message: 'Eligible seller transfers were processed.' };
 }
@@ -374,6 +449,18 @@ export async function refundOrderPayment(payment, order, reason = 'Order cancell
 
     order.payment_status = 'refunded';
     await order.save();
+
+    try {
+      const buyerIdStr = order.buyer_id?._id ? order.buyer_id._id.toString() : order.buyer_id?.toString();
+      await pusherServer.trigger(`user-${sellerIdStr}`, 'payment:updated', { orderId: order._id.toString() });
+      await pusherServer.trigger(`user-${sellerIdStr}`, 'order:updated', { orderId: order._id.toString(), status: 'refunded' });
+      if (buyerIdStr) {
+        await pusherServer.trigger(`user-${buyerIdStr}`, 'order:updated', { orderId: order._id.toString(), status: 'refunded' });
+      }
+    } catch (pErr) {
+      console.warn('[Pusher] refund broadcast warning:', pErr.message);
+    }
+
     return { success: true, refund };
   } catch (error) {
     console.error('Razorpay refund error:', error.message);

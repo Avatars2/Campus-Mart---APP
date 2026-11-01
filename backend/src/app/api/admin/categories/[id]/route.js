@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import Category from '@/models/Category';
 import User from '@/models/User';
 import { verifyAuth } from '@/lib/auth';
+import { pusherServer } from '@/lib/pusher';
 
 export async function PUT(request, { params }) {
   try {
@@ -48,6 +49,12 @@ export async function PUT(request, { params }) {
 
     await categoryToUpdate.save();
 
+    try {
+      await pusherServer.trigger('admin-channel', 'category:updated', { category: categoryToUpdate });
+    } catch (pErr) {
+      console.warn('[Pusher] category updated error:', pErr.message);
+    }
+
     return NextResponse.json(
       { message: 'Category updated successfully.', category: categoryToUpdate },
       { status: 200 }
@@ -84,6 +91,12 @@ export async function DELETE(request, { params }) {
     
     if (!deletedCategory) {
       return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+    }
+
+    try {
+      await pusherServer.trigger('admin-channel', 'category:updated', { categoryId: id });
+    } catch (pErr) {
+      console.warn('[Pusher] category deleted error:', pErr.message);
     }
 
     return NextResponse.json(

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
 import useScreenRefresh from '../hooks/useScreenRefresh';
+import getPusherClient from '../utils/pusher';
 
 export default function Wishlist({ navigation }) {
   const [wishlistItems, setWishlistItems] = useState([]);
@@ -37,6 +38,25 @@ export default function Wishlist({ navigation }) {
   }, []);
   const saveWishlist = useCallback((items) => setWishlistItems(items), []);
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadWishlist, saveWishlist);
+
+  // Real-time listener for price changes, discounts, and item removal
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('market-items');
+
+    const handleMarketUpdate = () => {
+      loadWishlist().then(saveWishlist).catch(() => {});
+    };
+
+    channel.bind('item:updated', handleMarketUpdate);
+    channel.bind('item:deleted', handleMarketUpdate);
+
+    return () => {
+      channel.unbind('item:updated', handleMarketUpdate);
+      channel.unbind('item:deleted', handleMarketUpdate);
+    };
+  }, [loadWishlist, saveWishlist]);
 
   const handleRemove = async (id) => {
     await removeFromWishlist(id);

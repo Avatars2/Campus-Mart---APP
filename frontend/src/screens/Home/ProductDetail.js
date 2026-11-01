@@ -1,8 +1,9 @@
-import React, { useState, useLayoutEffect, useContext } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Modal, TextInput, Linking } from 'react-native';
+import React, { useState, useLayoutEffect, useContext, useEffect } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Modal, TextInput, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../../context/CartWishlistContext';
 import { AuthContext } from '../../context/AuthContext';
+import getPusherClient from '../../utils/pusher';
 import styles from './ProductDetail.styles';
 import RatingStars from '../../components/commerce/RatingStars';
 import ReportModal from '../../components/ReportModal';
@@ -11,7 +12,7 @@ import { isItemNewlyAdded } from '../../utils/itemUtils';
 const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen({ route, navigation }) {
-  const { item } = route.params;
+  const [item, setItem] = useState(route.params?.item || {});
   const { addToCart, toggleWishlist, wishlistItemIds } = useCartWishlist();
   const { user } = useContext(AuthContext);
   const isAdminView = user?.role === 'admin';
@@ -20,6 +21,42 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [wishlistUpdating, setWishlistUpdating] = useState(false);
+
+  const itemId = item.id || item._id;
+
+  // Real-time listener for price changes, discount offers, and item availability
+  useEffect(() => {
+    if (!itemId) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('market-items');
+
+    const onUpdate = (data) => {
+      if (data && String(data.itemId || data.item?._id || data.item?.id) === String(itemId)) {
+        setItem((prev) => ({
+          ...prev,
+          ...(data.item || {}),
+          ...(typeof data.newPrice !== 'undefined' ? { price: data.newPrice } : {}),
+          ...(typeof data.originalPrice !== 'undefined' ? { original_price: data.originalPrice } : {}),
+          ...(data.isRestored ? { price: data.restoredPrice, original_price: null } : {}),
+        }));
+      }
+    };
+
+    const onDelete = (data) => {
+      if (data && String(data.itemId) === String(itemId)) {
+        setItem((prev) => ({ ...prev, is_active: false, is_deleted: true }));
+      }
+    };
+
+    channel.bind('item:updated', onUpdate);
+    channel.bind('item:deleted', onDelete);
+
+    return () => {
+      channel.unbind('item:updated', onUpdate);
+      channel.unbind('item:deleted', onDelete);
+    };
+  }, [itemId]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -43,7 +80,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     });
   }, [navigation]);
 
-  const itemId = item.id || item._id;
   const isWishlisted = wishlistItemIds.includes(itemId);
   
   const sId = typeof item.seller_id === 'object' ? (item.seller_id.id || item.seller_id._id) : (item.seller_id || (typeof item.seller === 'object' ? (item.seller.id || item.seller._id) : item.seller));

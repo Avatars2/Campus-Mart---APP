@@ -4,6 +4,7 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { getJwtSecret, normalizeEmail } from '@/lib/authValidation';
 import { verifyOtp } from '@/lib/otp';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request) {
   try {
@@ -28,6 +29,16 @@ export async function POST(request) {
       getJwtSecret(),
       { expiresIn: '30d' }
     );
+
+    try {
+      await pusherServer.trigger('admin-channel', 'user:new', {
+        userId: user._id.toString(),
+        name: user.full_name,
+        email: user.email,
+      });
+    } catch (pErr) {
+      console.warn('[Pusher] user:new trigger error:', pErr.message);
+    }
 
     return NextResponse.json({
       message: 'Email verified successfully',

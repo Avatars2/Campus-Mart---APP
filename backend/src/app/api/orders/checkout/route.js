@@ -8,6 +8,7 @@ import User from '@/models/User';
 import { verifyAuth } from '@/lib/auth';
 import { sendNotification } from '@/utils/notificationHelper';
 import Cart from '@/models/Cart';
+import { pusherServer } from '@/lib/pusher';
 import {
   createRazorpayOrder,
   createRazorpayPaymentLink,
@@ -324,20 +325,37 @@ export async function POST(request) {
         expires_at: expiresAt,
       };
     } else {
+      const buyerUser = await User.findById(buyerId).select('full_name').lean();
+      const buyerName = buyerUser?.full_name || 'A buyer';
+
       for (const order of createdOrders) {
         const itemEntry = itemMapById.get(order.item_id.toString());
         if (!itemEntry) continue;
 
         const dbItem = itemEntry.dbItem;
+        const itemImg = dbItem.images?.[0] || null;
+        const orderTitle = dbItem.listing_type === 'rent'
+          ? `⏱️ New Rental Request: ${dbItem.name}`
+          : `📦 New Order: ${dbItem.name}`;
+        const orderBody = dbItem.listing_type === 'rent'
+          ? `${buyerName} requested to rent "${dbItem.name}" for ${order.rental_duration} ${dbItem.rental_period || 'day'}${order.rental_duration === 1 ? '' : 's'}. Total: ₹${order.total_price}.`
+          : `${buyerName} bought "${dbItem.name}" (Qty: ${order.quantity || 1}) for ₹${order.total_price}.`;
+
         await sendNotification({
           recipientId: dbItem.seller_id.toString(),
           senderId: buyerId,
           type: 'ORDER',
-          title: 'New Order Received!',
-          body: dbItem.listing_type === 'rent'
-            ? `Someone requested to rent ${dbItem.name} for ${order.rental_duration} ${dbItem.rental_period || 'day'}${order.rental_duration === 1 ? '' : 's'}.`
-            : `Someone just bought your item: ${dbItem.name}`,
+          subType: 'NEW_ORDER_RECEIVED',
+          title: orderTitle,
+          body: orderBody,
           relatedId: order._id,
+          thumbnail: itemImg,
+          actionUrl: {
+            targetScreen: 'Buy',
+            params: {
+              tab: 'sales',
+            },
+          },
         }).catch((error) => console.error('Order notification failed:', error));
       }
       if (from_cart) {
@@ -349,6 +367,45 @@ export async function POST(request) {
 
     const populatedOrders = await Order.find({ _id: { $in: createdOrders.map((order) => order._id) } })
       .populate(orderPopulate);
+
+    // Trigger real-time updates for market items, seller listings, and payments
+    try {
+      const sellerIds = [...new Set(createdOrders.map((o) => o.seller_id?.toString()).filter(Boolean))];
+      for (const entry of normalizedItems) {
+        const dbId = entry.dbItem._id.toString();
+        const freshItem = await Item.findById(dbId).lean();
+        if (freshItem) {
+          await pusherServer.trigger('market-items', 'item:updated', {
+            itemId: dbId,
+            item: freshItem,
+          });
+          await pusherServer.trigger(`user-${freshItem.seller_id}`, 'item:updated', {
+            itemId: dbId,
+            item: freshItem,
+          });
+        }
+      }
+
+      for (const sId of sellerIds) {
+        await pusherServer.trigger(`user-${sId}`, 'order:created', {
+          ordersCount: createdOrders.filter((o) => o.seller_id?.toString() === sId).length,
+        });
+        await pusherServer.trigger(`user-${sId}`, 'payment:updated', {
+          type: 'new_order',
+        });
+      }
+
+      await pusherServer.trigger(`user-${buyerId}`, 'order:created', {
+        ordersCount: createdOrders.length,
+      });
+
+      await pusherServer.trigger('admin-channel', 'order:new', {
+        ordersCount: createdOrders.length,
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] checkout broadcast warning:', pusherErr.message);
+    }
+
     return NextResponse.json({
       message: isOnlinePayment ? 'Payment session created' : 'Checkout successful',
       orders: populatedOrders,

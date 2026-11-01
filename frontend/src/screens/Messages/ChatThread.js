@@ -9,7 +9,7 @@ import * as Sharing from 'expo-sharing';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
 import client from '../../api/client';
-import { Pusher } from 'pusher-js/react-native';
+import getPusherClient from '../../utils/pusher';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './ChatThread.styles';
 
@@ -111,7 +111,7 @@ const ChatThread = () => {
   const isFocusedRef = useRef(isFocused);
   const flatListRef = useRef();
 
-  const { itemId: rawItemId, otherUserId: rawOtherUserId, itemName, otherUserName, otherUserPhoto, isOwnItem } = route.params;
+  const { itemId: rawItemId, otherUserId: rawOtherUserId, itemName, otherUserName, otherUserPhoto, isOwnItem } = route.params || {};
   
   // Normalize IDs in case they were passed as objects from stale navigation state
   const itemId = typeof rawItemId === 'object' ? (rawItemId._id || rawItemId.id) : rawItemId;
@@ -134,10 +134,8 @@ const ChatThread = () => {
   useEffect(() => {
     if (!userId) return;
 
-    // Initialize Pusher
-    const pusher = new Pusher(process.env.EXPO_PUBLIC_PUSHER_KEY || 'fake_key', {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER || 'mt1',
-    });
+    const pusher = getPusherClient();
+    if (!pusher) return;
 
     // Channel name matches backend channel naming logic
     const channelName = `chat-${itemId}-${[userId, otherUserId].sort().join('-')}`;

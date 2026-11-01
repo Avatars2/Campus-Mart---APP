@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Item from '@/models/Item';
 import User from '@/models/User';
+import Order from '@/models/Order';
 import Wishlist from '@/models/Wishlist';
+import Notification from '@/models/Notification';
 import { getRazorpayLinkedAccountStatus } from '@/lib/razorpay';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 export async function PUT(request, { params }) {
   try {
@@ -24,6 +27,19 @@ export async function PUT(request, { params }) {
 
     if (!item) {
       return NextResponse.json({ error: 'Item not found or unauthorized' }, { status: 404 });
+    }
+
+    // Block editing if item has an active rental
+    const activeRental = await Order.findOne({
+      item_id: id,
+      status: { $in: ['rental_active', 'return_requested'] },
+    });
+
+    if (activeRental) {
+      return NextResponse.json(
+        { error: 'Cannot edit or modify this item while it is currently rented out with an active rental.' },
+        { status: 400 }
+      );
     }
 
     const formData = await request.formData();
@@ -148,6 +164,12 @@ export async function PUT(request, { params }) {
 
         for (const recipientId of uniqueUserIds) {
           if (isPriceDropped) {
+            await Notification.deleteMany({
+              recipient: recipientId,
+              relatedId: item._id,
+              subType: 'PRICE_DROP',
+              read: false,
+            });
             const discountPercent = Math.round(((previousPrice - newPrice) / previousPrice) * 100);
             await sendNotification({
               recipientId,
@@ -185,6 +207,21 @@ export async function PUT(request, { params }) {
       console.error('Error in wishlist auto-notification triggers:', notifErr);
     }
 
+    // Broadcast real-time item update via Pusher
+    try {
+      const itemPayload = item.toJSON ? item.toJSON() : item;
+      await pusherServer.trigger('market-items', 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+      });
+      await pusherServer.trigger(`user-${seller_id}`, 'item:updated', {
+        item: itemPayload,
+        itemId: item._id.toString(),
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] item:updated trigger warning:', pusherErr.message);
+    }
+
     return NextResponse.json(item);
   } catch (error) {
     console.error('Error updating item:', error);
@@ -210,6 +247,24 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Item not found or unauthorized' }, { status: 404 });
     }
 
+    // Check if there are active orders or active rentals for this item
+    const activeOrder = await Order.findOne({
+      item_id: id,
+      status: { $in: ['pending', 'paid', 'delivered', 'rental_active', 'return_requested'] },
+    });
+
+    if (activeOrder) {
+      const isRented = activeOrder.status === 'rental_active' || activeOrder.status === 'return_requested';
+      return NextResponse.json(
+        {
+          error: isRented
+            ? 'Cannot delete this item because it is currently rented out to a student with an active rental. Please wait until the rental is returned and completed.'
+            : 'Cannot delete this item because an active order is in progress. Please fulfill or resolve the order first.',
+        },
+        { status: 400 }
+      );
+    }
+
     // Delete images from Cloudinary
     if (item.images && item.images.length > 0) {
       const deletePromises = item.images.map((url) => {
@@ -222,6 +277,13 @@ export async function DELETE(request, { params }) {
     }
 
     await Item.findByIdAndDelete(id);
+
+    try {
+      await pusherServer.trigger('market-items', 'item:deleted', { itemId: id.toString() });
+      await pusherServer.trigger(`user-${seller_id}`, 'item:deleted', { itemId: id.toString() });
+    } catch (pusherErr) {
+      console.warn('[Pusher] item:deleted trigger warning:', pusherErr.message);
+    }
 
     return NextResponse.json({ message: 'Item deleted successfully' });
   } catch (error) {

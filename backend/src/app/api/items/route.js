@@ -7,6 +7,7 @@ import Order from '@/models/Order';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 import { getRazorpayLinkedAccountStatus } from '@/lib/razorpay';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request) {
   try {
@@ -80,6 +81,21 @@ export async function POST(request) {
       rental_period: listing_type === 'rent' ? rental_period : null,
       images,
     });
+
+    try {
+      const populatedItem = await Item.findById(newItem._id).populate('seller_id', 'full_name avatar');
+      const itemPayload = populatedItem ? populatedItem.toJSON() : newItem.toJSON();
+      await pusherServer.trigger('market-items', 'item:created', {
+        item: itemPayload,
+        itemId: newItem._id.toString(),
+      });
+      await pusherServer.trigger(`user-${seller_id}`, 'item:created', {
+        item: itemPayload,
+        itemId: newItem._id.toString(),
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] item:created trigger warning:', pusherErr.message);
+    }
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {

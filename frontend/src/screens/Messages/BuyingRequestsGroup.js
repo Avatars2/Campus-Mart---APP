@@ -161,18 +161,25 @@ export default function BuyingRequestsGroup() {
   };
 
   const handleMessageBuyer = (req) => {
-    const targetUserId = req.user_id?._id || req.user_id?.id || req.user_id;
+    const targetUserId = String(req.user_id?._id || req.user_id?.id || req.user_id || '');
+    if (!targetUserId) {
+      Alert.alert('Error', 'Unable to start chat: requester details not available.');
+      return;
+    }
     if (String(targetUserId) === String(currentUserId)) {
       Alert.alert('Notice', 'This is your own request.');
       return;
     }
-    const reqId = req._id || req.id;
+    const reqId = String(req._id || req.id || '');
+    const userName = req.user_name || req.user_id?.full_name || 'Buyer';
+    const userPhoto = req.user_photo || req.user_id?.profile_photo_url || null;
+
     navigation.navigate('ChatThread', {
       itemId: reqId,
       otherUserId: targetUserId,
       itemName: `Request: ${req.title}`,
-      otherUserName: req.user_name || 'Buyer',
-      otherUserPhoto: req.user_photo,
+      otherUserName: userName,
+      otherUserPhoto: userPhoto,
       isOwnItem: false,
     });
   };
@@ -298,7 +305,7 @@ export default function BuyingRequestsGroup() {
                 onPress={() => handleMessageBuyer(item)}
               >
                 <Ionicons name="chatbubble-ellipses" size={15} color="#007185" />
-                <Text style={styles.chatBtnText}>Message Buyer</Text>
+                <Text style={styles.chatBtnText}>Message</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -325,7 +332,7 @@ export default function BuyingRequestsGroup() {
                 onPress={() => promptDeleteRequest(item)}
               >
                 <Ionicons name="trash-outline" size={18} color="#DC2626" />
-              </TouchableOpacity>
+              </TouchableOpacity> 
             </View>
           )}
         </View>
@@ -337,19 +344,19 @@ export default function BuyingRequestsGroup() {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="chevron-back" size={26} color="#0F172A" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Items Buying Requests</Text>
-            <Text style={styles.headerSubtitle}>Campus Student Community Board</Text>
-          </View>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#0F172A" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>
+            Items Buying <Text style={{ color: '#007185' }}>Requests</Text>
+          </Text>
+          <Text style={styles.headerSubtitle}>Campus Student Community Board</Text>
         </View>
       </View>
 

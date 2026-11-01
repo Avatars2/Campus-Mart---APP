@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCartWishlist } from '../context/CartWishlistContext';
 import client from '../api/client';
 import useScreenRefresh from '../hooks/useScreenRefresh';
+import getPusherClient from '../utils/pusher';
 
 export default function Cart({ navigation }) {
   const [cartItems, setCartItems] = useState([]);
@@ -42,6 +43,25 @@ export default function Cart({ navigation }) {
   }, []);
   const saveCart = useCallback((items) => setCartItems(items), []);
   const { loading, refreshing, error, refresh, retry } = useScreenRefresh(loadCart, saveCart);
+
+  // Real-time listener for price changes, stock availability, and deleted items
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('market-items');
+
+    const handleMarketUpdate = () => {
+      loadCart().then(saveCart).catch(() => {});
+    };
+
+    channel.bind('item:updated', handleMarketUpdate);
+    channel.bind('item:deleted', handleMarketUpdate);
+
+    return () => {
+      channel.unbind('item:updated', handleMarketUpdate);
+      channel.unbind('item:deleted', handleMarketUpdate);
+    };
+  }, [loadCart, saveCart]);
 
   const handleRemove = async (id) => {
     await removeFromCart(id);
@@ -336,7 +356,7 @@ export default function Cart({ navigation }) {
             <Text style={styles.totalAmount}>₹{total}</Text>
           </View>
           <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
-            <Text style={styles.checkoutBtnText}>Proceed to Checkout</Text>
+            <Text style={styles.checkoutBtnText}>Proceed to Buy</Text>
           </TouchableOpacity>
         </View>
       )}

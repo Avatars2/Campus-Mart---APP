@@ -4,6 +4,8 @@ import Message from '@/models/Message';
 import Conversation from '@/models/Conversation';
 import User from '@/models/User';
 import Item from '@/models/Item';
+import BuyingRequest from '@/models/BuyingRequest';
+import Notification from '@/models/Notification';
 import { pusherServer } from '@/lib/pusher';
 import { cloudinary } from '@/lib/cloudinary';
 import { sendNotification } from '@/utils/notificationHelper';
@@ -181,49 +183,50 @@ export async function POST(req) {
         message: 'New message received',
         newMessage: savedMessage
       });
+
+      // If message is for a Buying Request, send only 1 initial notification to the requester (never for every chat message)
+      const buyingReq = await BuyingRequest.findById(itemId).select('title user_id').lean();
+      if (buyingReq && String(receiverId) === String(buyingReq.user_id)) {
+        const existingNotif = await Notification.findOne({
+          recipient: receiverId,
+          sender: senderId,
+          relatedId: buyingReq._id,
+          type: 'BUYING_REQUEST',
+        }).lean();
+
+        if (!existingNotif) {
+          const priorMessageCount = await Message.countDocuments({
+            item: itemId,
+            sender: senderId,
+            receiver: receiverId,
+          });
+
+          // Only notify on the very first reach-out message
+          if (priorMessageCount <= 1) {
+            const senderUser = await User.findById(senderId).select('full_name').lean();
+            sendNotification({
+              recipientId: receiverId.toString(),
+              senderId: senderId.toString(),
+              type: 'BUYING_REQUEST',
+              subType: 'BUYING_REQUEST_OFFER',
+              title: 'New Offer on Your Request! 🛍️',
+              body: `${senderUser?.full_name || 'A student'} replied to your request: "${buyingReq.title}".`,
+              relatedId: buyingReq._id,
+              actionUrl: {
+                targetScreen: 'ChatThread',
+                params: {
+                  itemId: buyingReq._id.toString(),
+                  otherUserId: senderId.toString(),
+                  itemName: `Request: ${buyingReq.title}`,
+                  otherUserName: senderUser?.full_name || 'Seller',
+                },
+              },
+            }).catch(err => console.error('Error sending request notification:', err));
+          }
+        }
+      }
     } catch (pusherError) {
-      console.warn('Pusher trigger failed (likely due to fake credentials), but message was saved:', pusherError.message);
-    }
-
-    // Dispatch push & in-app notification to the message receiver so offline users are notified
-    try {
-      const [senderUser, itemObj] = await Promise.all([
-        User.findById(senderId).select('full_name profile_photo_url'),
-        Item.findById(itemId).select('name images'),
-      ]);
-
-      const senderName = senderUser?.full_name || 'Someone';
-      const itemName = itemObj?.name || 'Item';
-      const previewText = content
-        ? (content.length > 80 ? `${content.slice(0, 80)}...` : content)
-        : attachments?.length > 0
-        ? 'Sent an attachment 📎'
-        : location
-        ? 'Shared a location 📍'
-        : 'New message';
-
-      await sendNotification({
-        recipientId: receiverId.toString(),
-        senderId: senderId.toString(),
-        type: 'MESSAGE',
-        subType: 'NEW_CHAT_MESSAGE',
-        title: `💬 ${senderName}`,
-        body: previewText,
-        relatedId: conversation?._id || itemId,
-        thumbnail: senderUser?.profile_photo_url || itemObj?.images?.[0] || null,
-        actionUrl: {
-          targetScreen: 'ChatThread',
-          params: {
-            itemId: itemId.toString(),
-            otherUserId: senderId.toString(),
-            itemName,
-            otherUserName: senderName,
-            otherUserPhoto: senderUser?.profile_photo_url || null,
-          },
-        },
-      });
-    } catch (notifErr) {
-      console.warn('Chat notification trigger warning:', notifErr.message);
+      console.warn('Pusher or notification trigger failed, but message was saved:', pusherError.message);
     }
 
     return NextResponse.json({ success: true, message: savedMessage }, { status: 201 });

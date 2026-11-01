@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import { openAttachment } from '../../../utils/attachmentHelper';
 import styles from './styles';
 
@@ -73,6 +74,25 @@ export default function AdminNotificationsScreen({ route }) {
       fetchNotifications();
     }, [])
   );
+
+  // Real-time synchronization for Admin Broadcast Notifications
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleNotifChange = () => {
+      fetchNotifications();
+    };
+
+    channel.bind('notification:new', handleNotifChange);
+    channel.bind('notification:deleted', handleNotifChange);
+
+    return () => {
+      channel.unbind('notification:new', handleNotifChange);
+      channel.unbind('notification:deleted', handleNotifChange);
+    };
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);

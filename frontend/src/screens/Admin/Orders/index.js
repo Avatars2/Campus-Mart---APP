@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshContr
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
+import getPusherClient from '../../../utils/pusher';
 import styles from './styles';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -36,6 +37,25 @@ export default function AdminOrdersScreen({ navigation }) {
       fetchOrders();
     }, [])
   );
+
+  // Real-time synchronization for Admin Orders
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe('admin-channel');
+
+    const handleOrderChange = () => {
+      fetchOrders();
+    };
+
+    channel.bind('order:new', handleOrderChange);
+    channel.bind('order:updated', handleOrderChange);
+
+    return () => {
+      channel.unbind('order:new', handleOrderChange);
+      channel.unbind('order:updated', handleOrderChange);
+    };
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);

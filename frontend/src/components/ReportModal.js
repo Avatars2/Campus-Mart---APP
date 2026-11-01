@@ -161,10 +161,6 @@ export default function ReportModal({
         headers: Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' },
       });
 
-      Alert.alert(
-        'Report Submitted',
-        'Thank you for your report. Our campus safety team will review it shortly.'
-      );
       setReason('');
       setDescription('');
       setProofImage(null);

@@ -5,6 +5,7 @@ import AdminNotification from '@/models/AdminNotification';
 import { verifyAdminAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,6 +188,14 @@ export async function POST(request) {
           })
         )
       );
+    }
+
+    try {
+      await pusherServer.trigger('admin-channel', 'notification:new', {
+        notification: savedAdminNotification,
+      });
+    } catch (pErr) {
+      console.warn('[Pusher] admin notification:new error:', pErr.message);
     }
 
     return NextResponse.json({

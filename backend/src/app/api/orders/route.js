@@ -28,7 +28,7 @@ export async function GET(request) {
         seller_id: userId,
         $or: [
           { payment_method: { $nin: ['UPI', 'Razorpay'] } },
-          { payment_status: 'paid' },
+          { payment_status: { $in: ['paid', 'refunded', 'partially_refunded'] } },
         ],
       };
     } else {
@@ -377,6 +377,7 @@ export async function PATCH(request) {
     }
 
     const recipientId = isSeller ? buyerId : sellerId;
+    const recipientTab = isSeller ? 'purchases' : 'sales';
 
     await sendNotification({
       recipientId: recipientId.toString(),
@@ -388,15 +389,17 @@ export async function PATCH(request) {
       relatedId: order._id,
       thumbnail: order.item_id?.images?.[0] || null,
       actionUrl: {
-        targetScreen: 'NotificationDetail',
-        params: { orderId: order._id.toString() },
+        targetScreen: 'Buy',
+        params: {
+          tab: recipientTab,
+        },
       },
     }).catch((error) => console.error('Completion notification failed:', error));
 
     // Real-time WebSocket sync via Pusher to both buyer and seller
     try {
       const orderPayload = order.toJSON ? order.toJSON() : order;
-      const targetChannels = [...new Set([`user-${buyerId}`, `user-${sellerId}`])].filter(Boolean);
+      const targetChannels = [...new Set([`user-${buyerId}`, `user-${sellerId}`, 'admin-channel'])].filter(Boolean);
       console.log(`[Pusher] Dispatching order:updated on channels:`, targetChannels, `status:`, status);
       await pusherServer.trigger(
         targetChannels,

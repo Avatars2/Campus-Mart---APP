@@ -24,14 +24,14 @@ const FILTER_OPTIONS = [
   { id: 'Cancelled', label: 'Cancelled', dotColor: '#DC2626' },
 ];
 
-export default function BuyScreen({ navigation }) {
+export default function BuyScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const currentUserId = user?.id || user?._id;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('purchases'); // 'purchases' or 'sales'
+  const [activeTab, setActiveTab] = useState(route?.params?.tab || 'purchases'); // 'purchases' or 'sales'
   const [confirmation, setConfirmation] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [ratingPrompt, setRatingPrompt] = useState(null);
@@ -44,11 +44,26 @@ export default function BuyScreen({ navigation }) {
   const [extensionDuration, setExtensionDuration] = useState(1);
   const [isExtending, setIsExtending] = useState(false);
 
-  const fetchOrders = async () => {
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  const handleTabChange = (newTab) => {
+    if (activeTab === newTab) return;
+    setActiveTab(newTab);
+    // Clear navigation params if present so manual user tab switches are never blocked
+    if (route?.params?.tab || route?.params?.initialTab) {
+      navigation.setParams({ tab: undefined, initialTab: undefined });
+    }
+  };
+
+  const fetchOrders = async (tabToFetch = activeTab) => {
     try {
       setError(null);
-      const res = await client.get(`/orders?type=${activeTab}`);
-      setOrders(res.data.orders);
+      const res = await client.get(`/orders?type=${tabToFetch}`);
+      const fetchedOrders = res.data.orders || [];
+      setOrders(fetchedOrders);
     } catch (err) {
       if (err.response?.status !== 401 && err.response?.status !== 403) {
         console.error('Fetch Orders Error:', err);
@@ -60,10 +75,40 @@ export default function BuyScreen({ navigation }) {
     }
   };
 
+  // Re-fetch whenever activeTab changes
+  useEffect(() => {
+    fetchOrders(activeTab);
+  }, [activeTab]);
+
+  // Handle direct navigation from notifications to switch tab (purchases / sales)
+  useEffect(() => {
+    const targetTab = route?.params?.tab || route?.params?.initialTab;
+
+    if (targetTab && (targetTab === 'purchases' || targetTab === 'sales')) {
+      if (activeTab !== targetTab) {
+        setActiveTab(targetTab);
+      } else {
+        fetchOrders(targetTab);
+      }
+      // Consume the navigation param immediately so manual clicks are unblocked
+      navigation.setParams({ tab: undefined, initialTab: undefined });
+    }
+  }, [route?.params?.tab, route?.params?.initialTab]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchOrders();
-    }, [activeTab])
+      const targetTab = route?.params?.tab || route?.params?.initialTab;
+      if (targetTab && (targetTab === 'purchases' || targetTab === 'sales')) {
+        if (activeTabRef.current !== targetTab) {
+          setActiveTab(targetTab);
+        } else {
+          fetchOrders(targetTab);
+        }
+        navigation.setParams({ tab: undefined, initialTab: undefined });
+      } else {
+        fetchOrders(activeTabRef.current);
+      }
+    }, [route?.params?.tab, route?.params?.initialTab])
   );
 
   useEffect(() => {
@@ -335,7 +380,6 @@ export default function BuyScreen({ navigation }) {
       setRatingPrompt(null);
       setSelectedRating(0);
       await fetchOrders();
-      Alert.alert('Rating Submitted', 'Thank you for your rating!');
     } catch (error) {
       Alert.alert('Unable to save rating', error.response?.data?.error || 'Please try again.');
     } finally {
@@ -1667,14 +1711,14 @@ export default function BuyScreen({ navigation }) {
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'purchases' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('purchases')}
+          onPress={() => handleTabChange('purchases')}
           activeOpacity={0.8}
         >
           <Text style={[styles.tabText, activeTab === 'purchases' && styles.tabTextActive]}>Purchases</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'sales' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('sales')}
+          onPress={() => handleTabChange('sales')}
           activeOpacity={0.8}
         >
           <Text style={[styles.tabText, activeTab === 'sales' && styles.tabTextActive]}>Sales</Text>

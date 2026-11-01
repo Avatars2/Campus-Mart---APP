@@ -5,6 +5,7 @@ import User from '@/models/User';
 import { verifyAuth } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 import { sendNotification } from '@/utils/notificationHelper';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request) {
   try {
@@ -88,6 +89,15 @@ export async function POST(request) {
       }
     } catch (adminNotifErr) {
       console.warn('Failed to notify admins of new report:', adminNotifErr.message);
+    }
+
+    try {
+      await pusherServer.trigger('admin-channel', 'report:new', {
+        reportId: report._id.toString(),
+        report: report.toJSON ? report.toJSON() : report,
+      });
+    } catch (pusherErr) {
+      console.warn('[Pusher] admin report:new warning:', pusherErr.message);
     }
 
     return NextResponse.json({ message: 'Report submitted successfully', report }, { status: 201 });
